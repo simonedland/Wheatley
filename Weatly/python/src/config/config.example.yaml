@@ -1,0 +1,28 @@
+app:
+  name: Eatly
+  version: 1.0.0
+
+logging:
+  level: INFO
+  file: logs/app.log
+
+stt:
+  engine: default
+  language: en-US
+
+tts:
+  engine: default
+  voice: default
+
+llm:
+  model: gpt-3.5-turbo
+
+hardware:
+  arduino_port: COM3
+  baud_rate: 9600
+
+secrets:
+  openai_api_key: YOUR_OPENAI_API_KEY
+  elevenlabs_api_key: YOUR_ELEVENLABS_API_KEY
+  appinsights_ikey: YOUR_APPINSIGHTS_IKEY
+  llm_api_key: YOUR_LLM_API_KEY
