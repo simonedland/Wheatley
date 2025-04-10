@@ -1,5 +1,5 @@
 import openai
-from src.utils.timer import Timer
+from utils.timer import Timer
 
 def get_gpt_text(conversation):
     """

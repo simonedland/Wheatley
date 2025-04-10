@@ -52,7 +52,7 @@ class Assistant:
     def send_message(self, user_input):
         self.manager.add_text("user", user_input)
     def get_response(self):
-        from src.utils.gpt import get_gpt_text
+        from utils.gpt import get_gpt_text
         try:
             gpt_text, tokens_used = get_gpt_text(self.manager.get_history())
             return gpt_text, tokens_used
@@ -60,7 +60,7 @@ class Assistant:
             logging.error(f"Error getting GPT response: {e}")
             return None, 0
     def generate_and_play_audio(self, gpt_text):
-        from src.utils.audio import generate_audio, play_audio_from_file
+        from utils.audio import generate_audio, play_audio_from_file
         try:
             previous = self.manager.get_history()[-2]["content"] if len(self.manager.get_history()) >= 2 else None
             audio_chunks = list(generate_audio(gpt_text, previous_text=previous))
@@ -126,28 +126,3 @@ def push_custom_event_to_appinsights(event_name, tokens_used, response_time):
             logging.info(f"Posted custom event: {event_name}")
     except Exception as e:
         logging.error(f"Error sending custom event: {e}")
-
-def display_charts():
-    import matplotlib.pyplot as plt
-    from src.utils.timer import ACCUMULATED_TIMINGS
-    if not ACCUMULATED_TIMINGS:
-        return
-    avg_timings = {label: total / count for label, (total, count) in ACCUMULATED_TIMINGS.items()}
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
-    axs[0].pie(avg_timings.values(), labels=avg_timings.keys(), autopct='%1.1f%%')
-    axs[0].set_title("Average Timing Distribution (Pie Chart)")
-    cumulative = 0
-    starts, durations, labels = [], [], []
-    for label, avg in avg_timings.items():
-        starts.append(cumulative)
-        durations.append(avg)
-        labels.append(label)
-        cumulative += avg
-    y_positions = list(range(len(avg_timings)))
-    axs[1].barh(y_positions, durations, left=starts, height=0.5, align='center')
-    axs[1].set_yticks(y_positions)
-    axs[1].set_yticklabels([f"{idx+1}: {lbl}" for idx, lbl in enumerate(labels)])
-    axs[1].set_xlabel("Average Time (seconds)")
-    axs[1].set_title("Average Timing Timeline")
-    plt.tight_layout()
-    plt.show(block=False)

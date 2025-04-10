@@ -1,5 +1,5 @@
 # This file lists the dependencies for the project.
-
+openai
 numpy
 pandas
 scikit-learn
@@ -10,3 +10,6 @@ requests
 pyserial
 pydub
 pytest
+matplotlib
+pyyaml
+pyttsx3

@@ -8,6 +8,15 @@ import openai
 import matplotlib.pyplot as plt
 import yaml
 
+def check_prerequisites():
+    # Check if essential configuration and secret values are set
+    if not openai.api_key:
+        logging.error("Prerequisite check failed: OpenAI API key not set!")
+        return False
+    # ... add additional prerequisite checks as needed ...
+    logging.info("All prerequisites satisfied.")
+    return True
+
 # Load configuration from config folder
 config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
 with open(config_path, "r") as f:
@@ -17,27 +26,29 @@ with open(config_path, "r") as f:
 openai.api_key = config["secrets"]["openai_api_key"]
 
 # Configure ElevenLabs client using our utils module (overwrite client api key)
-from src.utils.audio import configure_client
-configure_client(config["secrets"]["elevenlabs_api_key"])
-
 APPINSIGHTS_IKEY = config["secrets"]["appinsights_ikey"]
 
 # ...existing code for Timer, rate_limit, etc. are now moved to utils modules ...
-from src.utils.rate_limit import rate_limit
-from src.assistant import ConversationManager, Assistant, display_charts
+from utils.rate_limit import rate_limit
+from assistant import ConversationManager, Assistant
 
 def main():
     plt.ion()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    # Run prerequisite tests
+    if not check_prerequisites():
+        print("Missing prerequisites. Please ensure all required dependencies and configuration values are set.")
+        return
+
     instructions = """You are the Sorting Hat from Harry Potter.
     You must answer the user’s questions and engage in natural conversation, including interjections such as “hmms” and other verbalizations as needed. 
     Feel free to add <break time="X.Xs" /> where it fits with as long of a wait that fits the context.
     Try to add as many pauses as needed, with natural short pauses ranging from 0.1s to 1.5s.
     """
     # Initialize ConversationManager and Assistant using the new file structure.
-    from src.stt.stt_engine import SpeechToTextEngine
-    from src.tts.tts_engine import TextToSpeechEngine
-    from src.llm.llm_client import LLMClient
+    from stt.stt_engine import SpeechToTextEngine
+    from tts.tts_engine import TextToSpeechEngine
+    from llm.llm_client import LLMClient
 
     conversation_manager = ConversationManager(
         max_memory=10,
@@ -88,7 +99,6 @@ def main():
         assistant.manager.print_memory()
         print("Average Timing Details so far:")
         # ...existing code to print timings...
-        display_charts()
         rate_limit(tokens_used, elapsed_seconds=1, cap_per_minute=40000)
         print("Estimated tokens per minute:", (60 / 1) * tokens_used)
 
