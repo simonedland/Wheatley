@@ -1,0 +1,2 @@
+# Ignore configuration file with secrets
+python/src/config/config.yaml
