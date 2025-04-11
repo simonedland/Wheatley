@@ -1,36 +1,58 @@
+# =================== Imports: Standard Libraries ===================
 import os
 import time
 from datetime import datetime, timezone
 import textwrap
 import logging
+import base64
+
+# =================== Imports: Third-Party Libraries ===================
 import requests
-import openai
-import matplotlib.pyplot as plt
 import yaml
+import matplotlib.pyplot as plt
+import numpy as np
+import pyaudio
+import openai
+from openai import AzureOpenAI, OpenAI
+from playsound import playsound
+from colorama import init, Fore, Style
+
 try:
     import RPi.GPIO as GPIO
 except ImportError:
     GPIO = None
     print("RPi.GPIO module not found; GPIO functionality will be disabled.")
+
 import serial
 import wave
-from colorama import init, Fore, Style
 from elevenlabs.client import ElevenLabs
 from elevenlabs import Voice, VoiceSettings, play
-import numpy as np
-import pyaudio
-from openai import OpenAI
-import base64
-from openai import AzureOpenAI
-from playsound import playsound
-from hardware.arduino_interface import ArduinoInterface  # NEW import
 
+# =================== Imports: Local Modules ===================
+from hardware.arduino_interface import ArduinoInterface  # NEW import
+from assistant.assistant import ConversationManager
+from llm.llm_client import GPTClient
+from tts.tts_engine import TextToSpeechEngine  # NEW import
+from stt.stt_engine import SpeechToTextEngine  # NEW import
+
+# =================== Global Constants ===================
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 44100
+THRESHOLD = 3000
+SILENCE_LIMIT = 1  # seconds
+
+# Initialize colorama
+init(autoreset=True)
+
+# =================== Helper Functions ===================
 def check_prerequisites():
     # Check if essential configuration and secret values are set
     if not openai.api_key:
         logging.error("Prerequisite check failed: OpenAI API key not set!")
         return False
-    # ... add additional prerequisite checks as needed ...
+    # ...additional prerequisite checks...
     logging.info("All prerequisites satisfied.")
     return True
 
@@ -47,7 +69,7 @@ def init_hardware(use_raspberry):
         arduino_iface.send_command("ON")
         time.sleep(3)
         arduino_iface.send_command("OFF")
-        print("hello world")
+        print("Hardware initialized via ArduinoInterface")
     return arduino_iface
 
 def print_welcome():
@@ -72,113 +94,30 @@ def print_welcome():
     """)
     print(f"{RETRO_COLOR}Welcome to the AI Assistant!{RESET}")
 
-# Load configuration from config folder
-config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
-with open(config_path, "r") as f:
-    config = yaml.safe_load(f)
-use_raspberry = config.get("use_raspberry", True)  # New flag to switch Raspberry-specific code
-
-# Set secrets from config
-openai.api_key = config["secrets"]["openai_api_key"]
-# Add subscription key from config
-subscription_key = config["secrets"].get("openai_api_key", "")
-
-# Configure ElevenLabs client using our utils module (overwrite client api key)
-APPINSIGHTS_IKEY = config["secrets"]["appinsights_ikey"]
-# Initialize ElevenLabs client using the API key from config secrets
-client = ElevenLabs(api_key=config["secrets"]["elevenlabs_api_key"])
-
-# ...existing code for Timer, rate_limit, etc. are now moved to utils modules ...
-from utils.rate_limit import rate_limit
-from assistant import ConversationManager, Assistant
-
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 44100
-THRESHOLD = 3000
-SILENCE_LIMIT = 1  # seconds
-
-init(autoreset=True)
-
-from llm.llm_client import GPTClient
-from tts.tts_engine import TextToSpeechEngine  # NEW import
-from stt.stt_engine import SpeechToTextEngine  # NEW import
-
-class ConversationManager:
-    """
-    Manages the conversation history with a fixed memory.
-    """
-    def __init__(self, max_memory=5):
-        self.max_memory = max_memory
-        self.messages = [{
-            "role": "system",
-            "content": (
-                "you are Weatly, a helpful assistant. from portal 2.0, answer in a single short sentence"
-            )
-        }]
-
-    def add_text_to_conversation(self, role, text):
-        self.messages.append({"role": role, "content": text})
-        # Keep only the latest max_memory messages (excluding system)
-        while len(self.messages) > self.max_memory + 1:
-            self.messages.pop(1)
-
-    def get_conversation(self):
-        return self.messages
-
-    def print_memory(self):
-        debug_color = "\033[94m"      # system
-        user_color = "\033[92m"       # user
-        assistant_color = "\033[93m"  # assistant
-        reset_color = "\033[0m"
-        max_width = 70
-        
-        print(f"\n{debug_color}+------------------------ Conversation Memory ------------------------+{reset_color}")
-        for idx, msg in enumerate(self.messages):
-            role = msg["role"]
-            content = msg["content"]
-            if role == "system":
-                role_color = debug_color; prefix = f"[{idx}] {role}: "
-            elif role == "user":
-                role_color = user_color; prefix = f"[{idx}] {role}:      "
-            elif role == "assistant":
-                role_color = assistant_color; prefix = f"[{idx}] {role}: "
-            else:
-                role_color = debug_color; prefix = f"[{idx}] {role}: "
-            wrapped = textwrap.wrap(content, width=max_width-len(prefix))
-            if wrapped:
-                print(f"{role_color}{prefix}{wrapped[0]}{reset_color}")
-                for line in wrapped[1:]:
-                    print(f"{role_color}{' ' * len(prefix)}{line}{reset_color}")
-            else:
-                print(f"{role_color}{prefix}{reset_color}")
-        print(f"{debug_color}+---------------------------------------------------------------------+{reset_color}\n")
-
-# Retrieve STT/TTS switches from config
-stt_enabled = config["stt"]["enabled"]
-tts_enabled = config["tts"]["enabled"]
-
+# =================== Main Code ===================
 def main():
+    # ---- Initialization Section ----
     init(autoreset=True)
     plt.ion()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+    # ---- Configuration Loading Section ----
+    config = load_config()
+    openai.api_key = config["secrets"]["openai_api_key"]
+    subscription_key = config["secrets"].get("openai_api_key", "")
+    APPINSIGHTS_IKEY = config["secrets"]["appinsights_ikey"]
+    client = ElevenLabs(api_key=config["secrets"]["elevenlabs_api_key"])
+    use_raspberry = config.get("use_raspberry", True)
+    stt_enabled = config["stt"]["enabled"]
+    tts_enabled = config["tts"]["enabled"]
+
     if not check_prerequisites():
         print("Missing prerequisites. Please check configuration.")
         return
 
-    config = load_config()
-    use_raspberry = config.get("use_raspberry", True)
-    openai.api_key = config["secrets"]["openai_api_key"]
-    subscription_key = config["secrets"].get("openai_api_key", "")
-    client = ElevenLabs(api_key=config["secrets"]["elevenlabs_api_key"])
-    
-    # Initialize hardware via ArduinoInterface
+    # ---- Hardware Initialization Section ----
     arduino_iface = init_hardware(use_raspberry)
-    stt_enabled = config["stt"]["enabled"]
-    tts_enabled = config["tts"]["enabled"]
-    
-    # Initialize conversation and clients
+        
+    # ---- Assistant & Client Initialization Section ----
     manager = ConversationManager(max_memory=10)
     gpt_client = GPTClient(api_key=subscription_key)
     stt_engine = SpeechToTextEngine()
@@ -195,9 +134,10 @@ def main():
     else:
         print("Assistant:", gpt_text)
     
+    # ---- Conversation Loop Section ----
     RESET = "\033[0m"
     RETRO_COLOR = "\033[95m"
-    SEPARATOR = f"\n{RETRO_COLOR}" + "="*50 + f"{RESET}\n"
+    SEPARATOR = f"\n{RETRO_COLOR}" + "=" * 50 + f"{RESET}\n"
     while True:
         print(SEPARATOR)
         if stt_enabled:
@@ -216,7 +156,7 @@ def main():
             print(f"Error getting GPT text: {e}")
             continue
         end_gpt = time.perf_counter()
-        time_gpt = end_gpt - start_gpt
+        # ...existing code: calculate time_gpt if needed...
         
         manager.add_text_to_conversation("assistant", gpt_text)
         manager.print_memory()
