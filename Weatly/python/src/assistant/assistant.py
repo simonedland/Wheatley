@@ -1,21 +1,21 @@
 import os
-import time
 import textwrap
-import logging
-from datetime import datetime
-# ...other existing imports...
+import yaml
 
 class ConversationManager:
     """
     Manages the conversation history with a fixed memory.
     """
     def __init__(self, max_memory=5):
+        # Load system message from config
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+        system_message = config.get("assistant", {}).get("system_message", "")
         self.max_memory = max_memory
         self.messages = [{
             "role": "system",
-            "content": (
-                "you are Weatly, a helpful assistant. from portal 2, answer in a single short sentence"
-            )
+            "content": system_message
         }]
 
     def add_text_to_conversation(self, role, text):

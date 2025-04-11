@@ -3,15 +3,21 @@ import wave
 import numpy as np
 import pyaudio
 import openai
+import yaml
 
 class SpeechToTextEngine:
     def __init__(self):
-        self.CHUNK = 1024
+        # Load STT settings from the config file
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+        stt_config = config.get("stt", {})
+        self.CHUNK = stt_config.get("chunk", 1024)
         self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1
-        self.RATE = 44100
-        self.THRESHOLD = 3000
-        self.SILENCE_LIMIT = 1  # seconds
+        self.CHANNELS = stt_config.get("channels", 1)
+        self.RATE = stt_config.get("rate", 44100)
+        self.THRESHOLD = stt_config.get("threshold", 3000)
+        self.SILENCE_LIMIT = stt_config.get("silence_limit", 1)
 
     def dry_run(self, filename):
         # Recognize speech using Whisper model deployed in Azure (dry run)
