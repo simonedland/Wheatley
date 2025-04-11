@@ -25,9 +25,9 @@ except ImportError:
 #from elevenlabs import Voice, VoiceSettings, play
 
 # =================== Imports: Local Modules ===================
-#from hardware.arduino_interface import ArduinoInterface  # NEW import
+from hardware.arduino_interface import ArduinoInterface  # NEW import
 from assistant.assistant import ConversationManager
-from llm.llm_client import GPTClient
+from llm.llm_client import GPTClient  # NEW import
 from tts.tts_engine import TextToSpeechEngine  # NEW import
 from stt.stt_engine import SpeechToTextEngine  # NEW import
 
@@ -96,10 +96,17 @@ def main():
     tts_engine = TextToSpeechEngine()
     
     print_welcome()
+
     # Get initial GPT response
     gpt_text = gpt_client.get_text(manager.get_conversation())
     manager.add_text_to_conversation("assistant", gpt_text)
     manager.print_memory()
+
+    # NEW: Setup ArduinoInterface with dry_run and override set_animation
+    arduino_interface = ArduinoInterface(port="COM_DRY", dry_run=True)
+    animation = gpt_client.reply_with_animation(manager.get_conversation())
+    print("Initial animation:", animation)
+    arduino_interface.set_animation(animation)  # Set initial animation
     
     if tts_enabled:
         tts_engine.generate_and_play_advanced(gpt_text)
@@ -121,7 +128,11 @@ def main():
         if user_input.lower() == "exit":
             break
         manager.add_text_to_conversation("user", user_input)
-        
+        # NEW: Invoke reply_with_animation to update the hardware animation (dry run)
+        animation = gpt_client.reply_with_animation(manager.get_conversation())
+        print("Updated animation:", animation)
+        arduino_interface.set_animation(animation)
+
         try:
             gpt_text = gpt_client.get_text(manager.get_conversation())
         except Exception as e:
