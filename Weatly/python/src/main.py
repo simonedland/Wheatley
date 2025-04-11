@@ -136,6 +136,7 @@ def main():
     else:
         print("Assistant:", gpt_text)
     
+    # Start the conversation loop
     conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled)
     logging.info("Assistant finished.")
 
