@@ -40,7 +40,7 @@ class ConversationManager:
         print(f"{colors['system']}╚{'═'*60}╝{reset}\n")
 
 class Assistant:
-    def __init__(self, create_audio=True, play_audio=True, conversation_memory=5, instructions=None, bot_name="Assistant", user_name="User", manager=None):
+    def __init__(self, create_audio=True, play_audio=True, conversation_memory=5, instructions=None, bot_name="Assistant", user_name="User", gpt_client=None, manager=None):
         self.create_audio = create_audio
         self.play_audio = play_audio
         self.bot_name = bot_name
@@ -49,12 +49,19 @@ class Assistant:
                                                        instructions=instructions,
                                                        bot_name=bot_name,
                                                        user_name=user_name)
+        if gpt_client is not None:
+            self.gpt_client = gpt_client
+        else:
+            from llm.llm_client import GPTClient
+            # NOTE: Set a valid API key from configuration here.
+            self.gpt_client = GPTClient(api_key="")  # TODO: update the API key
+
     def send_message(self, user_input):
         self.manager.add_text("user", user_input)
     def get_response(self):
-        from utils.gpt import get_gpt_text
         try:
-            gpt_text, tokens_used = get_gpt_text(self.manager.get_history())
+            gpt_text = self.gpt_client.get_text(self.manager.get_history())
+            tokens_used = 0  # Token usage not tracked with the new client
             return gpt_text, tokens_used
         except Exception as e:
             logging.error(f"Error getting GPT response: {e}")

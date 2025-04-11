@@ -7,6 +7,23 @@ import requests
 import openai
 import matplotlib.pyplot as plt
 import yaml
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    GPIO = None
+    print("RPi.GPIO module not found; GPIO functionality will be disabled.")
+import serial
+import wave
+from colorama import init, Fore, Style
+from elevenlabs.client import ElevenLabs
+from elevenlabs import Voice, VoiceSettings, play
+import numpy as np
+import pyaudio
+from openai import OpenAI
+import base64
+from openai import AzureOpenAI
+from playsound import playsound
+from hardware.arduino_interface import ArduinoInterface  # NEW import
 
 def check_prerequisites():
     # Check if essential configuration and secret values are set
@@ -17,91 +34,198 @@ def check_prerequisites():
     logging.info("All prerequisites satisfied.")
     return True
 
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
+
+def init_hardware(use_raspberry):
+    # Use the new ArduinoInterface.create() method
+    arduino_iface = ArduinoInterface.create(use_raspberry, port='/dev/ttyACM0', baud_rate=9600)
+    if use_raspberry and arduino_iface and arduino_iface.is_connected():
+        time.sleep(2)
+        arduino_iface.send_command("ON")
+        time.sleep(3)
+        arduino_iface.send_command("OFF")
+        print("hello world")
+    return arduino_iface
+
+def print_welcome():
+    RESET = "\033[0m"
+    RETRO_COLOR = "\033[95m"
+    print(r"""
+⠀⠀⡀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠘⢿⣝⠛⠋⠉⠉⠉⣉⠩⠍⠉⣿⠿⡭⠉⠛⠃⠲⣞⣉⡙⠿⣇⠀⠀⠀
+⠀⠀⠈⠻⣷⣄⡠⢶⡟⢁⣀⢠⣴⡏⣀⡀⠀⠀⣠⡾⠋⢉⣈⣸⣿⡀⠀⠀
+⠀⠀⠀⠀⠙⠋⣼⣿⡜⠃⠉⠀⡎⠉⠉⢺⢱⢢⣿⠃⠘⠈⠛⢹⣿⡇⠀⠀
+⠀⠀⠀⢀⡞⣠⡟⠁⠀⠀⣀⡰⣀⠀⠀⡸⠀⠑⢵⡄⠀⠀⠀⠀⠉⠀⣧⡀
+⠀⠀⠀⠌⣰⠃⠁⣠⣖⣡⣄⣀⣀⣈⣑⣔⠂⠀⠠⣿⡄⠀⠀⠀⠀⠠⣾⣷
+⠀⠀⢸⢠⡇⠀⣰⣿⣿⡿⣡⡾⠿⣿⣿⣜⣇⠀⠀⠘⣿⠀⠀⠀⠀⢸⡀⢸
+⠀⠀⡆⢸⡀⠀⣿⣿⡇⣾⡿⠁⠀⠀⣹⣿⢸⠀⠀⠀⣿⡆⠀⠀⠀⣸⣤⣼
+⠀⠀⢳⢸⡧⢦⢿⣿⡏⣿⣿⣦⣀⣴⣻⡿⣱⠀⠀⠀⣻⠁⠀⠀⠀⢹⠛⢻
+⠀⠀⠈⡄⢷⠘⠞⢿⠻⠶⠾⠿⣿⣿⣭⡾⠃⠀⠀⢀⡟⠀⠀⠀⠀⣹⠀⡆
+⠀⠀⠀⠰⣘⢧⣀⠀⠙⠢⢤⠠⠤⠄⠊⠀⠀⠀⣠⠟⠀⠀⠀⠀⠀⢧⣿⠃
+⠀⣀⣤⣿⣇⠻⣟⣄⡀⠀⠘⣤⣣⠀⠀⠀⣀⢼⠟⠀⠀⠀⠀⠀⠄⣿⠟⠀
+⠿⠏⠭⠟⣤⣴⣬⣨⠙⠲⢦⣧⡤⣔⠲⠝⠚⣷⠀⠀⠀⢀⣴⣷⡠⠃⠀⠀
+⠀⠀⠀⠀⠀⠉⠉⠉⠛⠻⢛⣿⣶⣶⡽⢤⡄⢛⢃⣒⢠⣿⣿⠟⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠁⠀⠁⠀⠀⠀⠀⠀
+    """)
+    print(f"{RETRO_COLOR}Welcome to the AI Assistant!{RESET}")
+
 # Load configuration from config folder
 config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
+use_raspberry = config.get("use_raspberry", True)  # New flag to switch Raspberry-specific code
 
 # Set secrets from config
 openai.api_key = config["secrets"]["openai_api_key"]
+# Add subscription key from config
+subscription_key = config["secrets"].get("openai_api_key", "")
 
 # Configure ElevenLabs client using our utils module (overwrite client api key)
 APPINSIGHTS_IKEY = config["secrets"]["appinsights_ikey"]
+# Initialize ElevenLabs client using the API key from config secrets
+client = ElevenLabs(api_key=config["secrets"]["elevenlabs_api_key"])
 
 # ...existing code for Timer, rate_limit, etc. are now moved to utils modules ...
 from utils.rate_limit import rate_limit
 from assistant import ConversationManager, Assistant
 
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 44100
+THRESHOLD = 3000
+SILENCE_LIMIT = 1  # seconds
+
+init(autoreset=True)
+
+from llm.llm_client import GPTClient
+from tts.tts_engine import TextToSpeechEngine  # NEW import
+from stt.stt_engine import SpeechToTextEngine  # NEW import
+
+class ConversationManager:
+    """
+    Manages the conversation history with a fixed memory.
+    """
+    def __init__(self, max_memory=5):
+        self.max_memory = max_memory
+        self.messages = [{
+            "role": "system",
+            "content": (
+                "you are Weatly, a helpful assistant. from portal 2.0, answer in a single short sentence"
+            )
+        }]
+
+    def add_text_to_conversation(self, role, text):
+        self.messages.append({"role": role, "content": text})
+        # Keep only the latest max_memory messages (excluding system)
+        while len(self.messages) > self.max_memory + 1:
+            self.messages.pop(1)
+
+    def get_conversation(self):
+        return self.messages
+
+    def print_memory(self):
+        debug_color = "\033[94m"      # system
+        user_color = "\033[92m"       # user
+        assistant_color = "\033[93m"  # assistant
+        reset_color = "\033[0m"
+        max_width = 70
+        
+        print(f"\n{debug_color}+------------------------ Conversation Memory ------------------------+{reset_color}")
+        for idx, msg in enumerate(self.messages):
+            role = msg["role"]
+            content = msg["content"]
+            if role == "system":
+                role_color = debug_color; prefix = f"[{idx}] {role}: "
+            elif role == "user":
+                role_color = user_color; prefix = f"[{idx}] {role}:      "
+            elif role == "assistant":
+                role_color = assistant_color; prefix = f"[{idx}] {role}: "
+            else:
+                role_color = debug_color; prefix = f"[{idx}] {role}: "
+            wrapped = textwrap.wrap(content, width=max_width-len(prefix))
+            if wrapped:
+                print(f"{role_color}{prefix}{wrapped[0]}{reset_color}")
+                for line in wrapped[1:]:
+                    print(f"{role_color}{' ' * len(prefix)}{line}{reset_color}")
+            else:
+                print(f"{role_color}{prefix}{reset_color}")
+        print(f"{debug_color}+---------------------------------------------------------------------+{reset_color}\n")
+
+# Retrieve STT/TTS switches from config
+stt_enabled = config["stt"]["enabled"]
+tts_enabled = config["tts"]["enabled"]
+
 def main():
+    init(autoreset=True)
     plt.ion()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-    # Run prerequisite tests
     if not check_prerequisites():
-        print("Missing prerequisites. Please ensure all required dependencies and configuration values are set.")
+        print("Missing prerequisites. Please check configuration.")
         return
 
-    instructions = """You are the Sorting Hat from Harry Potter.
-    You must answer the user’s questions and engage in natural conversation, including interjections such as “hmms” and other verbalizations as needed. 
-    Feel free to add <break time="X.Xs" /> where it fits with as long of a wait that fits the context.
-    Try to add as many pauses as needed, with natural short pauses ranging from 0.1s to 1.5s.
-    """
-    # Initialize ConversationManager and Assistant using the new file structure.
-    from stt.stt_engine import SpeechToTextEngine
-    from tts.tts_engine import TextToSpeechEngine
-    from llm.llm_client import LLMClient
-
-    conversation_manager = ConversationManager(
-        max_memory=10,
-        instructions=instructions,
-        bot_name="Assistant",
-        user_name="User"
-    )
-    assistant = Assistant(
-        create_audio=True,
-        play_audio=True,
-        conversation_memory=10,
-        instructions=instructions,
-        bot_name="Assistant",
-        user_name="User",
-        manager=conversation_manager
-    )
-
-    # Generate a greeting using GPT.
-    assistant.manager.add_text("user", "Create an engaging greeting to start this chat.")
-    greeting, tokens_used = assistant.get_response()
-    if greeting:
-        assistant.manager.add_text("assistant", greeting)
-        print("Assistant Greeting:\n", greeting)
-        assistant.generate_and_play_audio(greeting)
-
-    print(r"""
-            .
-           /:\
-          /;:.\ 
-         //;:. \     
-        ///;:.. \
-  __--''////;:... \''--__
---__   ''--_____--''   __--
-    ''--_______--''
-    """)
-    print("\033[95mWelcome to the AI Assistant!\033[0m")
-
+    config = load_config()
+    use_raspberry = config.get("use_raspberry", True)
+    openai.api_key = config["secrets"]["openai_api_key"]
+    subscription_key = config["secrets"].get("openai_api_key", "")
+    client = ElevenLabs(api_key=config["secrets"]["elevenlabs_api_key"])
+    
+    # Initialize hardware via ArduinoInterface
+    arduino_iface = init_hardware(use_raspberry)
+    stt_enabled = config["stt"]["enabled"]
+    tts_enabled = config["tts"]["enabled"]
+    
+    # Initialize conversation and clients
+    manager = ConversationManager(max_memory=10)
+    gpt_client = GPTClient(api_key=subscription_key)
+    stt_engine = SpeechToTextEngine()
+    tts_engine = TextToSpeechEngine()
+    
+    print_welcome()
+    # Get initial GPT response
+    gpt_text = gpt_client.get_text(manager.get_conversation())
+    manager.add_text_to_conversation("assistant", gpt_text)
+    manager.print_memory()
+    
+    if tts_enabled:
+        tts_engine.generate_and_play_advanced(gpt_text)
+    else:
+        print("Assistant:", gpt_text)
+    
+    RESET = "\033[0m"
+    RETRO_COLOR = "\033[95m"
+    SEPARATOR = f"\n{RETRO_COLOR}" + "="*50 + f"{RESET}\n"
     while True:
-        user_input = input("User: ").strip()
-        if user_input.lower() in ["exit", "quit"]:
+        print(SEPARATOR)
+        if stt_enabled:
+            user_input = stt_engine.record_and_transcribe()
+            print("User (via STT):", user_input)
+        else:
+            user_input = input("User: ")
+        if user_input.lower() == "exit":
             break
-        assistant.send_message(user_input)
-        gpt_response, tokens_used = assistant.get_response()
-        if not gpt_response:
-            break
-        assistant.manager.add_text("assistant", gpt_response)
-        assistant.generate_and_play_audio(gpt_response)
-        assistant.manager.print_memory()
-        print("Average Timing Details so far:")
-        # ...existing code to print timings...
-        rate_limit(tokens_used, elapsed_seconds=1, cap_per_minute=40000)
-        print("Estimated tokens per minute:", (60 / 1) * tokens_used)
-
+        manager.add_text_to_conversation("user", user_input)
+        
+        start_gpt = time.perf_counter()
+        try:
+            gpt_text = gpt_client.get_text(manager.get_conversation())
+        except Exception as e:
+            print(f"Error getting GPT text: {e}")
+            continue
+        end_gpt = time.perf_counter()
+        time_gpt = end_gpt - start_gpt
+        
+        manager.add_text_to_conversation("assistant", gpt_text)
+        manager.print_memory()
+        
+        if tts_enabled:
+            tts_engine.generate_and_play_advanced(gpt_text)
+        else:
+            print("Assistant:", gpt_text)
+    
     logging.info("Assistant finished.")
 
 if __name__ == "__main__":

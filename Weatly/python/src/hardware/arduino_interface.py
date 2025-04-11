@@ -29,3 +29,15 @@ class ArduinoInterface:
     def is_connected(self):
         """Check if the connection to the Arduino is established."""
         return self.serial_connection is not None and self.serial_connection.is_open
+
+    @staticmethod
+    def create(use_raspberry, port='/dev/ttyACM0', baud_rate=9600):
+        """Create and initialize an ArduinoInterface if use_raspberry is True."""
+        if use_raspberry:
+            try:
+                iface = ArduinoInterface(port, baud_rate)
+                iface.connect()
+                return iface
+            except Exception as e:
+                print(f"Warning: Arduino not connected or could not open port: {e}")
+        return None

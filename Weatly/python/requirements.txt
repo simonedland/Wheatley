@@ -13,3 +13,6 @@ pytest
 matplotlib
 pyyaml
 pyttsx3
+elevenlabs
+playsound==1.2.2
+pyaudio

@@ -9,10 +9,12 @@ logging:
 stt:
   engine: default
   language: en-US
+  enabled: true   # added switch for STT
 
 tts:
   engine: default
   voice: default
+  enabled: true   # added switch for TTS
 
 llm:
   model: gpt-3.5-turbo
@@ -25,4 +27,3 @@ secrets:
   openai_api_key: YOUR_OPENAI_API_KEY
   elevenlabs_api_key: YOUR_ELEVENLABS_API_KEY
   appinsights_ikey: YOUR_APPINSIGHTS_IKEY
-  llm_api_key: YOUR_LLM_API_KEY
