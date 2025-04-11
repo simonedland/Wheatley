@@ -20,7 +20,7 @@ class ArduinoInterface:
     def send_command(self, command):
         """Send a command to the Arduino."""
         if self.dry_run:
-            print(f"Dry run: would send command: {command}")
+            print(f"Dry run command: {command}")
         elif self.serial_connection and self.serial_connection.is_open:
             self.serial_connection.write(command.encode())
 
@@ -36,7 +36,7 @@ class ArduinoInterface:
     def set_animation(self, animation):
         """Set animation on the Arduino hardware."""
         if self.is_connected() or self.dry_run:
-            command = f"ANIMATION:{animation}"
+            command = f"{animation}"
             self.send_command(command)
         else:
             print("Arduino not connected. Cannot set animation.")

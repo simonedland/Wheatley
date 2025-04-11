@@ -20,6 +20,7 @@ class GPTClient:
             raise Exception(f"Error during GPT text retrieval: {e}")
 
     def reply_with_animation(self, conversation):
+        #print(conversation)
         openai.api_key = self.api_key
         completion = openai.chat.completions.create(
                     model=self.model,
@@ -45,7 +46,7 @@ tools = [
     {
         "type": "function",
         "name": "set_animation",
-        "description": "Inform hardware of which animation to use in the reply, and include the reply text.",
+        "description": "Inform hardware of which animation to use in the reply",
         "parameters": {
             "type": "object",
             "properties": {
