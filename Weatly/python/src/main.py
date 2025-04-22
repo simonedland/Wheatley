@@ -19,7 +19,7 @@ except ImportError:
 # =================== Imports: Local Modules ===================
 from hardware.arduino_interface import ArduinoInterface  # NEW import
 from assistant.assistant import ConversationManager
-from llm.llm_client import GPTClient  # NEW import
+from llm.llm_client import GPTClient, Functions
 from tts.tts_engine import TextToSpeechEngine  # NEW import
 from stt.stt_engine import SpeechToTextEngine  # NEW import
 
@@ -65,7 +65,6 @@ def print_welcome():
 
 # NEW: Initialize assistant components
 def initialize_assistant(config):
-    subscription_key = config["secrets"]["openai_api_key"]
     stt_enabled = config["stt"]["enabled"]
     tts_enabled = config["tts"]["enabled"]
     assistant_config = config.get("app", {})
@@ -74,7 +73,7 @@ def initialize_assistant(config):
     gpt_model = llm_config.get("model", "gpt-4o-mini")
     
     manager = ConversationManager(max_memory=max_memory)
-    gpt_client = GPTClient(api_key=subscription_key, model=gpt_model)
+    gpt_client = GPTClient(model=gpt_model)
     stt_engine = SpeechToTextEngine()
     tts_engine = TextToSpeechEngine()
     arduino_interface = ArduinoInterface(port="COM_DRY", dry_run=True)
@@ -87,6 +86,7 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
     RETRO_COLOR = "\033[95m"
     SEPARATOR = f"\n{RETRO_COLOR}" + "=" * 50 + f"{RESET}\n"
     
+    functions_instance = Functions()  # Instantiate once
     while True:
         print(SEPARATOR)
         if stt_enabled:
@@ -97,7 +97,19 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
         if user_input.lower() == "exit":
             break
         manager.add_text_to_conversation("user", user_input)
-    
+
+        # Optimized function calling
+        try:
+            workflow = gpt_client.get_workflow(manager.get_conversation())
+        except Exception as e:
+            logging.error(f"Error getting workflow: {e}")
+            workflow = None
+        
+        if workflow:
+            function_results = functions_instance.execute_workflow(workflow=workflow)
+            for result in function_results:
+                manager.add_text_to_conversation("system", str(result))
+
         try:
             gpt_text = gpt_client.get_text(manager.get_conversation())
         except Exception as e:
@@ -124,6 +136,7 @@ def main():
     print_welcome()
     
     # Get initial GPT response
+    manager.add_text_to_conversation("user", "Hello, please introduce yourself.")
     gpt_text = gpt_client.get_text(manager.get_conversation())
     manager.add_text_to_conversation("assistant", gpt_text)
     manager.print_memory()
