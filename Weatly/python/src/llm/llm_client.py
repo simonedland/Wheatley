@@ -9,18 +9,20 @@ import requests
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
-import logging
 import tempfile
-import os
-import yaml
 
 logging.basicConfig(level=logging.WARN)
 
+def _load_config():
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    config_path = os.path.join(base_dir, "config", "config.yaml")
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
+
 class TextToSpeech:
     def __init__(self):
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
+        config = _load_config()
+        base_dir = os.path.dirname(os.path.dirname(__file__))
         # Get TTS parameters from config
         tts_config = config.get("tts", {})
         self.api_key = config["secrets"]["elevenlabs_api_key"]
@@ -29,7 +31,8 @@ class TextToSpeech:
             stability=tts_config.get("stability", 0.3),
             similarity_boost=tts_config.get("similarity_boost", 0.1),
             style=tts_config.get("style", 0.0),
-            use_speaker_boost=tts_config.get("use_speaker_boost", True)
+            use_speaker_boost=tts_config.get("use_speaker_boost", True),
+            speed=tts_config.get("speed", 0.8)
         )
         self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
@@ -48,8 +51,8 @@ class TextToSpeech:
         )
     
     def generate_and_play_advanced(self, text):
-        # Determine the temp directory (project root "temp" folder)
-        temp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "temp")
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        temp_dir = os.path.join(base_dir, "temp")
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
         audio_chunks = list(self.elevenlabs_generate_audio(text))
@@ -73,9 +76,7 @@ class TextToSpeech:
 
 class GPTClient:
     def __init__(self, model="gpt-4o-mini"):
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
+        config = _load_config()
         self.api_key = config["secrets"]["openai_api_key"]
         self.model = model
         self.tts_enabled = config["tts"]["enabled"]
@@ -157,31 +158,92 @@ set_animation_tool = [
     }
 ]
 
-tools = [{
-    "type": "function",
-    "name": "get_weather",
-    "description": "Get current temperature for provided coordinates in celsius.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "latitude": {"type": "number"},
-            "longitude": {"type": "number"}
+tools = [
+    {
+        "type": "function",
+        "name": "get_weather",
+        "description": "Get current temperature for provided coordinates in celsius.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "latitude": {"type": "number"},
+                "longitude": {"type": "number"}
+            },
+            "required": ["latitude", "longitude"],
+            "additionalProperties": False
         },
-        "required": ["latitude", "longitude"],
-        "additionalProperties": False
+        "strict": True
     },
-    "strict": True
-},
-{
-    "type": "function",
-    "name": "test_function",
-    "description": "Test function to check if the function calling works.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "test": {"type": "string"}
+    {
+        "type": "function",
+        "name": "test_function",
+        "description": "Test function to check if the function calling works.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "test": {"type": "string"}
             },
             "required": ["test"],
+            "additionalProperties": False
+        }
+    },
+    {
+        "type": "function",
+        "name": "get_joke",
+        "description": "Get a random joke.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": False
+        }
+    },
+    {
+        "type": "function",
+        "name": "get_quote",
+        "description": "Retrieve a random inspirational quote.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": False
+        }
+    },
+    {
+        "type": "function",
+        "name": "get_time",
+        "description": "Get the current time",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "timezone": {"type": "string"}
+            },
+            "additionalProperties": False
+        }
+    },
+    {
+        "type": "function",
+        "name": "reverse_text",
+        "description": "Reverse the provided text.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string"}
+            },
+            "required": ["text"],
+            "additionalProperties": False
+        }
+    },
+    {
+        "type": "function",
+        "name": "get_city_coordinates",
+        "description": "Get accurate coordinates for a given city.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string"}
+            },
+            "required": ["city"],
             "additionalProperties": False
         }
     }
@@ -193,35 +255,55 @@ tts_engine = TextToSpeech()
 class Functions:
     def __init__(self):
         self.test = GPTClient()
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
+        config = _load_config()
         self.tts_enabled = config["tts"]["enabled"]
 
     def execute_workflow(self, workflow):
         results = []
         for item in workflow:
-            print(f"Executing function: {item.get('name')} with arguments: {item.get('arguments')}")
+            func_name = item.get("name")
+            #print(f"Executing function: {func_name} with arguments: {item.get('arguments')}")
             if self.tts_enabled:
                 conversation = [
-                    {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try tobe funny but also short."},
-                    {"role": "user", "content": f"Executing function: {item.get('name')} with arguments: {item.get('arguments')}"}
+                    {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
+                    {"role": "user", "content": f"Executing function: {func_name} with arguments: {item.get('arguments')}"}
                 ]
                 text = self.test.get_text(conversation)
                 print(f"Text: {text}")
                 tts_engine.generate_and_play_advanced(text)
 
-            if item.get("name") == "get_weather":
+            if func_name == "get_weather":
                 get_weather_args = item.get("arguments")
                 latitude = get_weather_args.get("latitude")
                 longitude = get_weather_args.get("longitude")
                 response = self.get_weather(latitude, longitude)
-                results.append(response)
-            elif item.get("name") == "test_function":
+                results.append((func_name, response))
+            elif func_name == "test_function":
                 test_args = item.get("arguments")
                 test = test_args.get("test")
                 response = f"Test function executed with argument: {test}"
-                results.append(response)
+                results.append((func_name, response))
+            elif func_name == "get_joke":
+                response = self.get_joke()
+                results.append((func_name, response))
+            elif func_name == "get_quote":
+                response = self.get_quote()
+                results.append((func_name, response))
+            elif func_name == "get_time":
+                args = item.get("arguments")
+                timezone = args.get("timezone") if args else "Europe/Oslo"
+                response = self.get_time(timezone)
+                results.append((func_name, response))
+            elif func_name == "reverse_text":
+                args = item.get("arguments")
+                text_val = args.get("text")
+                response = self.reverse_text(text_val)
+                results.append((func_name, response))
+            elif func_name == "get_city_coordinates":
+                args = item.get("arguments")
+                city = args.get("city")
+                response = self.get_city_coordinates(city)
+                results.append((func_name, response))
             else:
                 logging.info("No function to execute")
         return results
@@ -234,12 +316,56 @@ class Functions:
         reply_text = f"Weather in {latitude}, {longitude} is {data['current_weather']['temperature']} degrees celsius."
         return reply_text
 
+    def get_joke(self):
+        response = requests.get("https://official-joke-api.appspot.com/random_joke")
+        data = response.json()
+        joke = f"Provide joke: {data.get('setup')} - {data.get('punchline')}"
+        return joke
+
+    def get_quote(self):
+        config = _load_config()
+        api_key = config["secrets"].get("api_ninjas_api_key", "")
+        headers = {"X-Api-Key": api_key}
+        response = requests.get("https://api.api-ninjas.com/v1/quotes", headers=headers)
+        data = response.json()
+        if data and isinstance(data, list):
+            item = data[0]
+            return f"Tell the user: {item.get('quote', '')} — {item.get('author', '')}"
+        return "No quote available."
+
+    def get_time(self, timezone):
+        from datetime import datetime
+        import pytz  # Ensure pytz is installed
+        try:
+            tz = pytz.timezone(timezone)
+            now = datetime.now(tz)
+            return f"Current time in {timezone} is {now.strftime('%Y-%m-%d %H:%M:%S')}."
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def reverse_text(self, text):
+        return text[::-1]
+
+    def get_city_coordinates(self, city):
+        config = _load_config()
+        api_key = config["secrets"].get("api_ninjas_api_key", "")
+        headers = {"X-Api-Key": api_key}
+        url = f"https://api.api-ninjas.com/v1/city?name={city}"
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        if data and isinstance(data, list) and len(data) > 0:
+            item = data[0]
+            lat = item.get("latitude")
+            lon = item.get("longitude")
+            return f"Coordinates for {city}: Latitude {lat}, Longitude {lon}."
+        return f"No data available for {city}."
+
 
 if __name__ == "__main__":
     test = GPTClient()
     conversation = [
         {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What is the weather like in both New York, and also in stavanger?"}
+        {"role": "user", "content": "What is the weather like in both New York, and also in stavanger? calculate the sum of 5 and 10. Tell me a joke."},
     ]
     response = test.get_workflow(conversation)
     logging.info(f"Workflow Response: {response}")

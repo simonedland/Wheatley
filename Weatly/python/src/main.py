@@ -86,7 +86,9 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
     RETRO_COLOR = "\033[95m"
     SEPARATOR = f"\n{RETRO_COLOR}" + "=" * 50 + f"{RESET}\n"
     
-    functions_instance = Functions()  # Instantiate once
+    function_call_count = 0
+    functions_instance = Functions()  # Instantiate once with new changes
+    
     while True:
         print(SEPARATOR)
         if stt_enabled:
@@ -97,18 +99,29 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
         if user_input.lower() == "exit":
             break
         manager.add_text_to_conversation("user", user_input)
-
-        # Optimized function calling
-        try:
-            workflow = gpt_client.get_workflow(manager.get_conversation())
-        except Exception as e:
-            logging.error(f"Error getting workflow: {e}")
-            workflow = None
         
-        if workflow:
-            function_results = functions_instance.execute_workflow(workflow=workflow)
-            for result in function_results:
+        # Chain workflow execution until an empty workflow is returned or max chain reached
+        chain_retry = 0
+        while chain_retry < 3:
+            workflow = gpt_client.get_workflow(manager.get_conversation())
+            #pretty print workflow with names and args
+            if workflow:
+              for call in workflow:
+                print(f"{RETRO_COLOR}Name: {call.get('name', 'unknown')}{RESET}")
+                print(f"{RETRO_COLOR}Arguments: {call.get('arguments', {})}{RESET}")
+                #print(f"{RETRO_COLOR}Workflow: {workflow}{RESET}")
+            if not workflow:
+                print("Workflow is empty. Research complete.")
+                break
+            fn_results = functions_instance.execute_workflow(workflow) or []
+            for fn_name, result in fn_results:
+                function_call_count += 1
                 manager.add_text_to_conversation("system", str(result))
+            # Exit chain if the workflow is now empty
+            if not gpt_client.get_workflow(manager.get_conversation()):
+                print("Workflow is empty after execution. Ending chain.")
+                break
+            chain_retry += 1
 
         try:
             gpt_text = gpt_client.get_text(manager.get_conversation())
@@ -118,7 +131,7 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
         
         manager.add_text_to_conversation("assistant", gpt_text)
         manager.print_memory()
-    
+
         animation = gpt_client.reply_with_animation(manager.get_conversation())
         arduino_interface.set_animation(animation)
         
