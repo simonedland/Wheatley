@@ -3,17 +3,20 @@ import json
 import yaml
 
 import os
+import logging
+import requests
+
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
-from datetime import datetime
 import logging
 import tempfile
-import requests
+import os
+import yaml
 
 logging.basicConfig(level=logging.WARN)
 
-class TextToSpeechEngine:
+class TextToSpeech:
     def __init__(self):
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:
@@ -65,6 +68,9 @@ class TextToSpeechEngine:
             except Exception as e:
                 logging.error(f"Error deleting audio file: {e}")
 
+# =================== LLM Client ===================
+# This class is responsible for interacting with the OpenAI API
+
 class GPTClient:
     def __init__(self, model="gpt-4o-mini"):
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
@@ -72,6 +78,7 @@ class GPTClient:
             config = yaml.safe_load(f)
         self.api_key = config["secrets"]["openai_api_key"]
         self.model = model
+        self.tts_enabled = config["tts"]["enabled"]
         openai.api_key = self.api_key
 
     def get_text(self, conversation):
@@ -180,24 +187,29 @@ tools = [{
     }
 ]
 
-tts_engine = TextToSpeechEngine()
+tts_engine = TextToSpeech()
 
 
 class Functions:
     def __init__(self):
         self.test = GPTClient()
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+        self.tts_enabled = config["tts"]["enabled"]
 
     def execute_workflow(self, workflow):
         results = []
         for item in workflow:
-            logging.info(f"Executing function: {item.get('name')}")
-            conversation = [
-                {"role": "system", "content": "act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try tobe funny but also short."},
-                {"role": "user", "content": f"Executing function: {item.get('name')} with arguments: {item.get('arguments')}"}
-            ]
-            text = self.test.get_text(conversation)
-            logging.info(f"Text: {text}")
-            tts_engine.generate_and_play_advanced(text)
+            print(f"Executing function: {item.get('name')} with arguments: {item.get('arguments')}")
+            if self.tts_enabled:
+                conversation = [
+                    {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try tobe funny but also short."},
+                    {"role": "user", "content": f"Executing function: {item.get('name')} with arguments: {item.get('arguments')}"}
+                ]
+                text = self.test.get_text(conversation)
+                print(f"Text: {text}")
+                tts_engine.generate_and_play_advanced(text)
 
             if item.get("name") == "get_weather":
                 get_weather_args = item.get("arguments")
