@@ -111,7 +111,7 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
                 print(f"{RETRO_COLOR}Arguments: {call.get('arguments', {})}{RESET}")
                 #print(f"{RETRO_COLOR}Workflow: {workflow}{RESET}")
             if not workflow:
-                print("Workflow is empty. Research complete.")
+                print("No further research needed. Ending chain.")
                 break
             fn_results = functions_instance.execute_workflow(workflow) or []
             for fn_name, result in fn_results:
