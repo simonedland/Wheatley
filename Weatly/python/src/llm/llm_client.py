@@ -246,6 +246,17 @@ tools = [
             "required": ["city"],
             "additionalProperties": False
         }
+    },
+    {
+        "type": "function",
+        "name": "get_advice",
+        "description": "Retrieve a piece of advice.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": False
+        }
     }
 ]
 
@@ -269,7 +280,7 @@ class Functions:
                     {"role": "user", "content": f"Executing function: {func_name} with arguments: {item.get('arguments')}"}
                 ]
                 text = self.test.get_text(conversation)
-                print(f"Text: {text}")
+                #print(f"Text: {text}")
                 tts_engine.generate_and_play_advanced(text)
 
             if func_name == "get_weather":
@@ -303,6 +314,9 @@ class Functions:
                 args = item.get("arguments")
                 city = args.get("city")
                 response = self.get_city_coordinates(city)
+                results.append((func_name, response))
+            elif func_name == "get_advice":
+                response = self.get_advice()
                 results.append((func_name, response))
             else:
                 logging.info("No function to execute")
@@ -359,6 +373,17 @@ class Functions:
             lon = item.get("longitude")
             return f"Coordinates for {city}: Latitude {lat}, Longitude {lon}."
         return f"No data available for {city}."
+
+    def get_advice(self):
+      config = _load_config()
+      api_key = config["secrets"].get("api_ninjas_api_key", "")
+      headers = {"X-Api-Key": api_key}
+      response = requests.get("https://api.api-ninjas.com/v1/advice", headers=headers)
+      data = response.json()
+      #print(f"Data: {data}")
+      advice = None
+      advice = data.get("advice")
+      return f"Give the following advice: {advice}"
 
 
 if __name__ == "__main__":
