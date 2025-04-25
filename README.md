@@ -1,7 +1,3 @@
-# Initialization Process
-
-The initialization process for the Weatly project involves the following steps:
-
 ## Getting Started
 
 1. Create your configuration:
