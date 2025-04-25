@@ -16,3 +16,4 @@ pyttsx3
 elevenlabs
 playsound==1.2.2
 pyaudio
+RPi.GPIO
