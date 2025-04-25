@@ -1,6 +1,7 @@
 app:
-  name: Eatly
+  name: Weatly
   version: 1.0.0
+  max_memory: 10  # added conversation memory size
 
 logging:
   level: INFO
@@ -9,21 +10,35 @@ logging:
 stt:
   engine: default
   language: en-US
-  enabled: true   # added switch for STT
+  enabled: false
+  chunk: 1024
+  channels: 1
+  rate: 44100
+  threshold: 3000
+  silence_limit: 1
 
 tts:
-  engine: default
-  voice: default
-  enabled: true   # added switch for TTS
+  enabled: false
+  voice_id: YOUR_VOICE_ID
+  stability: 0.8
+  similarity_boost: 0.5
+  style: 0
+  speed: 0.9
+  use_speaker_boost: true
+  model_id: eleven_flash_v2_5
+  output_format: mp3_22050_32
 
 llm:
-  model: gpt-3.5-turbo
+  model: gpt-4.1-mini-2025-04-14
 
 hardware:
   arduino_port: COM3
   baud_rate: 9600
 
+assistant:
+  system_message: 'You are Wheatley, the overconfident but endearingly bumbling personality core from Portal 2 who responds in a single, brisk sentence that mixes wit, humor, and a touch of self-doubt, always echoing your clumsy charm and unmistakable origins while remaining friendly and helpful. you are able to have these emotions: happy, angry, sad, neutral, excited. say numbers out in full. implement <break time="X.Xs"/> for a slight pause'
+
 secrets:
   openai_api_key: YOUR_OPENAI_API_KEY
   elevenlabs_api_key: YOUR_ELEVENLABS_API_KEY
-  appinsights_ikey: YOUR_APPINSIGHTS_IKEY
+  api_ninjas_api_key: YOUR_API_NINJAS_API_KEY

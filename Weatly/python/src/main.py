@@ -3,7 +3,6 @@ import os
 import logging
 
 # =================== Imports: Third-Party Libraries ===================
-# Removed unused and commented-out imports for clarity.
 import yaml
 import pyaudio
 import openai
@@ -144,6 +143,16 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
 def main():
     config = load_config()
     openai.api_key = config["secrets"]["openai_api_key"]
+
+    # Print active/inactive features from config
+    stt_enabled = config["stt"]["enabled"]
+    tts_enabled = config["tts"]["enabled"]
+    feature_summary = "\nFeature Status:\n"
+    feature_summary += f" - Speech-to-Text (STT): {'Active' if stt_enabled else 'Inactive'}\n"
+    feature_summary += f" - Text-to-Speech (TTS): {'Active' if tts_enabled else 'Inactive'}\n"
+    print(feature_summary)
+
+    # NEW: Initialize assistant components
     manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(config)
     
     print_welcome()
