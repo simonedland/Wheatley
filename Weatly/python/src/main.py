@@ -46,7 +46,7 @@ def print_welcome():
     print(r"""
 ⠀⠀⡀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠘⢿⣝⠛⠋⠉⠉⠉⣉⠩⠍⠉⣿⠿⡭⠉⠛⠃⠲⣞⣉⡙⠿⣇⠀⠀⠀
-⠀⠀⠈⠻⣷⣄⡠⢶⡟⢁⣀⢠⣴⡏⣀⡀⠀⠀⣠⡾⠋⢉⣈⣸⣿⡀⠀⠀
+⠀⠀⠈⠻⣷⣄⡠⢶⡟⢀⣀⢠⣴⡏⣀⡀⠀⠀⣠⡾⠋⢉⣈⣸⣿⡀⠀⠀
 ⠀⠀⠀⠀⠙⠋⣼⣿⡜⠃⠉⠀⡎⠉⠉⢺⢱⢢⣿⠃⠘⠈⠛⢹⣿⡇⠀⠀
 ⠀⠀⠀⢀⡞⣠⡟⠁⠀⠀⣀⡰⣀⠀⠀⡸⠀⠑⢵⡄⠀⠀⠀⠀⠉⠀⣧⡀
 ⠀⠀⠀⠌⣰⠃⠁⣠⣖⣡⣄⣀⣀⣈⣑⣔⠂⠀⠠⣿⡄⠀⠀⠀⠀⠠⣾⣷
@@ -86,7 +86,6 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
     SEPARATOR = f"\n{RETRO_COLOR}" + "=" * 50 + f"{RESET}\n"
     
     function_call_count = 0
-    functions_instance = Functions()  # Instantiate once with new changes
     
     while True:
         print(SEPARATOR)
@@ -99,26 +98,27 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
             break
         manager.add_text_to_conversation("user", user_input)
         
-        # Chain workflow execution until an empty workflow is returned or max chain reached
         chain_retry = 0
         while chain_retry < 3:
             workflow = gpt_client.get_workflow(manager.get_conversation())
-            #pretty print workflow with names and args
             if workflow:
               for call in workflow:
-                print(f"{RETRO_COLOR}Name: {call.get('name', 'unknown')}{RESET}")
-                print(f"{RETRO_COLOR}Arguments: {call.get('arguments', {})}{RESET}")
-                #print(f"{RETRO_COLOR}Workflow: {workflow}{RESET}")
+                  print(f"{RETRO_COLOR}Name: {call.get('name', 'unknown')}{RESET}")
+                  print(f"{RETRO_COLOR}Arguments: {call.get('arguments', {})}{RESET}")
+              # NEW: Add web search preview items as context if present
+              for item in workflow:
+                  if item.get("name") == "info":
+                      context_text = item.get("arguments", {}).get("text", "")
+                      if context_text:
+                          manager.add_text_to_conversation("system", f"Info: {context_text}")
+              # Filter out web search preview items for function execution:
+              workflow = [item for item in workflow if item.get("name") != "info"]
             if not workflow:
-                #print("No further research needed. Ending chain.")
                 break
-            fn_results = functions_instance.execute_workflow(workflow) or []
+            fn_results = Functions().execute_workflow(workflow) or []
             for fn_name, result in fn_results:
-                function_call_count += 1
                 manager.add_text_to_conversation("system", str(result))
-            # Exit chain if the workflow is now empty
             if not gpt_client.get_workflow(manager.get_conversation()):
-                #print("Workflow is empty after execution. Ending chain.")
                 break
             chain_retry += 1
 
@@ -129,6 +129,7 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
             continue
         
         manager.add_text_to_conversation("assistant", gpt_text)
+        
         manager.print_memory()
 
         animation = gpt_client.reply_with_animation(manager.get_conversation())

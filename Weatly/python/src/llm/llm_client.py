@@ -127,15 +127,57 @@ class GPTClient:
             tools=tools,
             parallel_tool_calls=True
         )
+        #print(f"Completion: {completion}")
+        #print(f"Completion type: {type(completion)}")
+        #print(completion.output[0])
+        #completion.output[0] = ResponseFunctionWebSearch(id='ws_681228e032f48191a78de9abe8d976ff0a802fe175068657', status='completed', type='web_search_call')  
+        #check if type is web_search_call
+        #print yes or no
         choice = completion.output
         results = []
+        if completion.output[0].type == "web_search_call":
+            #add content of completion.output[1]
+            for item in completion.output[1].content:
+                try:
+                    results.append({
+                        "arguments": {"text": item.text},
+                        "name": "info",
+                        "call_id": getattr(item, "id", "")
+                    })
+                    #print(f"Item: {item.text}")
+                except Exception:
+                    results.append("")
+        #print(f"completion: {choice}")
         for msg in choice:
             if msg.type == "function_call":
-                results.append({
-                    "arguments": json.loads(msg.arguments),
-                    "name": msg.name,
-                    "call_id": msg.call_id
-                })
+                #print("function_call")
+                if hasattr(msg, "arguments"):
+                    results.append({
+                        "arguments": json.loads(msg.arguments),
+                        "name": msg.name,
+                        "call_id": msg.call_id
+                    })
+                else:
+                    results.append({
+                        "arguments": {},
+                        "name": msg.name,
+                        "call_id": msg.call_id
+                    })
+            #elif msg.type == "web_search_call":
+            #    print("web_search_call")
+            #    aggregated_text = ""
+            #    for item in msg.content:
+            #        try:
+            #            aggregated_text += item.text
+            #        except Exception:
+            #            aggregated_text += ""
+            #    aggregated_text = aggregated_text.strip()
+            #    if aggregated_text:
+            #        results.append({
+            #            "arguments": {"text": aggregated_text},
+            #            "name": "info",
+            #            "call_id": getattr(msg, "id", "")
+            #        })
         return results if results else None
 
 
@@ -159,6 +201,7 @@ set_animation_tool = [
 ]
 
 tools = [
+    {"type": "web_search_preview"},
     {
         "type": "function",
         "name": "get_weather",
@@ -273,16 +316,13 @@ class Functions:
         results = []
         for item in workflow:
             func_name = item.get("name")
-            #print(f"Executing function: {func_name} with arguments: {item.get('arguments')}")
             if self.tts_enabled:
                 conversation = [
                     {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
                     {"role": "user", "content": f"Executing function: {func_name} with arguments: {item.get('arguments')}"}
                 ]
                 text = self.test.get_text(conversation)
-                #print(f"Text: {text}")
                 tts_engine.generate_and_play_advanced(text)
-
             if func_name == "get_weather":
                 get_weather_args = item.get("arguments")
                 latitude = get_weather_args.get("latitude")
