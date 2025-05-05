@@ -127,27 +127,17 @@ class GPTClient:
             tools=tools,
             parallel_tool_calls=True
         )
-        #print(f"Completion: {completion}")
-        #print(f"Completion type: {type(completion)}")
-        #print(completion.output[0])
-        #completion.output[0] = ResponseFunctionWebSearch(id='ws_681228e032f48191a78de9abe8d976ff0a802fe175068657', status='completed', type='web_search_call')  
-        #check if type is web_search_call
-        #print yes or no
         choice = completion.output
         results = []
         if completion.output[0].type == "web_search_call":
             #add content of completion.output[1]
             for item in completion.output[1].content:
-                try:
-                    results.append({
-                        "arguments": {"text": item.text},
-                        "name": "info",
-                        "call_id": getattr(item, "id", "")
-                    })
-                    #print(f"Item: {item.text}")
-                except Exception:
-                    results.append("")
-        #print(f"completion: {choice}")
+                results.append({
+                    "arguments": {"text": item.text},
+                    "name": "web_search_call_result",
+                    "call_id": getattr(item, "id", "")
+                })
+
         for msg in choice:
             if msg.type == "function_call":
                 #print("function_call")
@@ -163,21 +153,6 @@ class GPTClient:
                         "name": msg.name,
                         "call_id": msg.call_id
                     })
-            #elif msg.type == "web_search_call":
-            #    print("web_search_call")
-            #    aggregated_text = ""
-            #    for item in msg.content:
-            #        try:
-            #            aggregated_text += item.text
-            #        except Exception:
-            #            aggregated_text += ""
-            #    aggregated_text = aggregated_text.strip()
-            #    if aggregated_text:
-            #        results.append({
-            #            "arguments": {"text": aggregated_text},
-            #            "name": "info",
-            #            "call_id": getattr(msg, "id", "")
-            #        })
         return results if results else None
 
 

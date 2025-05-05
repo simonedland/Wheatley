@@ -81,60 +81,72 @@ def initialize_assistant(config):
 
 # NEW: Conversation loop handling
 def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
+    # Set up terminal formatting variables
     RESET = "\033[0m"
     RETRO_COLOR = "\033[95m"
     SEPARATOR = f"\n{RETRO_COLOR}" + "=" * 50 + f"{RESET}\n"
-    
-    function_call_count = 0
-    
+
     while True:
         print(SEPARATOR)
+        # Get the user input either via Speech-to-Text (if enabled) or regular text input
         if stt_enabled:
             user_input = stt_engine.record_and_transcribe()
             print("User:", user_input)
         else:
             user_input = input("User: ")
+        
+        # Exit loop if user types "exit"
         if user_input.lower() == "exit":
             break
+        
+        # Save the user input into the conversation history
         manager.add_text_to_conversation("user", user_input)
         
-        chain_retry = 0
+        chain_retry = 0  # Initialize a loop count for function workflow processing
         while chain_retry < 3:
+            # Retrieve a workflow (list of function calls) from GPT based on the conversation context
             workflow = gpt_client.get_workflow(manager.get_conversation())
             if workflow:
-              for call in workflow:
-                  print(f"{RETRO_COLOR}Name: {call.get('name', 'unknown')}{RESET}")
-                  print(f"{RETRO_COLOR}Arguments: {call.get('arguments', {})}{RESET}")
-              # NEW: Add web search preview items as context if present
-              for item in workflow:
-                  if item.get("name") == "info":
-                      context_text = item.get("arguments", {}).get("text", "")
-                      if context_text:
-                          manager.add_text_to_conversation("system", f"Info: {context_text}")
-              # Filter out web search preview items for function execution:
-              workflow = [item for item in workflow if item.get("name") != "info"]
+                # Debug: Print out the name and arguments for each function call retrieved
+                for call in workflow:
+                    print(f"{RETRO_COLOR}Name: {call.get('name', 'unknown')}{RESET}")
+                    print(f"{RETRO_COLOR}Arguments: {call.get('arguments', {})}{RESET}")
+                # If the workflow includes web_search_call_result items, add their text as system context
+                for item in workflow:
+                    if item.get("name") == "web_search_call_result":
+                        context_text = item.get("arguments", {}).get("text", "")
+                        if context_text:
+                            manager.add_text_to_conversation("system", f"Info: {context_text}")
+                # Remove non-executable info items from the workflow for subsequent function execution
+                workflow = [item for item in workflow if item.get("name") != "web_search_call_result"]
+            # Break out of retry loop if no executable workflow remains
             if not workflow:
                 break
+            # Execute the workflow functions and add their results to the conversation as system messages
             fn_results = Functions().execute_workflow(workflow) or []
             for fn_name, result in fn_results:
                 manager.add_text_to_conversation("system", str(result))
+            # If no further workflow steps are generated, exit the retry loop
             if not gpt_client.get_workflow(manager.get_conversation()):
                 break
-            chain_retry += 1
+            chain_retry += 1  # Increment retry counter if additional workflow steps were generated
 
         try:
+            # Retrieve the assistant's text response from GPT using the current conversation history
             gpt_text = gpt_client.get_text(manager.get_conversation())
         except Exception as e:
             print(f"Error getting GPT text: {e}")
             continue
         
+        # Add the assistant's GPT response to the conversation history and display the conversation memory
         manager.add_text_to_conversation("assistant", gpt_text)
-        
         manager.print_memory()
-
+        
+        # Set and activate the assistant's animation based on the GPT response
         animation = gpt_client.reply_with_animation(manager.get_conversation())
         arduino_interface.set_animation(animation)
         
+        # If TTS is enabled, use it to vocalize the response; otherwise, print the text response
         if tts_enabled:
             tts_engine.generate_and_play_advanced(gpt_text)
         else:
