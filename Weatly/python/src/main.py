@@ -66,10 +66,10 @@ def print_welcome():
 def initialize_assistant(config):
     stt_enabled = config["stt"]["enabled"]
     tts_enabled = config["tts"]["enabled"]
-    assistant_config = config.get("app", {})
-    max_memory = assistant_config.get("max_memory", 10)
-    llm_config = config.get("llm", {})
-    gpt_model = llm_config.get("model", "gpt-4o-mini")
+    assistant_config = config.get("app")
+    max_memory = assistant_config.get("max_memory")
+    llm_config = config.get("llm")
+    gpt_model = llm_config.get("model")
     
     manager = ConversationManager(max_memory=max_memory)
     gpt_client = GPTClient(model=gpt_model)
@@ -145,6 +145,7 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
         # Set and activate the assistant's animation based on the GPT response
         animation = gpt_client.reply_with_animation(manager.get_conversation())
         arduino_interface.set_animation(animation)
+        arduino_interface.servo_controller.print_servo_status()
         
         # If TTS is enabled, use it to vocalize the response; otherwise, print the text response
         if tts_enabled:
@@ -169,6 +170,10 @@ def main():
     manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(config)
     
     print_welcome()
+    
+    # NEW: Print the status of all servos
+    arduino_interface.set_animation("neutral")  # Set initial animation to neutral
+    arduino_interface.servo_controller.print_servo_status()
     
     # Get initial GPT response
     manager.add_text_to_conversation("user", "Hello, please introduce yourself.")
