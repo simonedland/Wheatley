@@ -17,3 +17,6 @@ elevenlabs
 playsound==1.2.2
 pyaudio
 RPi.GPIO
+google-auth
+google-auth-oauthlib
+google-api-python-client

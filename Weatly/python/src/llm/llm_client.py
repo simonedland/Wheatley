@@ -11,6 +11,9 @@ from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 import tempfile
 
+#from local file google_agent import GoogleCalendarManager
+from llm.google_agent import GoogleCalendarManager
+
 logging.basicConfig(level=logging.WARN)
 
 def _load_config():
@@ -275,6 +278,19 @@ tools = [
             "required": [],
             "additionalProperties": False
         }
+    },
+    {
+        "type": "function",
+        "name": "get_google_calendar_events",
+        "description": "Get upcoming events from Calendar. use this if user asks for whats on the scedule for example.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer"}
+            },
+            "required": [],
+            "additionalProperties": False
+        }
     }
 ]
 
@@ -286,6 +302,7 @@ class Functions:
         self.test = GPTClient()
         config = _load_config()
         self.tts_enabled = config["tts"]["enabled"]
+        self.google_calendar_manager = GoogleCalendarManager()
 
     def execute_workflow(self, workflow):
         results = []
@@ -332,6 +349,12 @@ class Functions:
                 results.append((func_name, response))
             elif func_name == "get_advice":
                 response = self.get_advice()
+                results.append((func_name, response))
+            elif func_name == "get_google_calendar_events":
+                args = item.get("arguments")
+                days = args.get("days", 7)
+                response = self.google_calendar_manager.get_upcoming_events(days)
+                response = "the scedule for the next " + str(days) + " days is: " + f"{response}"           
                 results.append((func_name, response))
             else:
                 logging.info("No function to execute")
@@ -402,13 +425,10 @@ class Functions:
 
 
 if __name__ == "__main__":
-    test = GPTClient()
-    conversation = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What is the weather like in both New York, and also in stavanger? calculate the sum of 5 and 10. Tell me a joke."},
-    ]
-    response = test.get_workflow(conversation)
-    logging.info(f"Workflow Response: {response}")
-    functions_instance = Functions()
-    exec_response = functions_instance.execute_workflow(workflow=response)
-    logging.info(f"Executed workflow: {exec_response}")
+    manager = GoogleCalendarManager()
+    
+    # Print calendars
+    manager.print_calendars()
+    
+    # Print upcoming events
+    manager.print_upcoming_events()
