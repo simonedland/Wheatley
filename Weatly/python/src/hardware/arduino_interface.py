@@ -11,41 +11,69 @@ class ArduinoInterface:
 
     def connect(self):
         """Establish a connection to the Arduino."""
+        if self.dry_run:
+            print(f"[DRY RUN] Would connect to Arduino on port {self.port} at {self.baud_rate} baud.")
+            return
         import serial
         self.serial_connection = serial.Serial(self.port, self.baud_rate)
 
     def disconnect(self):
         """Close the connection to the Arduino."""
+        if self.dry_run:
+            print(f"[DRY RUN] Would disconnect from Arduino on port {self.port}.")
+            return
         if self.serial_connection and self.serial_connection.is_open:
             self.serial_connection.close()
 
     def send_command(self, command):
         """Send a command to the Arduino."""
         if self.dry_run:
-            print(f"Dry run command: {command}")
-        else:
-            self.send_command_to_m5(command)
+            #print(f"Dry run command: {command}")
+            return
+        self.send_command_to_m5(command)
 
     def send_command_to_m5(self, command):
-        # NEW: Send command to M5 stack core2 which controls the Dynamixel board
-        print(f"Sending command to M5 stack core2: {command}")
+        """Send a command to the Arduino via serial."""
+        if self.dry_run:
+            print(f"[DRY RUN] Would send command to Arduino: {command}")
+            return None
+        if self.serial_connection and self.serial_connection.is_open:
+            self.serial_connection.write(command.encode())
+            response = self.read_response()
+            print(f"Arduino response: {response}")
+        else:
+            print("Arduino not connected. Cannot send command.")
+        return response
 
     def read_response(self):
         """Read a response from the Arduino."""
+        if self.dry_run:
+            print(f"[DRY RUN] Would read response from Arduino.")
+            return None
         if self.serial_connection and self.serial_connection.is_open:
             return self.serial_connection.readline().decode().strip()
 
     def is_connected(self):
         """Check if the connection to the Arduino is established."""
+        if self.dry_run:
+            return False
         return self.serial_connection is not None and self.serial_connection.is_open
 
     def set_animation(self, animation):
-        """Set animation on the Arduino hardware."""
+        """Set animation on the Arduino hardware. Uses per-animation intervals from emotion_animations."""
         if self.is_connected() or self.dry_run:
-            command = f"{animation}"
-            self.send_command(command)
-            # Optionally, update servo animations for the given emotion
-            self.servo_controller.set_emotion(animation)
+            params = self.servo_controller.set_emotion(animation)
+            velocities = params['velocities']
+            target_factors = params['target_factors']
+            idle_ranges = params['idle_ranges']
+            intervals = params['intervals']
+            for i, servo in enumerate(self.servo_controller.servos):
+                target_angle = servo.min_angle + target_factors[i] * (servo.max_angle - servo.min_angle)
+                velocity = velocities[i]
+                idle = idle_ranges[i]
+                interval = intervals[i]
+                command = f"MOVE_SERVO;ID={servo.servo_id};TARGET={int(target_angle)};VELOCITY={velocity};IDLE={idle};INTERVAL={interval}\n"
+                self.send_command(command)
         else:
             print("Arduino not connected. Cannot set animation.")
 
@@ -62,7 +90,7 @@ class ArduinoInterface:
         return None
 
 class Servo:
-    def __init__(self, servo_id, initial_angle=0, velocity=5, min_angle=0, max_angle=180, idle_range=10, name=None):
+    def __init__(self, servo_id, initial_angle=0, velocity=5, min_angle=0, max_angle=180, idle_range=10, name=None, interval=2000):
         self.servo_id = servo_id
         self.current_angle = initial_angle
         self.velocity = velocity
@@ -70,26 +98,27 @@ class Servo:
         self.max_angle = max_angle
         self.idle_range = idle_range  # New: maximum idle range in angle
         self.name = name if name is not None else f"Servo {servo_id}"
+        self.interval = interval  # New: default animation interval
 
     def move_to(self, target_angle):
         # Clamp target_angle within allowed range
         clamped_angle = min(max(self.min_angle, target_angle), self.max_angle)
         command = f"MOVE_SERVO;ID={self.servo_id};TARGET={clamped_angle};VELOCITY={self.velocity}"
         self.current_angle = clamped_angle
-        print(f"{self.name} (ID: {self.servo_id}): {command}")
+        #print(f"{self.name} (ID: {self.servo_id}): {command}")
 
 class ServoController:
     def __init__(self, servo_count=7):
         self.servo_count = servo_count
         # Updated servo configurations with names and sensible ranges.
         servo_configs = [
-            {'name': 'lens',    'min_angle': -720, 'max_angle': 720},  # Updated to 2 rotations
-            {'name': 'eyelid1', 'min_angle': 30,  'max_angle': 60},
-            {'name': 'eyelid2', 'min_angle': 30,  'max_angle': 60},
-            {'name': 'eyeX',    'min_angle': 45,  'max_angle': 135},
-            {'name': 'eyeY',    'min_angle': 40,  'max_angle': 140},
-            {'name': 'handle1', 'min_angle': 0,   'max_angle': 170},
-            {'name': 'handle2', 'min_angle': 0,   'max_angle': 170}
+            {'name': 'lens',    'min_angle': -720, 'max_angle': 720, 'interval': 2000},
+            {'name': 'eyelid1', 'min_angle': 30,  'max_angle': 60,  'interval': 2000},
+            {'name': 'eyelid2', 'min_angle': 30,  'max_angle': 60,  'interval': 2000},
+            {'name': 'eyeX',    'min_angle': 45,  'max_angle': 135, 'interval': 2000},
+            {'name': 'eyeY',    'min_angle': 40,  'max_angle': 140, 'interval': 2000},
+            {'name': 'handle1', 'min_angle': 0,   'max_angle': 170, 'interval': 2000},
+            {'name': 'handle2', 'min_angle': 0,   'max_angle': 170, 'interval': 2000}
         ]
         self.servos = []
         for i in range(self.servo_count):
@@ -99,7 +128,8 @@ class ServoController:
                 idle_range=10,
                 min_angle=config['min_angle'],
                 max_angle=config['max_angle'],
-                name=config['name']
+                name=config['name'],
+                interval=config['interval']
             ))
         # Update emotion animations using target_factors (value between 0 and 1),
         # and add idle_ranges for each emotion.
@@ -107,38 +137,43 @@ class ServoController:
             "happy": {
                 "velocities": [5] * self.servo_count,
                 "target_factors": [0.22, 0.25, 0.22, 0.25, 0.22, 0.25, 0.22],
-                "idle_ranges": [10, 10, 10, 10, 10, 10, 10],
+                "idle_ranges": [100, 10, 10, 10, 10, 10, 10],
+                "intervals": [1200, 1200, 1200, 1000, 1000, 15000, 15000],
             },
             "angry": {
                 "velocities": [8] * self.servo_count,
                 "target_factors": [0.60, 0.65, 0.60, 0.65, 0.60, 0.65, 0.60],
                 "idle_ranges": [5, 5, 5, 5, 5, 5, 5],
+                "intervals": [700, 700, 700, 600, 600, 900, 900],
             },
             "sad": {
                 "velocities": [3] * self.servo_count,
                 "target_factors": [0.10, 0.15, 0.10, 0.15, 0.10, 0.15, 0.10],
                 "idle_ranges": [15, 15, 15, 15, 15, 15, 15],
+                "intervals": [2500, 2500, 2500, 2000, 2000, 3000, 3000],
             },
             "neutral": {
                 "velocities": [4] * self.servo_count,
                 "target_factors": [0.5] * self.servo_count,
                 "idle_ranges": [8, 8, 8, 8, 8, 8, 8],
+                "intervals": [2000, 2000, 2000, 2000, 2000, 2000, 2000],
             },
             "excited": {
                 "velocities": [9] * self.servo_count,
                 "target_factors": [0.70] * self.servo_count,
                 "idle_ranges": [3, 3, 3, 3, 3, 3, 3],
+                "intervals": [500, 500, 500, 400, 400, 600, 600],
             }
         }
 
     def print_servo_status(self):
-        """Print the status of each servo in a formatted table."""
+        """Print the status of each servo in a formatted table with improved alignment."""
         print("-" * 80)
-        print(f"{'Name':<10} {'ID':<3} {'Angle':<8} {'Velocity':<8} {'Range':<20} {'IdleRange':<10}")
+        print(f"{'Name':<10} {'ID':<3} {'Angle':>8} {'Velocity':>9} {'Range':>18} {'IdleRange':>12} {'Frequency':>12}")
         print("-" * 80)
         for servo in self.servos:
             range_str = f"({servo.min_angle}-{servo.max_angle})"
-            print(f"{servo.name:<10} {servo.servo_id:<3} {servo.current_angle:<8.2f} {servo.velocity:<8} {range_str:<20} {servo.idle_range:<10}")
+            print(f"{servo.name:<10} {servo.servo_id:<3} {servo.current_angle:>8.2f} {servo.velocity:>9} {range_str:>18} {servo.idle_range:>12} {servo.interval:>12}")
         print("-" * 80)
 
     def set_emotion(self, emotion):
@@ -146,13 +181,15 @@ class ServoController:
         if emotion not in self.emotion_animations:
             print(f"Emotion '{emotion}' not supported. Using 'neutral'.")
             emotion = 'neutral'
+        print(f"Setting emotion: {emotion}")
         params = self.emotion_animations[emotion]
         velocities = params['velocities']
         target_factors = params['target_factors']
         idle_ranges_config = params['idle_ranges']
+        intervals = params['intervals']
         # Compute each servo's target angle relative to its individual range,
         # and update its idle_range accordingly.
-        for servo, factor, velocity, idle in zip(self.servos, target_factors, velocities, idle_ranges_config):
+        for servo, factor, velocity, idle, interval in zip(self.servos, target_factors, velocities, idle_ranges_config, intervals):
             servo.velocity = velocity
             servo.idle_range = idle
             target_angle = servo.min_angle + factor * (servo.max_angle - servo.min_angle)

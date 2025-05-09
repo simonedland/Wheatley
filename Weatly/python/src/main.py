@@ -75,8 +75,38 @@ def initialize_assistant(config):
     gpt_client = GPTClient(model=gpt_model)
     stt_engine = SpeechToTextEngine()
     tts_engine = TextToSpeechEngine()
-    arduino_interface = ArduinoInterface(port="COM_DRY", dry_run=True)
-    
+    import sys
+    port = None
+    dry_run = False
+    if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+        print("Available ports:")
+        os.system("ls /dev/tty*")
+        port = "/dev/ttyUSB0"
+    elif sys.platform.startswith("win"):
+        from serial.tools import list_ports
+        ports = list(list_ports.comports())
+        print("Available ports:")
+        for p in ports:
+            print(p.device)
+        # Try to use COM7 if available, else use first available port
+        port = None
+        for p in ports:
+            if p.device == "COM7":
+                port = "COM7"
+        if not port:
+            print("No serial ports found. Running in dry run mode.")
+            dry_run = True
+    # Initialize Arduino interface with error handling
+    arduino_interface = None
+    if port and not dry_run:
+        try:
+            arduino_interface = ArduinoInterface(port=port)
+            arduino_interface.connect()
+        except Exception as e:
+            print(f"Could not connect to Arduino on {port}: {e}. Running in dry run mode.")
+            arduino_interface = ArduinoInterface(port=port, dry_run=True)
+    else:
+        arduino_interface = ArduinoInterface(port="dryrun", dry_run=True)
     return manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled
 
 # NEW: Conversation loop handling

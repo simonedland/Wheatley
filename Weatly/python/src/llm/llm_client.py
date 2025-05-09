@@ -12,8 +12,11 @@ from elevenlabs import VoiceSettings
 import tempfile
 
 #from local file google_agent import GoogleCalendarManager
-from llm.google_agent import GoogleCalendarManager
-
+try:
+  from llm.google_agent import GoogleCalendarManager
+except ImportError:
+  from google_agent import GoogleCalendarManager
+  
 logging.basicConfig(level=logging.WARN)
 
 def _load_config():
@@ -21,6 +24,37 @@ def _load_config():
     config_path = os.path.join(base_dir, "config", "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
+
+WEATHER_CODE_DESCRIPTIONS = {
+    0: "Clear sky",
+    1: "Mainly clear, partly cloudy, and overcast",
+    2: "Mainly clear, partly cloudy, and overcast",
+    3: "Mainly clear, partly cloudy, and overcast",
+    45: "Fog and depositing rime fog",
+    48: "Fog and depositing rime fog",
+    51: "Drizzle: Light intensity",
+    53: "Drizzle: Moderate intensity",
+    55: "Drizzle: Dense intensity",
+    56: "Freezing Drizzle: Light intensity",
+    57: "Freezing Drizzle: Dense intensity",
+    61: "Rain: Slight intensity",
+    63: "Rain: Moderate intensity",
+    65: "Rain: Heavy intensity",
+    66: "Freezing Rain: Light intensity",
+    67: "Freezing Rain: Heavy intensity",
+    71: "Snow fall: Slight intensity",
+    73: "Snow fall: Moderate intensity",
+    75: "Snow fall: Heavy intensity",
+    77: "Snow grains",
+    80: "Rain showers: Slight intensity",
+    81: "Rain showers: Moderate intensity",
+    82: "Rain showers: Violent",
+    85: "Snow showers: Slight intensity",
+    86: "Snow showers: Heavy intensity",
+    95: "Thunderstorm: Slight or moderate",
+    96: "Thunderstorm with slight hail (Central Europe only)",
+    99: "Thunderstorm with heavy hail (Central Europe only)"
+}
 
 class TextToSpeech:
     def __init__(self):
@@ -183,17 +217,25 @@ tools = [
     {
         "type": "function",
         "name": "get_weather",
-        "description": "Get current temperature for provided coordinates in celsius.",
+        "description": "Get current temperature and forecast for provided coordinates.",
         "parameters": {
             "type": "object",
             "properties": {
                 "latitude": {"type": "number"},
-                "longitude": {"type": "number"}
+                "longitude": {"type": "number"},
+                "include_forecast": {"type": "boolean"},
+                "forecast_days": {"type": "integer"},
+                "extra_hourly": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "temperature_unit": {"type": "string", 
+                "enum": ["celsius", "fahrenheit"]},
+                "wind_speed_unit": {"type": "string", "enum": ["kmh", "ms", "mph", "kn"]}
             },
             "required": ["latitude", "longitude"],
             "additionalProperties": False
-        },
-        "strict": True
+        }
     },
     {
         "type": "function",
@@ -319,7 +361,12 @@ class Functions:
                 get_weather_args = item.get("arguments")
                 latitude = get_weather_args.get("latitude")
                 longitude = get_weather_args.get("longitude")
-                response = self.get_weather(latitude, longitude)
+                include_forecast = get_weather_args.get("include_forecast", False)
+                forecast_days = get_weather_args.get("forecast_days", 7)
+                extra_hourly = get_weather_args.get("extra_hourly", ["temperature_2m", "weathercode"])
+                temperature_unit = get_weather_args.get("temperature_unit", "celsius")
+                wind_speed_unit = get_weather_args.get("wind_speed_unit", "kmh")
+                response = self.get_weather(latitude, longitude, include_forecast, forecast_days, extra_hourly, temperature_unit, wind_speed_unit)
                 results.append((func_name, response))
             elif func_name == "test_function":
                 test_args = item.get("arguments")
@@ -360,13 +407,66 @@ class Functions:
                 logging.info("No function to execute")
         return results
 
-    def get_weather(self, latitude, longitude):
-        response = requests.get(
-            f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true"
+    def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):
+        base_url = (
+            f"https://api.open-meteo.com/v1/forecast?"
+            f"latitude={lat}&longitude={lon}"
+            f"&current_weather=true"
+            f"&forecast_days={forecast_days}"
+            f"&temperature_unit={temperature_unit}"
+            f"&wind_speed_unit={wind_speed_unit}"
         )
-        data = response.json()
-        reply_text = f"Weather in {latitude}, {longitude} is {data['current_weather']['temperature']} degrees celsius."
-        return reply_text
+        if include_forecast and extra_hourly:
+            hourly_params = ",".join(extra_hourly)
+            base_url += f"&hourly={hourly_params}"
+        try:
+            response = requests.get(base_url)
+            data = response.json()
+            cw = data.get("current_weather", {})
+            summary = (
+                f"Weather Details:\n"
+                f"Location: ({data.get('latitude')}, {data.get('longitude')})\n"
+                f"Temperature: {cw.get('temperature')}°C\n"
+                f"Time: {cw.get('time')}\n"
+                f"Elevation: {data.get('elevation')} m\n"
+                f"Timezone: {data.get('timezone')} ({data.get('timezone_abbreviation')})"
+            )
+            # Interpret the current weather code.
+            weather_code = cw.get("weathercode")
+            if weather_code is not None:
+                try:
+                    weather_code_int = int(weather_code)
+                except Exception:
+                    weather_code_int = None
+                if weather_code_int is not None:
+                    description = WEATHER_CODE_DESCRIPTIONS.get(weather_code_int, "Unknown weather condition")
+                    summary += f"\nWeather Condition: {description} (Code: {weather_code_int})"
+            # Process extended forecast if requested.
+            if include_forecast and extra_hourly:
+                hours_data = data.get("hourly", {})
+                times = hours_data.get("time", [])
+                forecast_summary = "\nExtended Forecast:\n"
+                for i, t in enumerate(times):
+                    line_info = [t]
+                    for var_name in extra_hourly:
+                        var_values = hours_data.get(var_name, [])
+                        if i < len(var_values):
+                            value = var_values[i]
+                            # If the variable is weathercode, interpret it.
+                            if var_name == "weathercode":
+                                try:
+                                    code_int = int(value)
+                                    desc = WEATHER_CODE_DESCRIPTIONS.get(code_int, "Unknown")
+                                    line_info.append(f"{var_name}={value} ({desc})")
+                                except Exception:
+                                    line_info.append(f"{var_name}={value}")
+                            else:
+                                line_info.append(f"{var_name}={value}")
+                    forecast_summary += ", ".join(line_info) + "\n"
+                summary += forecast_summary
+            return summary
+        except Exception as e:
+            return f"Error retrieving weather: {e}"
 
     def get_joke(self):
         response = requests.get("https://official-joke-api.appspot.com/random_joke")

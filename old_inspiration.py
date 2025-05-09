@@ -247,3 +247,9 @@ def get_weather(
     except Exception as e:
         return f"Error retrieving weather: {e}"
 
+if __name__ == "__main__":
+    # Example usage
+    lat = 37.7749
+    lon = -122.4194
+    weather_info = get_weather(lat, lon, include_forecast=True)
+    print(weather_info)
