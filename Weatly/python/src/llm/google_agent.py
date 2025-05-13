@@ -37,27 +37,26 @@ class GoogleCalendarManager:
         if os.path.exists(token_path):
             creds = Credentials.from_authorized_user_file(token_path, SCOPES)
 
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                try:
-                    creds.refresh(Request())
-                except Exception as e:
-                    print(f"⚠️ Failed to refresh token: {e}")
-                    creds = None
-
-                client_config = {
-                    "installed": {
-                        "client_id": client_id,
-                        "project_id": project_id,
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                        "client_secret": client_secret,
-                        "redirect_uris": ["http://localhost"]
-                    }
-                }
-                flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-                creds = flow.run_local_server(port=0)
+        #if not creds or not creds.valid:
+        #    if creds and creds.expired and creds.refresh_token:
+        #        try:
+        #            creds.refresh(Request())
+        #        except Exception as e:
+        #            print(f"⚠️ Failed to refresh token: {e}")
+        #            creds = None
+        #        client_config = {
+        #            "installed": {
+        #                "client_id": client_id,
+        #                "project_id": project_id,
+        #                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        #                "token_uri": "https://oauth2.googleapis.com/token",
+        #                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        #                "client_secret": client_secret,
+        #                "redirect_uris": ["http://localhost"]
+        #            }
+        #        }
+        #        flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
+        #        creds = flow.run_local_server(port=0)
 
             with open(token_path, "w") as f:
                 f.write(creds.to_json())
