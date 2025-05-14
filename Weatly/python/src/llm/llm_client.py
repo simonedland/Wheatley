@@ -16,6 +16,8 @@ try:
   from llm.google_agent import GoogleCalendarManager
 except ImportError:
   from google_agent import GoogleCalendarManager
+
+from llm.google_agent import GoogleAgent
   
 logging.basicConfig(level=logging.WARN)
 
@@ -274,18 +276,6 @@ tools = [
     },
     {
         "type": "function",
-        "name": "get_time",
-        "description": "Get the current time",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "timezone": {"type": "string"}
-            },
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
         "name": "reverse_text",
         "description": "Reverse the provided text.",
         "parameters": {
@@ -323,14 +313,15 @@ tools = [
     },
     {
         "type": "function",
-        "name": "get_google_calendar_events",
-        "description": "Get upcoming events from Calendar. use this if user asks for whats on the scedule for example.",
+        "name": "call_google_agent",
+        "description": "Delegate any Google-related request to the Google Agent. Use this if the user asks about Google services, calendar, or anything Google-related.",
         "parameters": {
             "type": "object",
             "properties": {
-                "days": {"type": "integer"}
+                "user_request": {"type": "string", "description": "The user's request or question related to Google services."},
+                "arguments": {"type": "object", "description": "Optional arguments for the Google Agent.", "additionalProperties": True}
             },
-            "required": [],
+            "required": ["user_request"],
             "additionalProperties": False
         }
     }
@@ -341,15 +332,22 @@ tts_engine = TextToSpeech()
 
 class Functions:
     def __init__(self):
-        self.test = GPTClient()
         config = _load_config()
         self.tts_enabled = config["tts"]["enabled"]
-        self.google_calendar_manager = GoogleCalendarManager()
+        self.google_agent = GoogleAgent()
 
     def execute_workflow(self, workflow):
         results = []
         for item in workflow:
             func_name = item.get("name")
+            # Only delegate if the function is 'call_google_agent'
+            if func_name == "call_google_agent":
+                #print("Google Agent function call")
+                user_request = item.get("arguments", {}).get("user_request", "")
+                args = item.get("arguments", {}).get("arguments", {})
+                response = self.google_agent.llm_decide_and_dispatch(user_request, args)
+                results.append((func_name, response))
+                continue
             if self.tts_enabled:
                 conversation = [
                     {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
@@ -379,11 +377,6 @@ class Functions:
             elif func_name == "get_quote":
                 response = self.get_quote()
                 results.append((func_name, response))
-            elif func_name == "get_time":
-                args = item.get("arguments")
-                timezone = args.get("timezone") if args else "Europe/Oslo"
-                response = self.get_time(timezone)
-                results.append((func_name, response))
             elif func_name == "reverse_text":
                 args = item.get("arguments")
                 text_val = args.get("text")
@@ -396,12 +389,6 @@ class Functions:
                 results.append((func_name, response))
             elif func_name == "get_advice":
                 response = self.get_advice()
-                results.append((func_name, response))
-            elif func_name == "get_google_calendar_events":
-                args = item.get("arguments")
-                days = args.get("days", 7)
-                response = self.google_calendar_manager.get_upcoming_events(days)
-                response = "the scedule for the next " + str(days) + " days is: " + f"{response}"           
                 results.append((func_name, response))
             else:
                 logging.info("No function to execute")
@@ -484,16 +471,6 @@ class Functions:
             item = data[0]
             return f"Tell the user: {item.get('quote', '')} — {item.get('author', '')}"
         return "No quote available."
-
-    def get_time(self, timezone):
-        from datetime import datetime
-        import pytz  # Ensure pytz is installed
-        try:
-            tz = pytz.timezone(timezone)
-            now = datetime.now(tz)
-            return f"Current time in {timezone} is {now.strftime('%Y-%m-%d %H:%M:%S')}."
-        except Exception as e:
-            return f"Error: {str(e)}"
 
     def reverse_text(self, text):
         return text[::-1]

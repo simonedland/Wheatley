@@ -1,6 +1,7 @@
 import os
 import textwrap
 import yaml
+from datetime import datetime
 
 class ConversationManager:
     """
@@ -12,6 +13,12 @@ class ConversationManager:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
         system_message = config.get("assistant", {}).get("system_message", "")
+        #replace the <current_time> in system message with the current time and day in week
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_day = datetime.now().strftime("%A")
+        system_message = system_message.replace("<current_time>", current_time)
+        system_message = system_message.replace("<current_day>", current_day)
+
         self.max_memory = max_memory
         self.messages = [{
             "role": "system",
@@ -19,6 +26,17 @@ class ConversationManager:
         }]
 
     def add_text_to_conversation(self, role, text):
+        # Refresh system message with current time and day
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+        system_message = config.get("assistant", {}).get("system_message", "")
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_day = datetime.now().strftime("%A")
+        system_message = system_message.replace("<current_time>", current_time)
+        system_message = system_message.replace("<current_day>", current_day)
+        self.messages[0]["content"] = system_message
+
         self.messages.append({"role": role, "content": text})
         # Keep only the latest max_memory messages (excluding system)
         while len(self.messages) > self.max_memory + 1:

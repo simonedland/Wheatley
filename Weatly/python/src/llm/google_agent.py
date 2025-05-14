@@ -1,5 +1,7 @@
 import os
 import yaml
+import openai
+import json
 from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -122,4 +124,88 @@ class GoogleCalendarManager:
             print(f"\nCalendar: {cal_summary}")
             for ev in cal_events:
                 print(f"  • {ev['start']} — {ev['summary']}")
+
+GOOGLE_TOOLS = [
+    {
+        "type": "function",
+        "name": "get_google_calendar_events",
+        "description": "Get upcoming events from Google Calendar. Use this if user asks for schedule or calendar events.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer"}
+            },
+            "required": [],
+            "additionalProperties": False
+        }
+    }
+]
+
+class GoogleAgent:
+    def _load_config(self):
+      base_dir = os.path.dirname(os.path.dirname(__file__))
+      config_path = os.path.join(base_dir, "config", "config.yaml")
+      with open(config_path, "r") as f:
+          return yaml.safe_load(f)
+    
+    def __init__(self):
+        config = self._load_config()
+        self.api_key = config["secrets"]["openai_api_key"]
+        self.calendar_manager = GoogleCalendarManager()
+        self.tools = GOOGLE_TOOLS
+        self.model = config["llm"]["model"]
+        openai.api_key = self.api_key
+
+    def llm_decide_and_dispatch(self, user_request: str, arguments: dict = None):
+        """
+        Use LLM to decide which Google tool to use based on the user request, then execute it.
+        """
+        # Prepare a prompt for the LLM to select the tool
+        tool_descriptions = "\n".join([
+            f"- {tool['name']}: {tool['description']}" for tool in self.tools
+        ])
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_day = datetime.now().strftime("%A")
+        self.prompt = [
+            {"role": "system", "content": f"You are a Google Agent. Available tools are:\n{tool_descriptions}\nChoose the best tool for the user request and return only the tool name. current_time: {current_time}, current_day: {current_day}"},
+            {"role": "user", "content": user_request}
+        ]
+        print(f"Prompt to LLM: {self.prompt}")
+        completion = openai.responses.create(
+            model=self.model,
+            input=self.prompt,
+            tools=self.tools,
+            tool_choice="required",
+            parallel_tool_calls=False
+        )
+        choice = completion.output
+        print(f"LLM chose: {choice}")
+        # Dispatch the chosen tool
+        for msg in choice:
+            if msg.type == "function_call":
+                func_name = msg.name
+                arguments = msg.arguments
+                return self.dispatch(func_name, arguments)
+        raise ValueError("No function call found in LLM response.")
+
+    def dispatch(self, func_name, arguments):
+        # Parse arguments if they are a JSON string
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except Exception:
+                arguments = {}
+        if func_name == "get_google_calendar_events":
+            days = arguments.get("days", 7)
+            return self.get_google_calendar_events(days)
+        raise NotImplementedError(f"Function {func_name} not implemented in GoogleAgent.")
+
+    def get_google_calendar_events(self, days=7):
+        return self.calendar_manager.get_upcoming_events(days)
+
+    def print_calendars(self):
+        self.calendar_manager.print_calendars()
+
+    def print_upcoming_events(self, days=7):
+        self.calendar_manager.print_upcoming_events(days)
 
