@@ -318,8 +318,7 @@ tools = [
         "parameters": {
             "type": "object",
             "properties": {
-                "user_request": {"type": "string", "description": "The user's request or question related to Google services."},
-                "arguments": {"type": "object", "description": "Optional arguments for the Google Agent.", "additionalProperties": True}
+                "user_request": {"type": "string", "description": "The user's request or question related to Google services."}
             },
             "required": ["user_request"],
             "additionalProperties": False
