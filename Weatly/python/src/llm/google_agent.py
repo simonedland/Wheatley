@@ -125,6 +125,7 @@ class GoogleCalendarManager:
             for ev in cal_events:
                 print(f"  • {ev['start']} — {ev['summary']}")
 
+# imlpement placeholder google functions
 GOOGLE_TOOLS = [
     {
         "type": "function",
@@ -134,6 +135,35 @@ GOOGLE_TOOLS = [
             "type": "object",
             "properties": {
                 "days": {"type": "integer"}
+            },
+            "required": [],
+            "additionalProperties": False
+        }
+    },
+    {
+        "type": "function",
+        "name": "create_google_calendar_event",
+        "description": "Create a new event in Google Calendar. Use this if user wants to create an event.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "summary": {"type": "string"},
+                "start_time": {"type": "string"},
+                "end_time": {"type": "string"},
+                "description": {"type": "string"}
+            },
+            "required": ["summary", "start_time", "end_time"],
+            "additionalProperties": False
+        }
+    },
+    {
+        "type": "function",
+        "name": "delete_google_calendar_event",
+        "description": "Delete an event from Google Calendar. Use this if user wants to delete an event.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "temp": {"type": "string"}
             },
             "required": [],
             "additionalProperties": False
@@ -160,32 +190,45 @@ class GoogleAgent:
         """
         Use LLM to decide which Google tool to use based on the user request, then execute it.
         """
-        # Prepare a prompt for the LLM to select the tool
+        from datetime import datetime
+        now = datetime.now()
         tool_descriptions = "\n".join([
             f"- {tool['name']}: {tool['description']}" for tool in self.tools
         ])
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        current_day = datetime.now().strftime("%A")
-        self.prompt = [
-            {"role": "system", "content": f"You are a Google Agent. Available tools are:\n{tool_descriptions}\nChoose the best tool for the user request and return only the tool name. current_time: {current_time}, current_day: {current_day}"},
+        system_prompt = (
+            f"You are a Google Agent. Available tools are:\n{tool_descriptions}\n"
+            f"Choose the best tool for the user request and return only the tool name. "
+            f"current_time: {now.strftime('%Y-%m-%d %H:%M:%S')}, current_day: {now.strftime('%A')}"
+        )
+        prompt = [
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_request}
         ]
-        print(f"Prompt to LLM: {self.prompt}")
+        print(f"\n--- Google Agent Decision Trace ---")
+        print(f"User: {user_request}")
+        print(f"Prompt to LLM: {prompt}")
         completion = openai.responses.create(
             model=self.model,
-            input=self.prompt,
+            input=prompt,
             tools=self.tools,
             tool_choice="required",
             parallel_tool_calls=False
         )
         choice = completion.output
-        print(f"LLM chose: {choice}")
+        print(f"LLM chose:")
+        for msg in choice:
+            if msg.type == "function_call":
+                print(f"  Tool: {msg.name}")
+                print(f"  Arguments: {msg.arguments}")
+                print(f"  Call ID: {getattr(msg, 'call_id', None)}")
+        print(f"--- End Google Agent Decision Trace ---\n")
         # Dispatch the chosen tool
         for msg in choice:
             if msg.type == "function_call":
                 func_name = msg.name
                 arguments = msg.arguments
                 return self.dispatch(func_name, arguments)
+            
         raise ValueError("No function call found in LLM response.")
 
     def dispatch(self, func_name, arguments):
@@ -198,6 +241,10 @@ class GoogleAgent:
         if func_name == "get_google_calendar_events":
             days = arguments.get("days", 7)
             return self.get_google_calendar_events(days)
+        elif func_name == "create_google_calendar_event":
+            return "not implemented"
+        elif func_name == "delete_google_calendar_event":
+            return "not implemented"
         raise NotImplementedError(f"Function {func_name} not implemented in GoogleAgent.")
 
     def get_google_calendar_events(self, days=7):

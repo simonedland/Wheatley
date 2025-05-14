@@ -314,7 +314,7 @@ tools = [
     {
         "type": "function",
         "name": "call_google_agent",
-        "description": "Delegate any Google-related request to the Google Agent. Use this if the user asks about Google services, calendar, or anything Google-related.",
+        "description": "Delegate any Google-related request to the Google Agent. Use this if the user asks about Google services, calendar, or anything Google-related. if user asks about calendar use this function. this agent can delete events, create/add events, and get events.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -332,22 +332,16 @@ tts_engine = TextToSpeech()
 
 class Functions:
     def __init__(self):
+        self.test = GPTClient()
         config = _load_config()
         self.tts_enabled = config["tts"]["enabled"]
         self.google_agent = GoogleAgent()
+        
 
     def execute_workflow(self, workflow):
         results = []
         for item in workflow:
             func_name = item.get("name")
-            # Only delegate if the function is 'call_google_agent'
-            if func_name == "call_google_agent":
-                #print("Google Agent function call")
-                user_request = item.get("arguments", {}).get("user_request", "")
-                args = item.get("arguments", {}).get("arguments", {})
-                response = self.google_agent.llm_decide_and_dispatch(user_request, args)
-                results.append((func_name, response))
-                continue
             if self.tts_enabled:
                 conversation = [
                     {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
@@ -355,6 +349,12 @@ class Functions:
                 ]
                 text = self.test.get_text(conversation)
                 tts_engine.generate_and_play_advanced(text)
+            if func_name == "call_google_agent":
+                #print("Google Agent function call")
+                user_request = item.get("arguments", {}).get("user_request", "")
+                args = item.get("arguments", {}).get("arguments", {})
+                response = self.google_agent.llm_decide_and_dispatch(user_request, args)
+                results.append((func_name, response))
             if func_name == "get_weather":
                 get_weather_args = item.get("arguments")
                 latitude = get_weather_args.get("latitude")
