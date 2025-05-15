@@ -21,7 +21,7 @@ Write-Host "Installing prerequisites..."
 python c:\GIT\eatly\Wheatley\install_prerequisites.py
 
 # Check that the config file exists
-$configPath = "c:\GIT\eatly\Wheatley\Weatly\python\src\config\config.yaml"
+$configPath = "c:\GIT\eatly\Wheatley\Wheatly\python\src\config\config.yaml"
 if (Test-Path $configPath) {
     Write-Host "Configuration file found: $configPath"
 } else {
@@ -31,4 +31,4 @@ if (Test-Path $configPath) {
 
 # Run test.py to execute tests
 Write-Host "Running tests..."
-python c:\GIT\eatly\Wheatley\Weatly\python\src\test.py
+python c:\GIT\eatly\Wheatley\Wheatly\python\src\test.py

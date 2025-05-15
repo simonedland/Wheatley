@@ -23,7 +23,7 @@ from tqdm import tqdm
 
 def _load_config() -> dict:
     """Load YAML config from fixed path inside the repo."""
-    cfg_path = os.path.join("Weatly", "python", "src", "config", "config.yaml")
+    cfg_path = os.path.join("Wheatly", "python", "src", "config", "config.yaml")
     print(f"Loading config from {cfg_path}")
     with open(cfg_path, "r", encoding="utf-8") as fh:
         return yaml.safe_load(fh)
