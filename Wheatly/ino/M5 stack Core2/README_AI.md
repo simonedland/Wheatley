@@ -1,35 +1,38 @@
 # AI Summary
 
-### C:\GIT\eatly\Wheatley\Weatly\ino\M5 stack Core2\test.ino
-This Arduino sketch is designed to control a set of servos using an M5Stack device. It provides a user interface on the device's screen to display and adjust the state of each servo, and it can also receive commands via serial communication to control the servos programmatically.
+### C:\GIT\Wheatly\Wheatley\Wheatly\ino\M5 stack Core2\test.ino
+This Arduino sketch is designed to control and display the status of multiple servos using an M5Stack device, which includes an LCD screen and buttons. Here's a breakdown of its purpose, main functions, and hardware usage:
 
-### Overall Purpose
-The sketch manages up to 11 servos, with 7 being adjustable. It allows users to view and modify servo angles, velocities, and idle behaviors directly on the M5Stack screen or through serial commands.
+### Purpose
+The sketch manages up to 11 servos, with 7 being actively adjustable. It allows for manual and automated control of servo angles, displaying their status on an LCD screen, and accepting serial commands to adjust servo parameters.
 
 ### Main Functions
+
 1. **Servo Management**: 
    - Each servo has properties like angle, velocity, min/max angles, idle range, and idle update interval.
-   - The servos can be moved to specific angles with defined velocities and can perform random idle movements within a specified range.
+   - Servos can be moved to specific angles with defined velocities and idle behaviors.
 
-2. **User Interface**:
-   - The M5Stack screen displays the current state of each servo.
-   - Users can navigate through servos using buttons on the M5Stack and adjust angles with button presses.
+2. **Display**:
+   - The LCD displays the current status of each servo, including its ID, angle, velocity, idle range, and update interval.
+   - The display updates dynamically as servos are adjusted.
 
 3. **Serial Command Handling**:
-   - The sketch listens for serial commands to move servos to specific angles with specified parameters.
-   - Commands are parsed to extract servo ID, target angle, velocity, idle range, and update interval.
+   - Commands can be sent via serial to move servos to target angles with specified parameters.
+   - The command format is `MOVE_SERVO;ID=x;TARGET=y;VELOCITY=z;IDLE=a;INTERVAL=b`.
 
 4. **Idle Movement**:
-   - Servos can perform random movements within an idle range at specified intervals to simulate natural motion.
+   - Servos can perform random idle movements within a specified range and interval, simulating natural motion.
 
-### Hardware Peripherals Used
-- **M5Stack (M5Unified Library)**: 
-  - Provides the display and button interface.
-  - The screen is used to show servo states and allow user interaction.
-  - Buttons A, B, and C are used for navigating and adjusting servo angles.
+5. **Button Controls**:
+   - Button A decreases the selected servo's angle.
+   - Button B increases the selected servo's angle.
+   - Button C cycles through the servos, updating the display to reflect the current selection.
 
-- **Servos**:
-  - Controlled via the sketch, each servo's state is updated based on user input or serial commands.
-  - The servos can move to specific angles and perform idle movements.
+### Hardware Peripherals
 
-This setup allows for both manual and automated control of servos, making it suitable for applications where dynamic servo adjustments are needed.
+- **M5Stack Device**: 
+  - **LCD Screen**: Used to display servo information and status.
+  - **Buttons (A, B, C)**: Allow manual control of servo angles and selection of servos.
+  - **Serial Communication**: Enables external control and configuration of servos via serial commands.
+
+This setup is ideal for applications requiring precise servo control and monitoring, such as robotics or interactive displays.

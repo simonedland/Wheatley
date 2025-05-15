@@ -1,4 +1,8 @@
 # AI Summary
 
-### C:\GIT\eatly\Wheatley\Weatly\python\src\tts\tts_engine.py
-The Python code defines a text-to-speech (TTS) engine using the ElevenLabs API. It reads configuration settings from a YAML file, including API keys and TTS parameters like voice ID, stability, and speed. The engine generates audio from text input and saves it temporarily in a "temp" directory. It then plays the audio using the `playsound` library and deletes the temporary file afterward. The code also manages logging levels to suppress verbose output from the ElevenLabs library.
+### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\tts\tts_engine.py
+The Python code defines a `TextToSpeechEngine` class that uses the ElevenLabs API to convert text to speech and play the resulting audio. The class is initialized with configurations loaded from a YAML file, including API keys and text-to-speech parameters like voice settings and model ID. 
+
+The main method, `generate_and_play_advanced`, generates audio from the given text, saves it temporarily in a "temp" directory, and plays it using the `playsound` library. After playback, the temporary audio file is deleted. The code also handles exceptions during audio playback and file deletion, logging any errors encountered. 
+
+The script is designed to be run as a standalone program, where it initializes the text-to-speech engine and processes a sample text.
