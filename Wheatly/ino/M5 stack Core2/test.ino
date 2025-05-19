@@ -64,6 +64,13 @@ void drawSingle(int i) {
   drawLine(i, y);
 }
 
+// --- Send MOVE_SERVO command to OpenRB-150 when servo is changed ---
+void sendMoveServoCommand(int id, int target, int velocity) {
+  // Format: MOVE_SERVO;ID=2;TARGET=45;VELOCITY=5;
+  String cmd = "MOVE_SERVO;ID=" + String(id) + ";TARGET=" + String(target) + ";VELOCITY=" + String(velocity) + ";\n";
+  Serial.print(cmd); // Send to OpenRB-150
+}
+
 // --- Serial Command Parsing ---
 void handleSerialCommand(const String& cmd) {
   // Example: MOVE_SERVO;ID=2;TARGET=45;VELOCITY=5;IDLE=10;INTERVAL=1500
@@ -102,6 +109,7 @@ void handleSerialCommand(const String& cmd) {
       servos[id].idleUpdateInterval = interval;
       servos[id].lastIdleUpdate = millis();
       drawWindow();
+      sendMoveServoCommand(id, clamped, velocity); // Send to OpenRB-150
       Serial.println("OK");
     } else {
       Serial.println("ERR: Invalid servo ID");
@@ -111,12 +119,45 @@ void handleSerialCommand(const String& cmd) {
   Serial.println("ERR: Unknown command");
 }
 
+// --- Serial Calibration Data Parsing ---
+// Accepts: id,min_deg,max_deg;id,min_deg,max_deg;...\n
+void handleCalibrationData(const String& line) {
+  // Split by ';'
+  int last = 0;
+  int idx = 0;
+  while (last < line.length() && idx < activeServos) {
+    int next = line.indexOf(';', last);
+    String entry = (next == -1) ? line.substring(last) : line.substring(last, next);
+    int firstComma = entry.indexOf(',');
+    int secondComma = entry.indexOf(',', firstComma + 1);
+    if (firstComma > 0 && secondComma > firstComma) {
+      int id = entry.substring(0, firstComma).toInt();
+      float minD = entry.substring(firstComma + 1, secondComma).toFloat();
+      float maxD = entry.substring(secondComma + 1).toFloat();
+      if (id >= 0 && id < activeServos) {
+        servos[id].min_angle = round(minD);
+        servos[id].max_angle = round(maxD);
+        // Optionally, reset angle to within new range
+        servos[id].angle = constrain(servos[id].angle, servos[id].min_angle, servos[id].max_angle);
+        servos[id].initial_angle = servos[id].angle;
+      }
+    }
+    if (next == -1) break;
+    last = next + 1;
+    idx++;
+  }
+  drawWindow();
+  Serial.println("OK: Calibration data received");
+}
+
 void setup() {
   auto cfg = M5.config();
   M5.begin(cfg);
   M5.Lcd.setTextSize(2);
   drawWindow();
   Serial.begin(9600);
+  // Respond to handshake from OpenRB-150
+  Serial.setTimeout(100);
 }
 
 void loop() {
@@ -126,7 +167,11 @@ void loop() {
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
-    if (cmd.length() > 0) {
+    if (cmd.startsWith("HELLO")) {
+      Serial.println("ESP32"); // Respond to handshake
+    } else if (cmd.indexOf(',') > 0 && cmd.indexOf(';') > 0) {
+      handleCalibrationData(cmd);
+    } else if (cmd.length() > 0) {
       handleSerialCommand(cmd);
     }
   }
@@ -151,12 +196,14 @@ void loop() {
     if (servos[selected].angle > servos[selected].min_angle) {
       --servos[selected].angle;
       drawSingle(selected);
+      sendMoveServoCommand(selected, servos[selected].angle, servos[selected].velocity);
     }
   }
   if (M5.BtnB.isPressed() && selected < activeServos) {
     if (servos[selected].angle < servos[selected].max_angle) {
       ++servos[selected].angle;
       drawSingle(selected);
+      sendMoveServoCommand(selected, servos[selected].angle, servos[selected].velocity);
     }
   }
   if (M5.BtnC.wasPressed()) {
