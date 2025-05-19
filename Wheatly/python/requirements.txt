@@ -3,7 +3,7 @@ openai
 numpy
 pandas
 scikit-learn
-tensorflow
+tensorflow==2.19.0
 torch
 flask
 requests
@@ -16,7 +16,10 @@ pyttsx3
 elevenlabs
 playsound==1.2.2
 pyaudio
-RPi.GPIO
+colorama
+# RPi.GPIO is for Raspberry Pi hardware and will not work in standard containers
+# Commented out for Docker builds:
+# RPi.GPIO
 google-auth
 google-auth-oauthlib
 google-api-python-client

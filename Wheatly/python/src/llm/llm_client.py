@@ -199,13 +199,13 @@ set_animation_tool = [
     {
         "type": "function",
         "name": "set_animation",
-        "description": "Inform hardware of which animation to use in the reply",
+        "description": "The Wheatley bot should select an animation based on the emotional state it determines from the current context or input. The function will analyze the tone, keywords, and interaction style to decide which emotional state best reflects the bot's current mood or reaction. Depending on the chosen emotion, the corresponding animation should be selected to visually represent that state, ensuring it aligns with the emotional intensity. For example, a more dramatic emotion like \"fearful\" may trigger exaggerated, frantic movements, while a \"neutral\" state might result in subtle, minimal animations. The animation choice should dynamically vary based on the bot's emotional state, adding diversity and depth to its interactions, ensuring that each response feels unique and appropriate.",
         "parameters": {
             "type": "object",
             "properties": {
                 "animation": {
                     "type": "string",
-                    "enum": ["happy", "angry", "sad", "neutral", "excited"]  # allowed animations
+                    "enum": ["happy", "angry", "sad", "neutral", "excited", "confused", "surprised", "curious", "bored", "fearful", "hopeful", "embarrassed", "frustrated", "proud", "nostalgic", "relieved", "grateful", "shy", "disappointed", "jealous"]  # allowed animations
                 }
             },
             "required": ["animation"],

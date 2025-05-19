@@ -163,7 +163,97 @@ class ServoController:
                 "target_factors": [0.70] * self.servo_count,
                 "idle_ranges": [3, 3, 3, 3, 3, 3, 3],
                 "intervals": [500, 500, 500, 400, 400, 600, 600],
-            }
+            },
+            "confused": {
+                "velocities": [6, 5, 6, 5, 6, 5, 6],
+                "target_factors": [0.45, 0.55, 0.45, 0.55, 0.45, 0.55, 0.45],
+                "idle_ranges": [20, 15, 20, 15, 20, 15, 20],
+                "intervals": [1800, 1700, 1800, 1700, 1800, 1700, 1800],
+            },
+            "surprised": {
+                "velocities": [10, 9, 10, 9, 10, 9, 10],
+                "target_factors": [0.85, 0.80, 0.85, 0.80, 0.85, 0.80, 0.85],
+                "idle_ranges": [2, 2, 2, 2, 2, 2, 2],
+                "intervals": [300, 300, 300, 250, 250, 350, 350],
+            },
+            "curious": {
+                "velocities": [7, 6, 7, 6, 7, 6, 7],
+                "target_factors": [0.60, 0.55, 0.60, 0.55, 0.60, 0.55, 0.60],
+                "idle_ranges": [12, 10, 12, 10, 12, 10, 12],
+                "intervals": [1200, 1100, 1200, 1100, 1200, 1100, 1200],
+            },
+            "bored": {
+                "velocities": [2] * self.servo_count,
+                "target_factors": [0.35, 0.30, 0.35, 0.30, 0.35, 0.30, 0.35],
+                "idle_ranges": [30, 30, 30, 30, 30, 30, 30],
+                "intervals": [4000, 4000, 4000, 3500, 3500, 5000, 5000],
+            },
+            "fearful": {
+                "velocities": [10, 8, 10, 8, 10, 8, 10],
+                "target_factors": [0.15, 0.80, 0.15, 0.80, 0.15, 0.80, 0.15],
+                "idle_ranges": [5, 5, 5, 5, 5, 5, 5],
+                "intervals": [400, 400, 400, 350, 350, 500, 500],
+            },
+            "hopeful": {
+                "velocities": [6, 5, 6, 5, 6, 5, 6],
+                "target_factors": [0.65, 0.60, 0.65, 0.60, 0.65, 0.60, 0.65],
+                "idle_ranges": [10, 10, 10, 10, 10, 10, 10],
+                "intervals": [1500, 1500, 1500, 1400, 1400, 1600, 1600],
+            },
+            "embarrassed": {
+                "velocities": [4, 7, 4, 7, 4, 7, 4],
+                "target_factors": [0.40, 0.20, 0.40, 0.20, 0.40, 0.20, 0.40],
+                "idle_ranges": [18, 8, 18, 8, 18, 8, 18],
+                "intervals": [2200, 1000, 2200, 1000, 2200, 1000, 2200],
+            },
+            "frustrated": {
+                "velocities": [9, 8, 9, 8, 9, 8, 9],
+                "target_factors": [0.75, 0.20, 0.75, 0.20, 0.75, 0.20, 0.75],
+                "idle_ranges": [6, 6, 6, 6, 6, 6, 6],
+                "intervals": [800, 800, 800, 700, 700, 900, 900],
+            },
+            "proud": {
+                "velocities": [7, 6, 7, 6, 7, 6, 7],
+                "target_factors": [0.80, 0.75, 0.80, 0.75, 0.80, 0.75, 0.80],
+                "idle_ranges": [8, 8, 8, 8, 8, 8, 8],
+                "intervals": [1300, 1300, 1300, 1200, 1200, 1400, 1400],
+            },
+            "nostalgic": {
+                "velocities": [3, 4, 3, 4, 3, 4, 3],
+                "target_factors": [0.30, 0.60, 0.30, 0.60, 0.30, 0.60, 0.30],
+                "idle_ranges": [20, 15, 20, 15, 20, 15, 20],
+                "intervals": [3000, 2500, 3000, 2500, 3000, 2500, 3000],
+            },
+            "relieved": {
+                "velocities": [5, 4, 5, 4, 5, 4, 5],
+                "target_factors": [0.55, 0.60, 0.55, 0.60, 0.55, 0.60, 0.55],
+                "idle_ranges": [12, 12, 12, 12, 12, 12, 12],
+                "intervals": [1700, 1700, 1700, 1600, 1600, 1800, 1800],
+            },
+            "grateful": {
+                "velocities": [6, 5, 6, 5, 6, 5, 6],
+                "target_factors": [0.60, 0.65, 0.60, 0.65, 0.60, 0.65, 0.60],
+                "idle_ranges": [10, 10, 10, 10, 10, 10, 10],
+                "intervals": [1400, 1400, 1400, 1300, 1300, 1500, 1500],
+            },
+            "shy": {
+                "velocities": [3, 5, 3, 5, 3, 5, 3],
+                "target_factors": [0.25, 0.20, 0.25, 0.20, 0.25, 0.20, 0.25],
+                "idle_ranges": [25, 8, 25, 8, 25, 8, 25],
+                "intervals": [2600, 1000, 2600, 1000, 2600, 1000, 2600],
+            },
+            "disappointed": {
+                "velocities": [2, 3, 2, 3, 2, 3, 2],
+                "target_factors": [0.15, 0.10, 0.15, 0.10, 0.15, 0.10, 0.15],
+                "idle_ranges": [20, 20, 20, 20, 20, 20, 20],
+                "intervals": [3500, 3500, 3500, 3000, 3000, 4000, 4000],
+            },
+            "jealous": {
+                "velocities": [7, 6, 7, 6, 7, 6, 7],
+                "target_factors": [0.40, 0.80, 0.40, 0.80, 0.40, 0.80, 0.40],
+                "idle_ranges": [10, 5, 10, 5, 10, 5, 10],
+                "intervals": [1200, 800, 1200, 800, 1200, 800, 1200],
+            },
         }
 
     def print_servo_status(self):
@@ -177,7 +267,28 @@ class ServoController:
         print("-" * 80)
 
     def set_emotion(self, emotion):
-        """Adjust each servo based on the desired emotion's standby animation."""
+        """Adjust each servo based on the desired emotion's standby animation and log emotion usage for bias analysis."""
+        # Log emotion usage to a counter file
+        import os
+        import json
+        counter_file = os.path.join(os.path.dirname(__file__), 'emotion_counter.json')
+        # Read current counts
+        if os.path.exists(counter_file):
+            try:
+                with open(counter_file, 'r') as f:
+                    emotion_counts = json.load(f)
+            except Exception:
+                emotion_counts = {}
+        else:
+            emotion_counts = {}
+        # Increment count for this emotion
+        emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
+        # Write back updated counts
+        try:
+            with open(counter_file, 'w') as f:
+                json.dump(emotion_counts, f, indent=2)
+        except Exception as e:
+            print(f"[EmotionCounter] Failed to write emotion counter: {e}")
         if emotion not in self.emotion_animations:
             print(f"Emotion '{emotion}' not supported. Using 'neutral'.")
             emotion = 'neutral'

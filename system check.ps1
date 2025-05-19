@@ -18,10 +18,10 @@ Write-Host "Activating virtual environment..."
 
 # Install prerequisites by running the install_prerequisites.py script
 Write-Host "Installing prerequisites..."
-python c:\GIT\eatly\Wheatley\install_prerequisites.py
+python install_prerequisites.py
 
 # Check that the config file exists
-$configPath = "c:\GIT\eatly\Wheatley\Wheatly\python\src\config\config.yaml"
+$configPath = "Wheatly/python/src/config/config.yaml"
 if (Test-Path $configPath) {
     Write-Host "Configuration file found: $configPath"
 } else {
@@ -31,4 +31,4 @@ if (Test-Path $configPath) {
 
 # Run test.py to execute tests
 Write-Host "Running tests..."
-python c:\GIT\eatly\Wheatley\Wheatly\python\src\test.py
+python Wheatly/python/src/test.py
