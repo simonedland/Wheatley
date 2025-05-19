@@ -15,8 +15,6 @@ const int DXL_DIR_PIN = -1;            // Direction pin (not used on OpenRB-150)
 const int DXL_PWR_EN  = BDPIN_DXL_PWR_EN; // Power enable pin for Dynamixel bus
 
 /* ───── USER SETTINGS ─────*/
-const uint8_t SERVOS[] = {1};          // List of Dynamixel IDs to calibrate
-const uint8_t NUM      = sizeof(SERVOS)/sizeof(SERVOS[0]); // Number of servos
 const uint32_t BAUD    = 57600;        // Baud rate for Dynamixel bus
 const float    PROTO   = 2.0;          // Protocol version
 
@@ -48,6 +46,7 @@ int32_t minPos, maxPos; // Will store the measured min/max positions
 // This version supports 7 servos (IDs 0-6). Some servos use hardcoded min/max values,
 // others are calibrated. After calibration, all min/max data is sent to an ESP32 via Serial.
 
+// Use a macro to auto-generate the servo ID array for 0..6
 #define NUM_SERVOS 7
 const uint8_t SERVOS[NUM_SERVOS] = {0, 1, 2, 3, 4, 5, 6}; // Servo IDs 0-6
 
@@ -61,6 +60,17 @@ const float MANUAL_MAX[NUM_SERVOS] = {90, 0, 45, 0, 0, 60, 0};
 // Store min/max positions (ticks) for all servos
 int32_t minPosArr[NUM_SERVOS];
 int32_t maxPosArr[NUM_SERVOS];
+
+// Servo names for correlation with UI and Python config
+const char* SERVO_NAMES[NUM_SERVOS] = {
+  "lens",    // 0
+  "eyelid1", // 1
+  "eyelid2", // 2
+  "eyeX",    // 3
+  "eyeY",    // 4
+  "handle1", // 5
+  "handle2"  // 6
+};
 
 // Creep in one direction until the servo stops moving (hits limit)
 // Returns the last valid position before the limit
@@ -88,12 +98,14 @@ int32_t findLimit(uint8_t id, int dir) {
 // Modified calibrate function to support per-servo calibration/manual
 void calibrateOrAssignLimits(uint8_t idx) {
   uint8_t id = SERVOS[idx];
+  const char* name = SERVO_NAMES[idx];
   if (USE_MANUAL_LIMITS[idx]) {
     // Use manual min/max (convert degrees to ticks)
     minPosArr[idx] = deg2t(MANUAL_MIN[idx]);
     maxPosArr[idx] = deg2t(MANUAL_MAX[idx]);
     DEBUG_SERIAL.print("Servo "); DEBUG_SERIAL.print(id);
-    DEBUG_SERIAL.print(" manual min = "); DEBUG_SERIAL.print(MANUAL_MIN[idx]);
+    DEBUG_SERIAL.print(" ("); DEBUG_SERIAL.print(name); DEBUG_SERIAL.print(") manual min = ");
+    DEBUG_SERIAL.print(MANUAL_MIN[idx]);
     DEBUG_SERIAL.print("°, max = "); DEBUG_SERIAL.print(MANUAL_MAX[idx]);
     DEBUG_SERIAL.println("°");
   } else {
@@ -106,7 +118,8 @@ void calibrateOrAssignLimits(uint8_t idx) {
     minPosArr[idx] = findLimit(id, -1);
     maxPosArr[idx] = findLimit(id, +1);
     DEBUG_SERIAL.print("Servo "); DEBUG_SERIAL.print(id);
-    DEBUG_SERIAL.print(" calibrated min = "); DEBUG_SERIAL.print(t2deg(minPosArr[idx]), 1);
+    DEBUG_SERIAL.print(" ("); DEBUG_SERIAL.print(name); DEBUG_SERIAL.print(") calibrated min = ");
+    DEBUG_SERIAL.print(t2deg(minPosArr[idx]), 1);
     DEBUG_SERIAL.print("°, max = "); DEBUG_SERIAL.print(t2deg(maxPosArr[idx]), 1);
     DEBUG_SERIAL.println("°");
     dxl.setGoalPosition(id, center);
