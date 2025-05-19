@@ -1,314 +1,234 @@
 /******************************************************************************
- *  OpenRB-150 • DYNAMIXEL range-calibration demo (2-cycle slow sweep, then stop)
- *  ───────────────────────────────────────────────────────────────────────────
- *  • Calibrates min/max by creeping until first under-threshold step (no jam).
- *  • Sweeps back and forth twice at a gentle speed, with ample dwell time.
- *  • Then lights the LED solid red and disables torque, holding position.
+ *  OpenRB-150  ⇄  Core-2 UART bridge + multi-servo range-calibration demo
+ *  – 2025-05-19
+ *  • Uses Serial2 (TX=D14 PB22  RX=D13 PB23) at 115 200 baud to talk to an
+ *    M5Stack Core2.  Falls back to “dry-run” if the Core2 does not reply.
+ *  • Calibrates seven Dynamixel servos (IDs 0-6) or assigns manual limits.
+ *  • After calibration it sweeps the first servo twice, then idles.
  ******************************************************************************/
 
 #include <Dynamixel2Arduino.h>
 
-/* ──────────────────────────  PORT MAP  ────────────────────────── */
-#define DXL_SERIAL   Serial1           // Serial port for Dynamixel bus
-#define DEBUG_SERIAL Serial            // Serial port for debug output
-const int DXL_DIR_PIN = -1;            // Direction pin (not used on OpenRB-150)
-const int DXL_PWR_EN  = BDPIN_DXL_PWR_EN; // Power enable pin for Dynamixel bus
+/* ————— DYNAMIXEL BUS ————— */
+#define DXL_SERIAL   Serial1          // UART wired to the JST-PX connector
+const int DXL_DIR_PIN = -1;           // direction pin not used on OpenRB-150
+const int DXL_PWR_EN  = BDPIN_DXL_PWR_EN;
+const uint32_t DXL_BAUD     = 57600;
+const float    DXL_PROTOCOL = 2.0;
 
-/* ───── USER SETTINGS ─────*/
-const uint32_t BAUD    = 57600;        // Baud rate for Dynamixel bus
-const float    PROTO   = 2.0;          // Protocol version
+/* ————— CORE-2 LINK ————— */
+#define DEBUG_SERIAL Serial
+const uint32_t LINK_BAUD    = 115200; // must match Core-2
 
-/* ───── CALIBRATION CONSTANTS ─────*/
-const float STEP_DEG        = 15.0f;   // Angle to move per creep step (degrees)
-const int   WAIT_MS         = 500;     // Wait time after each creep (ms)
-const float STALL_THRESHOLD = 0.20f;   // If movement < 20% of step, assume limit
+/* ————— CALIBRATION BEHAVIOUR ————— */
+const float STEP_DEG        = 15.0f;
+const int   WAIT_MS         = 500;
+const float STALL_THRESHOLD = 0.20f;
+const float VELOCITY_DEG_S  = 10.0f;
+const int   SWEEP_DELAY_MS  = 5000;
 
-/* ───── SPEED & TIMING SETTINGS ─────*/
-const float VELOCITY_DEG_S = 10.0f;    // Max sweep speed (degrees/second)
-const int   SWEEP_DELAY_MS = 5000;     // Dwell time at each end of sweep (ms)
+/* ————— ANGLE ↔︎ TICK helpers ————— */
+constexpr float DEG_PER_TICK = 360.0f / 4096.0f;
+inline int32_t deg2t(float d)  { return int32_t(d / DEG_PER_TICK + 0.5f); }
+inline float   t2deg(int32_t t){ return t * DEG_PER_TICK; }
 
-/* ───── MODEL-SPECIFIC RESOLUTION ─────*/
-const float DEG_PER_TICK = 360.0f/4096.0f; // Degrees per encoder tick (for 12-bit Dynamixel)
-
-Dynamixel2Arduino dxl( DXL_SERIAL, DXL_DIR_PIN );
+Dynamixel2Arduino dxl(DXL_SERIAL, DXL_DIR_PIN);
 using namespace ControlTableItem;
 
-// Convert degrees to Dynamixel ticks
-inline int32_t deg2t(float d)  { return int32_t(d/DEG_PER_TICK + 0.5f); }
-// Convert Dynamixel ticks to degrees
-inline float   t2deg(int32_t t){ return t*DEG_PER_TICK; }
-
-/* ─── globals to hold the measured limits ──────────────────────── */
-int32_t minPos, maxPos; // Will store the measured min/max positions
-
-// === ADVANCED MULTI-SERVO CALIBRATION AND DATA REPORTING ===
-//
-// This version supports 7 servos (IDs 0-6). Some servos use hardcoded min/max values,
-// others are calibrated. After calibration, all min/max data is sent to an ESP32 via Serial.
-
-// Use a macro to auto-generate the servo ID array for 0..6
+/* ========================================================================== */
+/*                                SERVO TABLE                                 */
+/* ========================================================================== */
 #define NUM_SERVOS 7
-const uint8_t SERVOS[NUM_SERVOS] = {0, 1, 2, 3, 4, 5, 6}; // Servo IDs 0-6
-
-// Specify which servos use manual min/max (true = manual, false = calibrate)
-const bool USE_MANUAL_LIMITS[NUM_SERVOS] = {true, false, true, false, false, true, false};
-
-// Manual min/max values (degrees) for servos that use manual limits
-const float MANUAL_MIN[NUM_SERVOS] = {-90, 0, -45, 0, 0, -60, 0};
-const float MANUAL_MAX[NUM_SERVOS] = {90, 0, 45, 0, 0, 60, 0};
-
-// Store min/max positions (ticks) for all servos
-int32_t minPosArr[NUM_SERVOS];
-int32_t maxPosArr[NUM_SERVOS];
-
-// Servo names for correlation with UI and Python config
+const uint8_t SERVOS[NUM_SERVOS] = {0, 1, 2, 3, 4, 5, 6};
 const char* SERVO_NAMES[NUM_SERVOS] = {
-  "lens",    // 0
-  "eyelid1", // 1
-  "eyelid2", // 2
-  "eyeX",    // 3
-  "eyeY",    // 4
-  "handle1", // 5
-  "handle2"  // 6
+  "lens", "eyelid1", "eyelid2", "eyeX", "eyeY", "handle1", "handle2"
 };
 
-// Creep in one direction until the servo stops moving (hits limit)
-// Returns the last valid position before the limit
-int32_t findLimit(uint8_t id, int dir) {
-  const int32_t step    = deg2t(STEP_DEG)*dir; // Step size in ticks, with direction
-  int32_t       lastPos = dxl.getPresentPosition(id); // Start from current position
+/* If true → fixed limits from table, otherwise auto-calibrate */
+const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {true, false, true, false, false, true, false};
+const float MANUAL_MIN[NUM_SERVOS]        = {-90, 0, -45, 0, 0, -60, 0};
+const float MANUAL_MAX[NUM_SERVOS]        = { 90, 0,  45, 0, 0,  60, 0};
+
+int32_t minPosArr[NUM_SERVOS];      // filled at run-time
+int32_t maxPosArr[NUM_SERVOS];
+
+/* ========================================================================== */
+/*                         CALIBRATION + HELPER ROUTINES                      */
+/* ========================================================================== */
+
+int32_t findLimit(uint8_t id, int dir)
+{
+  const int32_t step = deg2t(STEP_DEG) * dir;
+  int32_t lastPos = dxl.getPresentPosition(id);
 
   while (true) {
-    dxl.setGoalPosition(id, lastPos + step); // Command next step
-    while (dxl.readControlTableItem(MOVING, id)); // Wait for movement to finish
-    delay(WAIT_MS); // Allow time to settle
+    dxl.setGoalPosition(id, lastPos + step);
+    while (dxl.readControlTableItem(MOVING, id));   // wait
+    delay(WAIT_MS);
 
-    int32_t nowPos    = dxl.getPresentPosition(id); // Read new position
-    float    movement = abs(nowPos - lastPos);      // How far did it move?
-    float    threshold= abs(step)*STALL_THRESHOLD;  // Minimum movement to count as not stalled
-
-    if (movement < threshold) {
-      // If movement is too small, we've hit the limit
-      return lastPos;
-    }
-    lastPos = nowPos; // Otherwise, keep creeping
+    int32_t nowPos = dxl.getPresentPosition(id);
+    if (abs(nowPos - lastPos) < abs(step) * STALL_THRESHOLD)
+      return lastPos;                               // limit reached
+    lastPos = nowPos;
   }
 }
 
-// Helper: Print the status of all servos in a table
-void printAllServoStatus() {
-  DEBUG_SERIAL.println("\nServo Status Table:");
-  DEBUG_SERIAL.println("ID\tName\t\tMin(deg)\tMax(deg)\tCurrent(deg)");
+void printAllServoStatus()
+{
+  DEBUG_SERIAL.println(F("\nID\tName\t\tMin°\tMax°\tCurrent°"));
   for (uint8_t i = 0; i < NUM_SERVOS; ++i) {
-    float minD = t2deg(minPosArr[i]);
-    float maxD = t2deg(maxPosArr[i]);
-    float curD = 0;
-    if (dxl.ping(SERVOS[i])) {
-      curD = t2deg(dxl.getPresentPosition(SERVOS[i]));
-    }
-    DEBUG_SERIAL.print(SERVOS[i]); DEBUG_SERIAL.print("\t");
-    DEBUG_SERIAL.print(SERVO_NAMES[i]); DEBUG_SERIAL.print("\t");
-    if (strlen(SERVO_NAMES[i]) < 7) DEBUG_SERIAL.print("\t"); // align
-    DEBUG_SERIAL.print(minD, 1); DEBUG_SERIAL.print("\t\t");
-    DEBUG_SERIAL.print(maxD, 1); DEBUG_SERIAL.print("\t\t");
-    DEBUG_SERIAL.print(curD, 1);
-    DEBUG_SERIAL.println();
+    float cur = dxl.ping(SERVOS[i]) ? t2deg(dxl.getPresentPosition(SERVOS[i])) : 0;
+    DEBUG_SERIAL.printf("%d\t%-8s\t%5.1f\t%5.1f\t%5.1f\n",
+                        SERVOS[i], SERVO_NAMES[i],
+                        t2deg(minPosArr[i]), t2deg(maxPosArr[i]), cur);
   }
 }
 
-// Modified calibrate function to support per-servo calibration/manual
-void calibrateOrAssignLimits(uint8_t idx) {
-  uint8_t id = SERVOS[idx];
-  const char* name = SERVO_NAMES[idx];
-  DEBUG_SERIAL.print("[INFO] Preparing to calibrate/assign limits for servo ");
-  DEBUG_SERIAL.print(id); DEBUG_SERIAL.print(" ("); DEBUG_SERIAL.print(name); DEBUG_SERIAL.println(")");
+void calibrateOrAssignLimits(uint8_t idx)
+{
+  const uint8_t id = SERVOS[idx];
   if (USE_MANUAL_LIMITS[idx]) {
     minPosArr[idx] = deg2t(MANUAL_MIN[idx]);
     maxPosArr[idx] = deg2t(MANUAL_MAX[idx]);
-    DEBUG_SERIAL.print("[INFO] Servo "); DEBUG_SERIAL.print(id);
-    DEBUG_SERIAL.print(" (" ); DEBUG_SERIAL.print(name); DEBUG_SERIAL.print(") manual min = ");
-    DEBUG_SERIAL.print(MANUAL_MIN[idx]);
-    DEBUG_SERIAL.print("°, max = "); DEBUG_SERIAL.print(MANUAL_MAX[idx]);
-    DEBUG_SERIAL.println("°");
+    DEBUG_SERIAL.printf("[INFO] Servo %d (%s) manual min=%.1f max=%.1f\n",
+                        id, SERVO_NAMES[idx], MANUAL_MIN[idx], MANUAL_MAX[idx]);
   } else {
-    DEBUG_SERIAL.print("[CALIBRATE] Servo "); DEBUG_SERIAL.print(id);
-    DEBUG_SERIAL.print(" (" ); DEBUG_SERIAL.print(name); DEBUG_SERIAL.println(") starting calibration...");
+    DEBUG_SERIAL.printf("[CAL]  Servo %d (%s) auto-calibrating…\n",
+                        id, SERVO_NAMES[idx]);
     dxl.torqueOff(id);
     dxl.setOperatingMode(id, OP_EXTENDED_POSITION);
     dxl.writeControlTableItem(PROFILE_VELOCITY, id, deg2t(VELOCITY_DEG_S));
     dxl.torqueOn(id);
-    int32_t center = dxl.getPresentPosition(id);
+
+    const int32_t center = dxl.getPresentPosition(id);
     minPosArr[idx] = findLimit(id, -1);
-    maxPosArr[idx] = findLimit(id, +1);
-    DEBUG_SERIAL.print("[INFO] Servo "); DEBUG_SERIAL.print(id);
-    DEBUG_SERIAL.print(" (" ); DEBUG_SERIAL.print(name); DEBUG_SERIAL.print(") calibrated min = ");
-    DEBUG_SERIAL.print(t2deg(minPosArr[idx]), 1);
-    DEBUG_SERIAL.print("°, max = "); DEBUG_SERIAL.print(t2deg(maxPosArr[idx]), 1);
-    DEBUG_SERIAL.println("°");
-    dxl.setGoalPosition(id, center);
+    maxPosArr[idx] = findLimit(id,  1);
+
+    DEBUG_SERIAL.printf("[CAL]  min=%.1f°, max=%.1f°\n",
+                        t2deg(minPosArr[idx]), t2deg(maxPosArr[idx]));
+
+    dxl.setGoalPosition(id, center);                // return to centre
     while (dxl.readControlTableItem(MOVING, id));
   }
-  printAllServoStatus();
 }
 
-// Add a flag to control dry run mode
-bool dryrunn = DRYRUNN; // DRYRUNN is the default, but can be set at runtime if ESP32 is not detected
+bool dryRun = true;      // becomes false after successful handshake
 
-// Send all min/max data to ESP32 as CSV over Serial, or just print if dry run
-void sendLimitsToESP32() {
-  DEBUG_SERIAL.println("\n[INFO] Sending min/max data to ESP32:");
-  // Format: id,min_deg,max_deg;id,min_deg,max_deg;...
+void sendLimitsToCore2()
+{
+  DEBUG_SERIAL.println(F("[INFO] Sending min/max table"));
   for (uint8_t i = 0; i < NUM_SERVOS; ++i) {
-    float minD = t2deg(minPosArr[i]);
-    float maxD = t2deg(maxPosArr[i]);
-    if (dryrunn) {
-      // Print to Serial only
-      Serial.print(SERVOS[i]); Serial.print(",");
-      Serial.print(minD, 1); Serial.print(",");
-      Serial.print(maxD, 1);
-      if (i < NUM_SERVOS - 1) Serial.print(";");
-    } else {
-      // Send to ESP32 via Serial2
-      Serial2.print(SERVOS[i]); Serial2.print(",");
-      Serial2.print(minD, 1); Serial2.print(",");
-      Serial2.print(maxD, 1);
-      if (i < NUM_SERVOS - 1) Serial2.print(";");
-    }
-    DEBUG_SERIAL.print("[ID "); DEBUG_SERIAL.print(SERVOS[i]);
-    DEBUG_SERIAL.print(": min "); DEBUG_SERIAL.print(minD, 1);
-    DEBUG_SERIAL.print(", max "); DEBUG_SERIAL.print(maxD, 1);
-    DEBUG_SERIAL.println("]");
+    const float mn = t2deg(minPosArr[i]);
+    const float mx = t2deg(maxPosArr[i]);
+
+    /* CSV chunk:  id,min,max; */
+    Serial2.print(SERVOS[i]); Serial2.print(",");
+    Serial2.print(mn, 1);     Serial2.print(",");
+    Serial2.print(mx, 1);
+    if (i < NUM_SERVOS - 1) Serial2.print(";");
   }
-  if (dryrunn) {
-    Serial.println(); // End of message
-  } else {
-    Serial2.println(); // End of message
-  }
+  Serial2.println();
 }
 
-// --- Serial Command Parsing from ESP32 ---
-// Accepts: MOVE_SERVO;ID=2;TARGET=45;VELOCITY=5;IDLE=10;INTERVAL=1500\n
-void handleMoveServoCommand(const String& cmd) {
-  DEBUG_SERIAL.print("[CMD] Received: "); DEBUG_SERIAL.println(cmd);
-  int id = -1;
-  float target = 0;
-  float velocity = VELOCITY_DEG_S;
-  int idIdx = cmd.indexOf("ID=");
-  int targetIdx = cmd.indexOf("TARGET=");
-  int velIdx = cmd.indexOf("VELOCITY=");
-  if (idIdx >= 0) {
-    id = cmd.substring(idIdx + 3, cmd.indexOf(';', idIdx)).toInt();
+/* ————— command from Core-2: MOVE_SERVO;ID=3;TARGET=45;VELOCITY=5; ————— */
+void handleMoveServoCommand(const String& cmd)
+{
+  int id = cmd.substring(cmd.indexOf("ID=") + 3,
+                         cmd.indexOf(';', cmd.indexOf("ID="))).toInt();
+  float tgt = cmd.substring(cmd.indexOf("TARGET=") + 7,
+                            cmd.indexOf(';', cmd.indexOf("TARGET="))).toFloat();
+  float vel = cmd.substring(cmd.indexOf("VELOCITY=") + 9,
+                            cmd.lastIndexOf(';')).toFloat();
+
+  if (id < 0 || id >= NUM_SERVOS) {
+    DEBUG_SERIAL.println(F("[ERR] Bad ID"));
+    return;
   }
-  if (targetIdx >= 0) {
-    target = cmd.substring(targetIdx + 7, cmd.indexOf(';', targetIdx) > 0 ? cmd.indexOf(';', targetIdx) : cmd.length()).toFloat();
-  }
-  if (velIdx >= 0) {
-    velocity = cmd.substring(velIdx + 9, cmd.indexOf(';', velIdx) > 0 ? cmd.indexOf(';', velIdx) : cmd.length()).toFloat();
-  }
-  if (id >= 0 && id < NUM_SERVOS) {
-    // Clamp target to min/max
-    float minD = t2deg(minPosArr[id]);
-    float maxD = t2deg(maxPosArr[id]);
-    float clamped = constrain(target, minD, maxD);
-    DEBUG_SERIAL.print("[ACTION] Moving servo "); DEBUG_SERIAL.print(id);
-    DEBUG_SERIAL.print(" (" ); DEBUG_SERIAL.print(SERVO_NAMES[id]); DEBUG_SERIAL.print(") to ");
-    DEBUG_SERIAL.print(clamped); DEBUG_SERIAL.print(" deg at velocity "); DEBUG_SERIAL.println(velocity);
-    dxl.writeControlTableItem(PROFILE_VELOCITY, id, deg2t(velocity));
-    dxl.setGoalPosition(id, deg2t(clamped));
-    printAllServoStatus();
-  } else {
-    DEBUG_SERIAL.println("[ERROR] Invalid servo ID in MOVE_SERVO command");
-    if (!dryrunn) Serial2.println("ERR: Invalid servo ID");
-  }
+  tgt = constrain(tgt, t2deg(minPosArr[id]), t2deg(maxPosArr[id]));
+  dxl.writeControlTableItem(PROFILE_VELOCITY, id, deg2t(vel));
+  dxl.setGoalPosition(id, deg2t(tgt));
+
+  DEBUG_SERIAL.printf("[ACT] Servo %d → %.1f° @ %.1f deg/s\n", id, tgt, vel);
 }
 
-// Arduino setup: initialize serial, Dynamixel, power, and calibrate all servos
-void setup() {
-  DEBUG_SERIAL.begin(115200); // Start debug serial
-  DEBUG_SERIAL.println("[BOOT] OpenRB-150 calibration firmware starting...");
-  dxl.begin(BAUD);            // Start Dynamixel bus
-  dxl.setPortProtocolVersion(PROTO); // Set protocol version
+/* ========================================================================== */
+/*                                   SETUP                                    */
+/* ========================================================================== */
+void setup()
+{
+  DEBUG_SERIAL.begin(115200);
+  DEBUG_SERIAL.println(F("\n[BOOT] OpenRB-150"));
 
-  pinMode(DXL_PWR_EN, OUTPUT);        // Set power enable pin as output
-  digitalWrite(DXL_PWR_EN, HIGH);     // Turn on Dynamixel bus power
+  /* power up Dynamixel bus */
+  pinMode(DXL_PWR_EN, OUTPUT);
+  digitalWrite(DXL_PWR_EN, HIGH);
 
-  Serial2.begin(115200); // Serial2 for ESP32 communication
+  dxl.begin(DXL_BAUD);
+  dxl.setPortProtocolVersion(DXL_PROTOCOL);
 
-  // Try to detect ESP32 by sending a handshake and waiting for a response
-  if (!DRYRUNN) {
-    DEBUG_SERIAL.println("[INFO] Attempting handshake with ESP32...");
-    Serial2.print("HELLO\n");
-    unsigned long start = millis();
-    bool esp32_found = false;
-    while (millis() - start < 500) { // Wait up to 500ms for a response
-      if (Serial2.available()) {
-        String resp = Serial2.readStringUntil('\n');
-        if (resp.indexOf("ESP32") >= 0) {
-          esp32_found = true;
-          break;
-        }
-      }
-    }
-    if (!esp32_found) {
-      dryrunn = true;
-      DEBUG_SERIAL.println("[WARN] ESP32 not detected, switching to dry run mode.");
-    } else {
-      dryrunn = false;
-      DEBUG_SERIAL.println("[INFO] ESP32 detected, sending data to ESP32.");
+  /* link to Core-2 */
+  Serial2.begin(LINK_BAUD);
+
+  /* handshake */
+  Serial2.println("HELLO");
+  unsigned long t0 = millis();
+  while (millis() - t0 < 500) {
+    if (Serial2.available() && Serial2.find("ESP32")) {
+      dryRun = false;
+      DEBUG_SERIAL.println(F("[INFO] Core-2 detected"));
+      break;
     }
   }
+  if (dryRun) DEBUG_SERIAL.println(F("[WARN] No Core-2 response → dry-run"));
+
+  /* servo discovery + calibration */
   for (uint8_t i = 0; i < NUM_SERVOS; ++i) {
-    uint8_t id = SERVOS[i];
-    DEBUG_SERIAL.print("[INFO] Pinging servo ID "); DEBUG_SERIAL.print(id); DEBUG_SERIAL.print(" ("); DEBUG_SERIAL.print(SERVO_NAMES[i]); DEBUG_SERIAL.println(")...");
+    const uint8_t id = SERVOS[i];
+    DEBUG_SERIAL.printf("[PING] ID %d (%s)… ", id, SERVO_NAMES[i]);
     if (!dxl.ping(id)) {
-      DEBUG_SERIAL.print("[ERROR] ❌ ID ");
-      DEBUG_SERIAL.print(id);
-      DEBUG_SERIAL.println(" not responding. Assigning default min/max = 0.");
-      // Assign default min/max if not responding
-      minPosArr[i] = deg2t(0);
-      maxPosArr[i] = deg2t(0);
+      DEBUG_SERIAL.println("❌ not found, limits = 0");
+      minPosArr[i] = maxPosArr[i] = 0;
       continue;
     }
+    DEBUG_SERIAL.println("✅");
     calibrateOrAssignLimits(i);
   }
-  sendLimitsToESP32();
-  DEBUG_SERIAL.println("\n--- calibration complete ---");
   printAllServoStatus();
+  if (!dryRun) sendLimitsToCore2();
+  DEBUG_SERIAL.println(F("[INFO] Calibration complete"));
 }
 
-// Arduino loop: sweep back and forth twice, then stop and indicate done
-void loop() {
-  // Handle incoming commands from ESP32
-  if (!dryrunn && Serial2.available()) {
-    String cmd = Serial2.readStringUntil('\n');
-    cmd.trim();
-    if (cmd.startsWith("MOVE_SERVO")) {
-      DEBUG_SERIAL.println("[INFO] Handling MOVE_SERVO command from ESP32...");
-      handleMoveServoCommand(cmd);
-    }
+/* ========================================================================== */
+/*                                    LOOP                                    */
+/* ========================================================================== */
+void loop()
+{
+  /* listen for commands */
+  if (!dryRun && Serial2.available()) {
+    String msg = Serial2.readStringUntil('\n');
+    msg.trim();
+    if (msg.startsWith("MOVE_SERVO")) handleMoveServoCommand(msg);
   }
-  // Example: sweep only the first servo (ID 0) as before, or expand as needed
-  uint8_t idx = 0;
-  uint8_t id = SERVOS[idx];
-  static int cycles = 0;
 
-  if (cycles < 2) {
-    DEBUG_SERIAL.println("[SWEEP] Moving to min position...");
-    dxl.setGoalPosition(id, minPosArr[idx]);
-    while (dxl.readControlTableItem(MOVING, id));
-    printAllServoStatus();
+  /* demo sweep on servo 0 — two cycles then idle */
+  static int cycles = 0;
+  static bool sweeping = true;
+  const uint8_t demoIdx = 0, demoID = SERVOS[demoIdx];
+
+  if (sweeping && cycles < 2) {
+    dxl.setGoalPosition(demoID, minPosArr[demoIdx]);
+    while (dxl.readControlTableItem(MOVING, demoID));
     delay(SWEEP_DELAY_MS);
-    DEBUG_SERIAL.println("[SWEEP] Moving to max position...");
-    dxl.setGoalPosition(id, maxPosArr[idx]);
-    while (dxl.readControlTableItem(MOVING, id));
-    printAllServoStatus();
+
+    dxl.setGoalPosition(demoID, maxPosArr[demoIdx]);
+    while (dxl.readControlTableItem(MOVING, demoID));
     delay(SWEEP_DELAY_MS);
+
     cycles++;
-  } else {
-    DEBUG_SERIAL.println("[DONE] Sweep complete. Disabling torque and lighting LED.");
-    dxl.writeControlTableItem(LED, id, 1);
-    dxl.torqueOff(id);
-    printAllServoStatus();
-    while (true) { /* halt further actions */ }
+  } else if (sweeping) {
+    dxl.writeControlTableItem(LED, demoID, 1);     // red LED
+    dxl.torqueOff(demoID);
+    DEBUG_SERIAL.println(F("[DONE] Demo sweep finished"));
+    sweeping = false;
   }
 }
