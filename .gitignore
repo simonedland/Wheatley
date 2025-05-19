@@ -2,6 +2,9 @@
 Wheatly/python/src/config/config.yaml
 Wheatly/python/src/config/token.json
 
+# Ignore secrets and config files
+Wheatly/python/src/config/config.yaml
+Wheatly/python/src/config/token.json
 
 
 # Common Python ignores
