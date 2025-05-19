@@ -66,6 +66,9 @@ void drawSingle(int i) {
 
 // --- Send MOVE_SERVO command to OpenRB-150 when servo is changed ---
 void sendMoveServoCommand(int id, int target, int velocity) {
+  Serial.print("[ESP32] Sending MOVE_SERVO command: ID=");
+  Serial.print(id); Serial.print(", Target="); Serial.print(target);
+  Serial.print(", Velocity="); Serial.println(velocity);
   // Format: MOVE_SERVO;ID=2;TARGET=45;VELOCITY=5;
   String cmd = "MOVE_SERVO;ID=" + String(id) + ";TARGET=" + String(target) + ";VELOCITY=" + String(velocity) + ";\n";
   Serial.print(cmd); // Send to OpenRB-150
@@ -148,6 +151,23 @@ void handleCalibrationData(const String& line) {
   }
   drawWindow();
   Serial.println("OK: Calibration data received");
+  Serial.println("[ESP32] Received calibration data from OpenRB-150:");
+  printAllServoStatus();
+}
+
+// Helper: Print the status of all servos
+void printAllServoStatus() {
+  Serial.println("\n[ESP32] Servo Status Table:");
+  Serial.println("ID\tName\t\tMin\tMax\tCurrent");
+  for (int i = 0; i < NUM_SERVOS; ++i) {
+    Serial.print(i); Serial.print("\t");
+    Serial.print(SERVO_NAMES[i]); Serial.print("\t");
+    if (strlen(SERVO_NAMES[i]) < 7) Serial.print("\t");
+    Serial.print(servoMin[i]); Serial.print("\t");
+    Serial.print(servoMax[i]); Serial.print("\t");
+    Serial.print(servoPos[i]);
+    Serial.println();
+  }
 }
 
 void setup() {
@@ -167,6 +187,7 @@ void loop() {
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
+    Serial.print("[ESP32] Serial received: "); Serial.println(cmd);
     if (cmd.startsWith("HELLO")) {
       Serial.println("ESP32"); // Respond to handshake
     } else if (cmd.indexOf(',') > 0 && cmd.indexOf(';') > 0) {
