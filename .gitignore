@@ -1,6 +1,7 @@
 # Ignore configuration file with secrets
-Weatly/python/src/config/config.yaml
-Weatly/python/src/config/token.json
+Wheatly/python/src/config/config.yaml
+Wheatly/python/src/config/token.json
+
 
 # Common Python ignores
 __pycache__/
