@@ -1,4 +1,7 @@
 {
-  "neutral": 1,
-  "happy": 3
+  "neutral": 13,
+  "happy": 31,
+  "curious": 1,
+  "proud": 1,
+  "excited": 1
 }

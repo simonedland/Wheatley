@@ -1,14 +1,16 @@
 # =================== Imports: Standard Libraries ===================
-import os
-import logging
+import os  # For file and path operations
+import logging  # For logging events and timings
+import time  # For timing actions
 
 # =================== Imports: Third-Party Libraries ===================
-import yaml
-import pyaudio
-import openai
-from playsound import playsound
-from colorama import init, Fore, Style
+import yaml  # For reading YAML config files
+import pyaudio  # For audio input/output
+import openai  # For OpenAI API access
+from playsound import playsound  # For playing audio files
+from colorama import init, Fore, Style  # For colored terminal output
 
+# Try to import RPi.GPIO for Raspberry Pi GPIO control; disable if not available
 try:
     import RPi.GPIO as GPIO
 except ImportError:
@@ -16,30 +18,45 @@ except ImportError:
     print("RPi.GPIO module not found; GPIO functionality will be disabled.")
 
 # =================== Imports: Local Modules ===================
-from hardware.arduino_interface import ArduinoInterface  # NEW import
-from assistant.assistant import ConversationManager
-from llm.llm_client import GPTClient, Functions
-from tts.tts_engine import TextToSpeechEngine  # NEW import
-from stt.stt_engine import SpeechToTextEngine  # NEW import
+from hardware.arduino_interface import ArduinoInterface  # Arduino hardware interface
+from assistant.assistant import ConversationManager  # Manages conversation history
+from llm.llm_client import GPTClient, Functions  # LLM client and function tools
+from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
+from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
 
 # =================== Global Constants ===================
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 44100
-THRESHOLD = 3000
-SILENCE_LIMIT = 1  # seconds
+CHUNK = 1024  # Audio chunk size
+FORMAT = pyaudio.paInt16  # Audio format
+CHANNELS = 1  # Mono audio
+RATE = 44100  # Audio sample rate
+THRESHOLD = 3000  # Audio threshold for silence detection
+SILENCE_LIMIT = 1  # Silence limit in seconds
 
-# Initialize colorama
+# Initialize colorama for colored terminal output
 init(autoreset=True)
 
 # =================== Helper Functions ===================
 
+# Robust logging setup: always log to file only
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+# Remove all handlers associated with the root logger object (prevents duplicate logs)
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+file_handler = logging.FileHandler('assistant.log', mode='w', encoding='utf-8')
+file_handler.setFormatter(log_formatter)
+root_logger.addHandler(file_handler)
+
+# Load configuration from YAML file
 def load_config():
     config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
+# Print ASCII art welcome message to the terminal
 def print_welcome():
     RESET = "\033[0m"
     RETRO_COLOR = "\033[95m"
@@ -62,15 +79,18 @@ def print_welcome():
     """)
     print(f"{RETRO_COLOR}Welcome to the AI Assistant!{RESET}")
 
-# NEW: Initialize assistant components
+# =================== Assistant Initialization ===================
+# Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
 def initialize_assistant(config):
-    stt_enabled = config["stt"]["enabled"]
-    tts_enabled = config["tts"]["enabled"]
-    assistant_config = config.get("app")
-    max_memory = assistant_config.get("max_memory")
-    llm_config = config.get("llm")
-    gpt_model = llm_config.get("model")
+    start_time = time.time()  # Start timing initialization
+    stt_enabled = config["stt"]["enabled"]  # Speech-to-text enabled
+    tts_enabled = config["tts"]["enabled"]  # Text-to-speech enabled
+    assistant_config = config.get("app")  # App-specific config
+    max_memory = assistant_config.get("max_memory")  # Conversation memory size
+    llm_config = config.get("llm")  # LLM config
+    gpt_model = llm_config.get("model")  # LLM model name
     
+    # Initialize core components
     manager = ConversationManager(max_memory=max_memory)
     gpt_client = GPTClient(model=gpt_model)
     stt_engine = SpeechToTextEngine()
@@ -78,6 +98,7 @@ def initialize_assistant(config):
     import sys
     port = None
     dry_run = False
+    # Detect available serial ports for Arduino (platform-specific)
     if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
         print("Available ports:")
         os.system("ls /dev/tty*")
@@ -107,37 +128,48 @@ def initialize_assistant(config):
             arduino_interface = ArduinoInterface(port=port, dry_run=True)
     else:
         arduino_interface = ArduinoInterface(port="dryrun", dry_run=True)
+    elapsed = time.time() - start_time
+    logging.info(f"initialize_assistant completed in {elapsed:.3f} seconds.")
+    # Return all initialized components and feature flags
     return manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled
 
-# NEW: Conversation loop handling
+# =================== Conversation loop handling ===================
+# Main loop for user interaction, workflow execution, and response
 def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
-    # Set up terminal formatting variables
     RESET = "\033[0m"
     RETRO_COLOR = "\033[95m"
     SEPARATOR = f"\n{RETRO_COLOR}" + "=" * 50 + f"{RESET}\n"
 
     while True:
-        print(SEPARATOR)
-        # Get the user input either via Speech-to-Text (if enabled) or regular text input
+        # --- New User Input Section ---
+        action_start = time.time()
+        # Get user input (via STT if enabled, else text input)
         if stt_enabled:
             user_input = stt_engine.record_and_transcribe()
-            print("User:", user_input)
         else:
             user_input = input("User: ")
+        # Log the new user input and timing
+        logging.info(f"\n=== New User Input: {user_input} ===")
+        logging.info(f"User input received in {time.time() - action_start:.3f} seconds.")
+        # Add user input to conversation history
+        action_start = time.time()
+        manager.add_text_to_conversation("user", user_input)
+        logging.info(f"Added user input to conversation in {time.time() - action_start:.3f} seconds.")
+        logging.info("-" * 60)
         
-        # Exit loop if user types "exit"
+        # Exit if user types 'exit'
         if user_input.lower() == "exit":
             break
         
-        # Save the user input into the conversation history
-        manager.add_text_to_conversation("user", user_input)
-        
-        chain_retry = 0  # Initialize a loop count for function workflow processing
+        # --- Workflow/Function Execution Section ---
+        chain_retry = 0
         while chain_retry < 3:
-            # Retrieve a workflow (list of function calls) from GPT based on the conversation context
+            action_start = time.time()
+            # Get workflow (function/tool calls) from GPT based on conversation
             workflow = gpt_client.get_workflow(manager.get_conversation())
+            logging.info(f"GPT workflow generation took {time.time() - action_start:.3f} seconds.")
             if workflow:
-                # Debug: Print out the name and arguments for each function call retrieved
+                # Log each function call in the workflow
                 for call in workflow:
                     print(f"{RETRO_COLOR}Name: {call.get('name', 'unknown')}{RESET}")
                     print(f"{RETRO_COLOR}Arguments: {call.get('arguments', {})}{RESET}")
@@ -147,42 +179,53 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
                         context_text = item.get("arguments", {}).get("text", "")
                         if context_text:
                             manager.add_text_to_conversation("system", f"Info: {context_text}")
-                # Remove non-executable info items from the workflow for subsequent function execution
+                # Remove non-executable info items
                 workflow = [item for item in workflow if item.get("name") != "web_search_call_result"]
-            # Break out of retry loop if no executable workflow remains
             if not workflow:
                 break
-            # Execute the workflow functions and add their results to the conversation as system messages
+            # Execute all tools/functions in the workflow and add results to conversation
+            logging.info(f"--- Executing Tool Workflow ---")
             fn_results = Functions().execute_workflow(workflow) or []
             for fn_name, result in fn_results:
                 manager.add_text_to_conversation("system", str(result))
-            # If no further workflow steps are generated, exit the retry loop
-            if not gpt_client.get_workflow(manager.get_conversation()):
-                break
-            chain_retry += 1  # Increment retry counter if additional workflow steps were generated
+            logging.info("-" * 60)
+            chain_retry += 1
 
+        # --- Assistant Response Section ---
         try:
-            # Retrieve the assistant's text response from GPT using the current conversation history
+            action_start = time.time()
+            # Get assistant's text response from GPT
             gpt_text = gpt_client.get_text(manager.get_conversation())
+            logging.info(f"GPT text response in {time.time() - action_start:.3f} seconds.")
         except Exception as e:
-            print(f"Error getting GPT text: {e}")
+            logging.error(f"Error getting GPT text: {e}")
             continue
         
-        # Add the assistant's GPT response to the conversation history and display the conversation memory
+        # Add assistant response to conversation and print memory (for debugging)
+        action_start = time.time()
         manager.add_text_to_conversation("assistant", gpt_text)
         manager.print_memory()
+        logging.info(f"Added assistant response and printed memory in {time.time() - action_start:.3f} seconds.")
+        logging.info("-" * 60)
         
-        # Set and activate the assistant's animation based on the GPT response
+        # --- Animation/Servo Section ---
+        action_start = time.time()
+        # Get animation from GPT and update Arduino/servo
         animation = gpt_client.reply_with_animation(manager.get_conversation())
         arduino_interface.set_animation(animation)
         arduino_interface.servo_controller.print_servo_status()
+        logging.info(f"Animation and servo status in {time.time() - action_start:.3f} seconds.")
+        logging.info("-" * 60)
         
-        # If TTS is enabled, use it to vocalize the response; otherwise, print the text response
+        # --- TTS/Output Section ---
+        action_start = time.time()
+        # Speak or log the assistant's response
         if tts_enabled:
             tts_engine.generate_and_play_advanced(gpt_text)
         else:
-            print("Assistant:", gpt_text)
-
+            logging.info(f"Assistant: {gpt_text}")
+        logging.info(f"TTS or print response in {time.time() - action_start:.3f} seconds.")
+        logging.info("\n" + "=" * 60 + "\n")
 # =================== Main Code ===================
 def main():
     config = load_config()

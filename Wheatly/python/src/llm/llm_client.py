@@ -5,6 +5,7 @@ import yaml
 import os
 import logging
 import requests
+import time
 
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
@@ -80,14 +81,18 @@ class TextToSpeech:
         self.client = ElevenLabs(api_key=self.api_key)
     
     def elevenlabs_generate_audio(self, text):
+        start_time = time.time()
         # Generates audio using ElevenLabs TTS with configured parameters
-        return self.client.text_to_speech.convert(
+        audio = self.client.text_to_speech.convert(
             text=text,
             voice_id=self.voice_id,
             voice_settings=self.voice_settings,
             model_id=self.model_id,
             output_format=self.output_format
         )
+        elapsed = time.time() - start_time
+        logging.info(f"TTS audio generation took {elapsed:.3f} seconds.")
+        return audio
     
     def generate_and_play_advanced(self, text):
         base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -100,6 +105,7 @@ class TextToSpeech:
             for chunk in audio_chunks:
                 temp_file.write(chunk)
             file_path = temp_file.name
+        play_start = time.time()
         try:
             playsound(file_path)
         except Exception as e:
@@ -109,6 +115,8 @@ class TextToSpeech:
                 os.remove(file_path)
             except Exception as e:
                 logging.error(f"Error deleting audio file: {e}")
+        play_elapsed = time.time() - play_start
+        logging.info(f"TTS audio playback took {play_elapsed:.3f} seconds.")
 
 # =================== LLM Client ===================
 # This class is responsible for interacting with the OpenAI API
@@ -122,10 +130,12 @@ class GPTClient:
         openai.api_key = self.api_key
 
     def get_text(self, conversation):
+        start_time = time.time()
         completion = openai.responses.create(
             model=self.model,
             input=conversation,
         )
+        elapsed = time.time() - start_time
         if not getattr(completion, "output", None):
             raise Exception("No response from GPT")
         first_msg = completion.output[0]
@@ -138,12 +148,15 @@ class GPTClient:
         return text
 
     def reply_with_animation(self, conversation):
+        start_time = time.time()
         completion = openai.responses.create(
             model=self.model,
             input=conversation,
             tools=set_animation_tool,
             tool_choice={"name": "set_animation", "type": "function"}
         )
+        elapsed = time.time() - start_time
+        logging.info(f"GPT animation selection took {elapsed:.3f} seconds.")
         choice = completion.output[0]
         animation = ""
         try:
@@ -160,12 +173,14 @@ class GPTClient:
         return animation
         
     def get_workflow(self, conversation):
+        start_time = time.time()
         completion = openai.responses.create(
             model=self.model,
             input=conversation,
             tools=tools,
             parallel_tool_calls=True
         )
+        elapsed = time.time() - start_time
         choice = completion.output
         results = []
         if completion.output[0].type == "web_search_call":
@@ -341,6 +356,8 @@ class Functions:
         results = []
         for item in workflow:
             func_name = item.get("name")
+            logging.info(f"\n--- Tool Execution: {func_name} ---")
+            tool_start = time.time()
             if self.tts_enabled:
                 conversation = [
                     {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
@@ -349,12 +366,11 @@ class Functions:
                 text = self.test.get_text(conversation)
                 tts_engine.generate_and_play_advanced(text)
             if func_name == "call_google_agent":
-                #print("Google Agent function call")
                 user_request = item.get("arguments", {}).get("user_request", "")
                 args = item.get("arguments", {}).get("arguments", {})
                 response = self.google_agent.llm_decide_and_dispatch(user_request, args)
                 results.append((func_name, response))
-            if func_name == "get_weather":
+            elif func_name == "get_weather":
                 get_weather_args = item.get("arguments")
                 latitude = get_weather_args.get("latitude")
                 longitude = get_weather_args.get("longitude")
@@ -389,8 +405,9 @@ class Functions:
             elif func_name == "get_advice":
                 response = self.get_advice()
                 results.append((func_name, response))
-            else:
-                logging.info("No function to execute")
+            tool_elapsed = time.time() - tool_start
+            logging.info(f"Tool '{func_name}' execution took {tool_elapsed:.3f} seconds.")
+            logging.info("-" * 60)
         return results
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):
