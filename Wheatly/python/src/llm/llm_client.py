@@ -407,7 +407,6 @@ class Functions:
                 results.append((func_name, response))
             tool_elapsed = time.time() - tool_start
             logging.info(f"Tool '{func_name}' execution took {tool_elapsed:.3f} seconds.")
-            logging.info("-" * 60)
         return results
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):
@@ -474,7 +473,7 @@ class Functions:
     def get_joke(self):
         response = requests.get("https://official-joke-api.appspot.com/random_joke")
         data = response.json()
-        joke = f"Provide joke: {data.get('setup')} - {data.get('punchline')}"
+        joke = f"Provide the following joke to the user: {data.get('setup')} - {data.get('punchline')}"
         return joke
 
     def get_quote(self):

@@ -50,6 +50,11 @@ file_handler = logging.FileHandler('assistant.log', mode='w', encoding='utf-8')
 file_handler.setFormatter(log_formatter)
 root_logger.addHandler(file_handler)
 
+# Suppress verbose HTTP logs from openai, httpx, and requests
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+
 # Load configuration from YAML file
 def load_config():
     config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
@@ -150,12 +155,8 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
             user_input = input("User: ")
         # Log the new user input and timing
         logging.info(f"\n=== New User Input: {user_input} ===")
-        logging.info(f"User input received in {time.time() - action_start:.3f} seconds.")
-        # Add user input to conversation history
         action_start = time.time()
         manager.add_text_to_conversation("user", user_input)
-        logging.info(f"Added user input to conversation in {time.time() - action_start:.3f} seconds.")
-        logging.info("-" * 60)
         
         # Exit if user types 'exit'
         if user_input.lower() == "exit":
@@ -188,7 +189,6 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
             fn_results = Functions().execute_workflow(workflow) or []
             for fn_name, result in fn_results:
                 manager.add_text_to_conversation("system", str(result))
-            logging.info("-" * 60)
             chain_retry += 1
 
         # --- Assistant Response Section ---
@@ -202,11 +202,8 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
             continue
         
         # Add assistant response to conversation and print memory (for debugging)
-        action_start = time.time()
         manager.add_text_to_conversation("assistant", gpt_text)
         manager.print_memory()
-        logging.info(f"Added assistant response and printed memory in {time.time() - action_start:.3f} seconds.")
-        logging.info("-" * 60)
         
         # --- Animation/Servo Section ---
         action_start = time.time()
@@ -215,7 +212,6 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
         arduino_interface.set_animation(animation)
         arduino_interface.servo_controller.print_servo_status()
         logging.info(f"Animation and servo status in {time.time() - action_start:.3f} seconds.")
-        logging.info("-" * 60)
         
         # --- TTS/Output Section ---
         action_start = time.time()
