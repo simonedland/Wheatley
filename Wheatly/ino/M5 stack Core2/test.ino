@@ -1,6 +1,6 @@
 /******************************************************************************
  *  Core-2 touch UI for 7-servo head • talks to OpenRB-150 on UART2
- *  – 2025-05-19
+ *  fixed: 2025-05-21  (early “ESP32” handshake)
  ******************************************************************************/
 
 #include <M5Unified.h>
@@ -120,7 +120,6 @@ void handleCalibrationData(const String& line)
 /* plain MOVE_SERVO or other commands from OpenRB (not used here) */
 void handleSerialCommand(const String& cmd)
 {
-  /* currently no reverse commands needed */
   Serial.printf("[RB>] %s\n", cmd.c_str());
 }
 
@@ -131,11 +130,15 @@ void handleLink()
     String msg = OpenRB.readStringUntil('\n');
     msg.trim();
 
-    if (msg.startsWith("HELLO"))          OpenRB.println("ESP32");
-    else if (msg.indexOf(',') > 0 && msg.indexOf(';') > 0)
+    if (msg.startsWith("HELLO")) {
+      Serial.println("[RB>] HELLO");
+      OpenRB.println("ESP32");
+      Serial.printf("[<RB] %s\n", msg.c_str());
+    } else if (msg.indexOf(',') > 0 && msg.indexOf(';') > 0) {
       handleCalibrationData(msg);
-    else if (msg.length())
+    } else if (msg.length()) {
       handleSerialCommand(msg);
+    }
   }
 }
 
@@ -152,6 +155,9 @@ void setup()
 
   M5.Lcd.setTextSize(2);
   drawWindow();
+
+  /* ───── proactive handshake (in case we boot first) ───── */
+  OpenRB.println("ESP32");
 }
 
 /* ===================================================================== */

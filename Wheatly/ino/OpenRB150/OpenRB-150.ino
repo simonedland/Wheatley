@@ -1,6 +1,6 @@
 /******************************************************************************
  *  OpenRB-150  ⇄  Core-2 UART bridge + multi-servo calibration demo
- *  fixed: 2025-05-20  (printf wrapper now sees DEBUG_SERIAL)
+ *  fixed: 2025-05-21  (10 s handshake & servo-torque tweak)
  ******************************************************************************/
 
 #include <Arduino.h>
@@ -15,7 +15,7 @@
 /* --------------------------------------------------------------------------
  *  printf-compat layer – works on every core
  * --------------------------------------------------------------------------*/
-#ifndef PRINT_HAS_PRINTF          // boards that already have Print::printf
+#ifndef PRINT_HAS_PRINTF
   #if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_STM32)
     #define PRINT_HAS_PRINTF  1
   #else
@@ -25,7 +25,7 @@
 
 #if PRINT_HAS_PRINTF
   #define DBG_PRINTF(...)  DEBUG_SERIAL.printf(__VA_ARGS__)
-#else                                   /* lightweight fallback */
+#else
   inline void dbgPrintf(const char *fmt, ...)
   {
     char buf[128];
@@ -40,13 +40,14 @@
 
 /* ————— DYNAMIXEL BUS ————— */
 #define DXL_SERIAL   Serial1
-const int DXL_DIR_PIN = -1;
-const int DXL_PWR_EN  = BDPIN_DXL_PWR_EN;
-const uint32_t DXL_BAUD     = 57600;
-const float    DXL_PROTOCOL = 2.0;
+const int  DXL_DIR_PIN  = -1;
+const int  DXL_PWR_EN   = BDPIN_DXL_PWR_EN;
+const uint32_t DXL_BAUD = 57600;
+const float     DXL_PROTOCOL = 2.0;
 
 /* ————— CORE-2 LINK ————— */
-const uint32_t LINK_BAUD    = 115200;
+const uint32_t LINK_BAUD = 115200;
+#define HANDSHAKE_TIMEOUT_MS 10000        // keep trying for 10 s
 
 /* ————— CALIBRATION SETTINGS ————— */
 const float STEP_DEG        = 15.0f;
@@ -76,7 +77,7 @@ const float MANUAL_MAX[NUM_SERVOS]        = { 90,0, 45,0,0, 60,0};
 int32_t minPosArr[NUM_SERVOS];
 int32_t maxPosArr[NUM_SERVOS];
 
-/* ------------- helper routines (unchanged) ------------- */
+/* ------------- helper routines ------------- */
 int32_t findLimit(uint8_t id,int dir)
 {
   const int32_t step = deg2t(STEP_DEG)*dir;
@@ -169,15 +170,24 @@ void setup()
 
   Serial2.begin(LINK_BAUD);
 
-  Serial2.println("HELLO");
-  unsigned long t0=millis();
-  while (millis()-t0<500){
-    if (Serial2.available()&&Serial2.find("ESP32")){
-      dryRun=false; DEBUG_SERIAL.println(F("[INFO] Core-2 detected")); break;
-    }
-  }
-  if (dryRun) DEBUG_SERIAL.println(F("[WARN] No Core-2 response → dry-run"));
+  /* ───── 10 s bidirectional handshake ───── */
+  unsigned long start = millis();
+  while (millis() - start < HANDSHAKE_TIMEOUT_MS) {
+    Serial2.println("HELLO");                     // announce ourselves
 
+    unsigned long sliceEnd = millis() + 300;      // short listen window
+    while (millis() < sliceEnd) {
+      if (Serial2.available() && Serial2.find("ESP32")) {
+        dryRun = false;
+        DEBUG_SERIAL.println(F("[INFO] Core-2 detected"));
+        break;
+      }
+    }
+    if (!dryRun) break;                           // success
+  }
+  if (dryRun) DEBUG_SERIAL.println(F("[WARN] No Core-2 response after 10 s ⇒ dry-run"));
+
+  /* ───── probe & calibrate servos ───── */
   for (uint8_t i=0;i<NUM_SERVOS;++i){
     uint8_t id = SERVOS[i];
     DBG_PRINTF("[PING] ID %d (%s)… ",id,SERVO_NAMES[i]);
@@ -187,7 +197,9 @@ void setup()
     }
     DEBUG_SERIAL.println("✅");
     calibrateOrAssignLimits(i);
+    dxl.torqueOn(id);            // ensure torque for demo
   }
+
   printAllServoStatus();
   if (!dryRun) sendLimitsToCore2();
 }
@@ -202,6 +214,8 @@ void loop()
 
   static int cycles=0; static bool sweeping=true;
   const uint8_t demoIdx=0, demoID=SERVOS[demoIdx];
+
+  if (sweeping) dxl.torqueOn(demoID);   // keep powered
 
   if (sweeping && cycles<2){
     dxl.setGoalPosition(demoID,minPosArr[demoIdx]);
