@@ -7,6 +7,13 @@
 #include <Dynamixel2Arduino.h>
 #include <stdarg.h>               // for vsnprintf
 
+// -----------------------------------------------------------------------------
+// OpenRB-150  ⇄  Core-2 UART bridge + multi-servo calibration demo
+// -----------------------------------------------------------------------------
+// Talks to M5Stack Core2 over UART2, calibrates Dynamixel servos, and responds
+// to servo move commands. Blinks onboard LED after handshake with Core2.
+// -----------------------------------------------------------------------------
+
 /* --------------------------------------------------------------------------
  *  Serial alias (define this *first* so helpers can use it)
  * --------------------------------------------------------------------------*/
@@ -40,21 +47,21 @@
 
 /* ————— DYNAMIXEL BUS ————— */
 #define DXL_SERIAL   Serial1
-const int  DXL_DIR_PIN  = -1;
-const int  DXL_PWR_EN   = BDPIN_DXL_PWR_EN;
-const uint32_t DXL_BAUD = 57600;
-const float     DXL_PROTOCOL = 2.0;
+const int  DXL_DIR_PIN  = -1; // Direction pin (not used)
+const int  DXL_PWR_EN   = BDPIN_DXL_PWR_EN; // Power enable pin
+const uint32_t DXL_BAUD = 57600;            // Dynamixel baud rate
+const float     DXL_PROTOCOL = 2.0;         // Protocol version
 
 /* ————— CORE-2 LINK ————— */
-const uint32_t LINK_BAUD = 115200;
-#define HANDSHAKE_TIMEOUT_MS 10000        // keep trying for 10 s
+const uint32_t LINK_BAUD = 115200;          // UART2 baud rate
+#define HANDSHAKE_TIMEOUT_MS 10000          // Handshake timeout (ms)
 
 /* ————— CALIBRATION SETTINGS ————— */
-const float STEP_DEG        = 15.0f;
-const int   WAIT_MS         = 500;
-const float STALL_THRESHOLD = 0.20f;
-const float VELOCITY_DEG_S  = 10.0f;
-const int   SWEEP_DELAY_MS  = 5000;
+const float STEP_DEG        = 15.0f;        // Step size for calibration (deg)
+const int   WAIT_MS         = 500;          // Wait after move (ms)
+const float STALL_THRESHOLD = 0.20f;        // Threshold for stall detection
+const float VELOCITY_DEG_S  = 10.0f;        // Default velocity (deg/s)
+const int   SWEEP_DELAY_MS  = 5000;         // Delay for demo sweep (ms)
 
 /* ————— Angle ↔︎ Tick helpers ————— */
 constexpr float DEG_PER_TICK = 360.0f / 4096.0f;
@@ -74,10 +81,11 @@ const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {true,false,true,false,false,true,fa
 const float MANUAL_MIN[NUM_SERVOS]        = {-90,0,-45,0,0,-60,0};
 const float MANUAL_MAX[NUM_SERVOS]        = { 90,0, 45,0,0, 60,0};
 
-int32_t minPosArr[NUM_SERVOS];
-int32_t maxPosArr[NUM_SERVOS];
+int32_t minPosArr[NUM_SERVOS]; // Min position (ticks) for each servo
+int32_t maxPosArr[NUM_SERVOS]; // Max position (ticks) for each servo
 
 /* ------------- helper routines ------------- */
+// Find mechanical limit for a servo in a given direction
 int32_t findLimit(uint8_t id,int dir)
 {
   const int32_t step = deg2t(STEP_DEG)*dir;
@@ -92,6 +100,7 @@ int32_t findLimit(uint8_t id,int dir)
   }
 }
 
+// Print all servo status to debug serial
 void printAllServoStatus()
 {
   DEBUG_SERIAL.println(F("\nID\tName\t\tMin°\tMax°\tCurrent°"));
@@ -103,6 +112,7 @@ void printAllServoStatus()
   }
 }
 
+// Calibrate or assign manual limits for a servo
 void calibrateOrAssignLimits(uint8_t idx)
 {
   uint8_t id = SERVOS[idx];
@@ -128,19 +138,27 @@ void calibrateOrAssignLimits(uint8_t idx)
 }
 
 /* ---------------- UART helpers ---------------- */
-bool dryRun = true;
+// dryRun: If true, disables all servo actions and calibration (set if handshake fails)
+bool dryRun = true; 
+// servoPingResult: For each servo, true if it responded to ping, false if not
+bool servoPingResult[NUM_SERVOS] = {false}; 
 
+// sendLimitsToCore2: Send calibration and ping results to Core2 as a CSV string
+// Format: id,min,max,ping;id,min,max,ping;...
 void sendLimitsToCore2()
 {
   for (uint8_t i=0;i<NUM_SERVOS;++i){
     Serial2.print(SERVOS[i]); Serial2.print(',');
     Serial2.print(t2deg(minPosArr[i]),1); Serial2.print(',');
-    Serial2.print(t2deg(maxPosArr[i]),1);
+    Serial2.print(t2deg(maxPosArr[i]),1); Serial2.print(',');
+    Serial2.print(servoPingResult[i] ? '1' : '0');
     if (i<NUM_SERVOS-1) Serial2.print(';');
   }
   Serial2.println();
 }
 
+// handleMoveServoCommand: Parse and execute a MOVE_SERVO command from Core2
+// Only acts if not in dryRun mode and ID is valid
 void handleMoveServoCommand(const String& cmd)
 {
   int id = cmd.substring(cmd.indexOf("ID=")+3,
@@ -156,6 +174,8 @@ void handleMoveServoCommand(const String& cmd)
   DBG_PRINTF("[ACT] Servo %d → %.1f° @ %.1f deg/s\n",id,tgt,vel);
 }
 
+// blinkOnboardLED: Blink the onboard LED (LED_BUILTIN) a given number of times
+// Used for visual feedback after successful handshake
 void blinkOnboardLED(int times) {
   pinMode(LED_BUILTIN, OUTPUT);
   for (int i = 0; i < times; ++i) {
@@ -167,25 +187,30 @@ void blinkOnboardLED(int times) {
 }
 
 /* -------------------- SETUP -------------------- */
+// Main setup sequence:
+// 1. Start serial and Dynamixel bus
+// 2. Attempt handshake with Core2 (10s timeout)
+// 3. If handshake fails, enter dryRun (do nothing else)
+// 4. If handshake succeeds, calibrate all servos and send results to Core2
 void setup()
 {
   DEBUG_SERIAL.begin(115200);
   DEBUG_SERIAL.println(F("\n[BOOT] OpenRB-150"));
 
-  pinMode(DXL_PWR_EN,OUTPUT);
+  pinMode(DXL_PWR_EN,OUTPUT);           // Enable Dynamixel power
   digitalWrite(DXL_PWR_EN,HIGH);
 
-  dxl.begin(DXL_BAUD);
+  dxl.begin(DXL_BAUD);                  // Start Dynamixel bus
   dxl.setPortProtocolVersion(DXL_PROTOCOL);
 
-  Serial2.begin(LINK_BAUD);
+  Serial2.begin(LINK_BAUD);             // Start UART2 for Core2 link
 
-  /* ───── 10 s bidirectional handshake ───── */
+  // --- 10 s bidirectional handshake with Core2 ---
+  // Only proceed if handshake is successful
   unsigned long start = millis();
   while (millis() - start < HANDSHAKE_TIMEOUT_MS) {
-    Serial2.println("HELLO");                     // announce ourselves
-
-    unsigned long sliceEnd = millis() + 300;      // short listen window
+    Serial2.println("HELLO");                     // Announce ourselves
+    unsigned long sliceEnd = millis() + 300;      // Short listen window
     while (millis() < sliceEnd) {
       if (Serial2.available() && Serial2.find("ESP32")) {
         dryRun = false;
@@ -194,39 +219,55 @@ void setup()
         break;
       }
     }
-    if (!dryRun) break;                           // success
+    if (!dryRun) break;                           // Success
   }
-  if (dryRun) DEBUG_SERIAL.println(F("[WARN] No Core-2 response after 10 s ⇒ dry-run"));
+  if (dryRun) {
+    DEBUG_SERIAL.println(F("[WARN] No Core-2 response after 10 s ⇒ dry-run"));
+    // Do not calibrate or send anything in dryRun
+    return;
+  }
 
-  /* ───── probe & calibrate servos ───── */
+  // --- Probe & calibrate all servos only if not dryRun ---
+  // For each servo:
+  //   - Ping to check if present
+  //   - If present, calibrate and enable torque
+  //   - If not present, set limits to 0
   for (uint8_t i=0;i<NUM_SERVOS;++i){
     uint8_t id = SERVOS[i];
     DBG_PRINTF("[PING] ID %d (%s)… ",id,SERVO_NAMES[i]);
     if (!dxl.ping(id)){
       DEBUG_SERIAL.println("❌ not found, limits = 0");
-      minPosArr[i]=maxPosArr[i]=0; continue;
+      minPosArr[i]=maxPosArr[i]=0;
+      servoPingResult[i] = false;
+      continue;
     }
     DEBUG_SERIAL.println("✅");
+    servoPingResult[i] = true;
     calibrateOrAssignLimits(i);
-    dxl.torqueOn(id);            // ensure torque for demo
+    dxl.torqueOn(id);            // Ensure torque for demo
   }
 
   printAllServoStatus();
-  if (!dryRun) sendLimitsToCore2();
+  sendLimitsToCore2(); // Send calibration and ping to Core2
 }
 
 /* --------------------- LOOP --------------------- */
+// Main loop:
+// - Only handle servo commands if not in dryRun mode
+// - Demo sweep is always safe (only acts on working servos)
 void loop()
 {
+  // Handle incoming commands from Core2
   if (!dryRun && Serial2.available()){
     String msg = Serial2.readStringUntil('\n'); msg.trim();
     if (msg.startsWith("MOVE_SERVO")) handleMoveServoCommand(msg);
   }
 
+  // Demo: sweep first servo back and forth twice, then turn on LED
   static int cycles=0; static bool sweeping=true;
   const uint8_t demoIdx=0, demoID=SERVOS[demoIdx];
 
-  if (sweeping) dxl.torqueOn(demoID);   // keep powered
+  if (sweeping) dxl.torqueOn(demoID);   // Keep powered
 
   if (sweeping && cycles<2){
     dxl.setGoalPosition(demoID,minPosArr[demoIdx]);
@@ -235,7 +276,7 @@ void loop()
     while (dxl.readControlTableItem(MOVING,demoID)); delay(SWEEP_DELAY_MS);
     cycles++;
   } else if (sweeping){
-    dxl.writeControlTableItem(LED,demoID,1);
+    dxl.writeControlTableItem(LED,demoID,1); // Turn on demo servo LED
     dxl.torqueOff(demoID);
     DEBUG_SERIAL.println(F("[DONE] Demo sweep finished"));
     sweeping=false;
