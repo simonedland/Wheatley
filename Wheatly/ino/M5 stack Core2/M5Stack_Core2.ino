@@ -78,6 +78,16 @@ void drawSingle(int i)
   drawLine(i, yOffset + row * lineHeight);
 }
 
+void blinkScreen(int times) {
+  for (int i = 0; i < times; ++i) {
+    M5.Lcd.fillScreen(RED);
+    delay(150);
+    M5.Lcd.fillScreen(BLACK);
+    delay(150);
+  }
+  drawWindow();
+}
+
 /* ---------------- UART helpers ---------------- */
 void sendMoveServoCommand(int id, int tgt, int vel)
 {
@@ -131,9 +141,9 @@ void handleLink()
     msg.trim();
 
     if (msg.startsWith("HELLO")) {
-      Serial.println("[RB>] HELLO");
       OpenRB.println("ESP32");
       Serial.printf("[<RB] %s\n", msg.c_str());
+      blinkScreen(3); // Blink screen 3 times on handshake
     } else if (msg.indexOf(',') > 0 && msg.indexOf(';') > 0) {
       handleCalibrationData(msg);
     } else if (msg.length()) {

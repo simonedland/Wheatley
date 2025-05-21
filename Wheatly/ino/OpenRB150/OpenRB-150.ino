@@ -156,6 +156,16 @@ void handleMoveServoCommand(const String& cmd)
   DBG_PRINTF("[ACT] Servo %d → %.1f° @ %.1f deg/s\n",id,tgt,vel);
 }
 
+void blinkOnboardLED(int times) {
+  pinMode(LED_BUILTIN, OUTPUT);
+  for (int i = 0; i < times; ++i) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(200);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(200);
+  }
+}
+
 /* -------------------- SETUP -------------------- */
 void setup()
 {
@@ -180,6 +190,7 @@ void setup()
       if (Serial2.available() && Serial2.find("ESP32")) {
         dryRun = false;
         DEBUG_SERIAL.println(F("[INFO] Core-2 detected"));
+        blinkOnboardLED(3); // Blink onboard LED 3 times on handshake
         break;
       }
     }
