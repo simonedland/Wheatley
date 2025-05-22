@@ -267,28 +267,7 @@ class ServoController:
         print("-" * 80)
 
     def set_emotion(self, emotion):
-        """Adjust each servo based on the desired emotion's standby animation and log emotion usage for bias analysis."""
-        # Log emotion usage to a counter file
-        import os
-        import json
-        counter_file = os.path.join(os.path.dirname(__file__), 'emotion_counter.json')
-        # Read current counts
-        if os.path.exists(counter_file):
-            try:
-                with open(counter_file, 'r') as f:
-                    emotion_counts = json.load(f)
-            except Exception:
-                emotion_counts = {}
-        else:
-            emotion_counts = {}
-        # Increment count for this emotion
-        emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
-        # Write back updated counts
-        try:
-            with open(counter_file, 'w') as f:
-                json.dump(emotion_counts, f, indent=2)
-        except Exception as e:
-            print(f"[EmotionCounter] Failed to write emotion counter: {e}")
+        """Adjust each servo based on the desired emotion's standby animation"""
         if emotion not in self.emotion_animations:
             print(f"Emotion '{emotion}' not supported. Using 'neutral'.")
             emotion = 'neutral'

@@ -128,6 +128,14 @@ class GPTClient:
         self.model = model
         self.tts_enabled = config["tts"]["enabled"]
         openai.api_key = self.api_key
+        self.last_mood = "neutral"  # Track last selected mood
+        # Load emotion counter from file
+        emotion_counter_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "llm", "emotion_counter.json")
+        try:
+            with open(emotion_counter_path, "r") as f:
+                self.emotion_counter = json.load(f)
+        except Exception:
+            self.emotion_counter = {}
 
     def get_text(self, conversation):
         start_time = time.time()
@@ -149,10 +157,28 @@ class GPTClient:
 
     def reply_with_animation(self, conversation):
         start_time = time.time()
+        # Compose context about emotion counter for the LLM
+        if self.emotion_counter:
+            most_common = max(self.emotion_counter, key=self.emotion_counter.get)
+            counter_str = ", ".join(f"{k}: {v}" for k, v in self.emotion_counter.items())
+            counter_context = f"Emotion usage counts: {counter_str}. Most used: {most_common}. Prefer less used emotions for more variation. Never use the most used one."
+        else:
+            counter_context = "No emotion usage data available."
+        # Dynamically inject last_mood and emotion counter context
+        dynamic_set_animation_tool = [
+            {
+                **set_animation_tool[0],
+                "description": set_animation_tool[0]["description"].replace(
+                    "{last_mood}", self.last_mood
+                ) + f" {counter_context}"
+            }
+        ]
+        #print the sdescription
+        print(dynamic_set_animation_tool[0]["description"])
         completion = openai.responses.create(
             model=self.model,
             input=conversation,
-            tools=set_animation_tool,
+            tools=dynamic_set_animation_tool,
             tool_choice={"name": "set_animation", "type": "function"}
         )
         elapsed = time.time() - start_time
@@ -170,6 +196,18 @@ class GPTClient:
                     animation = args.get("animation", "")
                 except Exception:
                     animation = ""
+        if animation:
+            self.last_mood = animation  # Update last mood for next call
+            # Update emotion counter and persist
+            if animation in self.emotion_counter:
+                self.emotion_counter[animation] += 1
+            else:
+                self.emotion_counter[animation] = 1
+            try:
+                with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "llm", "emotion_counter.json"), "w") as f:
+                    json.dump(self.emotion_counter, f, indent=2)
+            except Exception as e:
+                logging.error(f"Failed to update emotion_counter.json: {e}")
         return animation
         
     def get_workflow(self, conversation):
@@ -214,7 +252,7 @@ set_animation_tool = [
     {
         "type": "function",
         "name": "set_animation",
-        "description": "The Wheatley bot should select an animation based on the emotional state it determines from the current context or input. The function will analyze the tone, keywords, and interaction style to decide which emotional state best reflects the bot's current mood or reaction. Depending on the chosen emotion, the corresponding animation should be selected to visually represent that state, ensuring it aligns with the emotional intensity. For example, a more dramatic emotion like \"fearful\" may trigger exaggerated, frantic movements, while a \"neutral\" state might result in subtle, minimal animations. The animation choice should dynamically vary based on the bot's emotional state, adding diversity and depth to its interactions, ensuring that each response feels unique and appropriate.",
+        "description": "The Wheatley bot should select an animation based on the emotional state it determines from the current context or input. Last known mood: {last_mood}. Use this as context for your choice. The function will analyze the tone, keywords, and interaction style to decide which emotional state best reflects the bot's current mood or reaction.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -229,8 +267,17 @@ set_animation_tool = [
     }
 ]
 
+# Dynamically build the tools list to include web_search_preview preferences from config
+config = _load_config()
+web_search_config = config.get("web_search", {})
+web_search_tool = {"type": "web_search_preview", "description": "Search the web for information."}
+if "user_location" in web_search_config:
+    web_search_tool["user_location"] = web_search_config["user_location"]
+if "search_context_size" in web_search_config:
+    web_search_tool["search_context_size"] = web_search_config["search_context_size"]
+
 tools = [
-    {"type": "web_search_preview"},
+    web_search_tool,
     {
         "type": "function",
         "name": "get_weather",
