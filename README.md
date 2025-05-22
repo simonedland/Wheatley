@@ -36,4 +36,21 @@
 - [ ] Add a google callender tool to the LLM.
 - [ ] Add a google notes tool to the LLM.
 
+### ideas
+diggital twin?
+readup in another voice?
+self aware of mood?
+object spotting???
+proactive conversation?
+briefing?
+air quality allert?
+multi speaker recognition
+todo list
+Multi-room audio orchestrator
+   add a tool that can inject music in the queue
+Quirkiness slider 
+Voiceprint authentication – owner unlocks high-impact commands; guests get limited scope.
+Web search preferences
+
+
 ![image](https://github.com/user-attachments/assets/8a19e5c1-a585-4bda-a584-b9c9db2b953a)
