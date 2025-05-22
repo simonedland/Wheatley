@@ -18,6 +18,11 @@ try:
 except ImportError:
   from google_agent import GoogleCalendarManager
 
+try:
+    from llm.spotify_agent import SpotifyAgent
+except ImportError:
+    from spotify_agent import SpotifyAgent
+
 from llm.google_agent import GoogleAgent
   
 logging.basicConfig(level=logging.WARN)
@@ -173,8 +178,6 @@ class GPTClient:
                 ) + f" {counter_context}"
             }
         ]
-        #print the sdescription
-        print(dynamic_set_animation_tool[0]["description"])
         completion = openai.responses.create(
             model=self.model,
             input=conversation,
@@ -270,7 +273,7 @@ set_animation_tool = [
 # Dynamically build the tools list to include web_search_preview preferences from config
 config = _load_config()
 web_search_config = config.get("web_search", {})
-web_search_tool = {"type": "web_search_preview", "description": "Search the web for information."}
+web_search_tool = {"type": "web_search_preview"}
 if "user_location" in web_search_config:
     web_search_tool["user_location"] = web_search_config["user_location"]
 if "search_context_size" in web_search_config:
@@ -385,6 +388,16 @@ tools = [
             "required": ["user_request"],
             "additionalProperties": False
         }
+    },
+    {
+        "type": "function",
+        "name": "call_spotify_agent",
+        "description": "Delegate any Spotify request—play, pause, search, queue, device control, etc.—to the Spotify Agent. Use this whenever the user mentions Spotify or music playback.",
+        "parameters": {
+            "type": "object",
+            "properties": {"user_request": {"type": "string"}},
+            "required": ["user_request"],
+        },
     }
 ]
 
@@ -397,6 +410,7 @@ class Functions:
         config = _load_config()
         self.tts_enabled = config["tts"]["enabled"]
         self.google_agent = GoogleAgent()
+        self.spotify_agent = SpotifyAgent()
         
 
     def execute_workflow(self, workflow):
@@ -417,6 +431,13 @@ class Functions:
                 args = item.get("arguments", {}).get("arguments", {})
                 response = self.google_agent.llm_decide_and_dispatch(user_request, args)
                 results.append((func_name, response))
+
+            elif func_name == "call_spotify_agent":
+                user_req = item.get("arguments", {}).get("user_request", "")
+                args = item.get("arguments", {}).get("arguments", {})
+                response = self.spotify_agent.llm_decide_and_dispatch(user_req, args)
+                results.append((func_name, response))
+                
             elif func_name == "get_weather":
                 get_weather_args = item.get("arguments")
                 latitude = get_weather_args.get("latitude")

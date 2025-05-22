@@ -6,6 +6,7 @@ Wheatly/python/src/config/token.json
 Wheatly/python/src/config/config.yaml
 Wheatly/python/src/config/token.json
 
+.cache
 
 # Common Python ignores
 __pycache__/
