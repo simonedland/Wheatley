@@ -1,273 +1,293 @@
 /******************************************************************************
- *  OpenRB-150  ⇄  Core-2 UART bridge + multi-servo calibration demo
- *  fixed: 2025-05-21  (10 s handshake & servo-torque tweak)
- *  modified: 2025-05-23  (moved Core-2 link to Serial3 on pins D14/D13)
+ *  Core-2 touch UI for 7-servo head • talks to OpenRB-150 on UART2
+ *  fixed: 2025-05-21  (early “ESP32” handshake)
  ******************************************************************************/
 
-#include <Arduino.h>
-#include <Dynamixel2Arduino.h>
-#include <stdarg.h>
-#include <stdio.h>
+#include <M5Unified.h>
+#include <HardwareSerial.h>
+HardwareSerial OpenRB(2);                  // use ESP32 UART2
 
-/* ---------- FIX: force printf off on SAMD ---------- */
-#undef  PRINT_HAS_PRINTF      // throw away the previous value if any
-#define PRINT_HAS_PRINTF 0    // SAMD core has no Serial.printf()
-/* --------------------------------------------------- */
+// UART2 pin assignments for Grove Port-C
+constexpr int RX2_PIN = 13;                // Grove Port-C white
+constexpr int TX2_PIN = 14;                // Grove Port-C yellow
+constexpr uint32_t LINK_BAUD = 115200;     // UART2 baud rate (must match OpenRB)
 
+/* ---------------- Servo State ---------------- */
+constexpr int totalServos  = 11;           // Number of lines in UI
+constexpr int activeServos = 7;            // 0…6 controllable servos
 
-/* --------------------------------------------------------------------------
- *  SERIAL ALIASES
- * --------------------------------------------------------------------------*/
-#define DEBUG_SERIAL  Serial
-#define LINK_SERIAL   Serial3           //  <-- change this line if you want
-#define Serial2       LINK_SERIAL       //  pre-processor alias
+// Structure to hold servo state and config
+struct ServoState {
+  int angle, initial_angle, velocity;
+  int min_angle, max_angle, idle_range;
+  unsigned long lastIdleUpdate, idleUpdateInterval;
+};
 
-/* --------------------------------------------------------------------------
- *  printf-compat layer – works on every core
- * --------------------------------------------------------------------------*/
-#ifndef PRINT_HAS_PRINTF
-  #if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_STM32) || \
-      defined(ARDUINO_ARCH_SAMD)
-    #define PRINT_HAS_PRINTF  1
-  #else
-    #define PRINT_HAS_PRINTF  0
-  #endif
-#endif
+// Initial values for each servo
+ServoState servos[activeServos] = {
+  {  0,  0, 5,-720, 720,10,0,2000},   // lens
+  { 30, 30, 5, 30, 60,10,0,2000},     // eyelid1
+  { 60, 60, 5, 30, 60,10,0,2000},     // eyelid2
+  { 90, 90, 5, 45,135,10,0,2000},     // eyeX
+  {120,120, 5, 40,140,10,0,2000},     // eyeY
+  {150,150, 5,  0,170,10,0,2000},     // handle1
+  {170,170, 5,  0,170,10,0,2000}      // handle2
+};
 
-#if PRINT_HAS_PRINTF
-  #define DBG_PRINTF(...)  DEBUG_SERIAL.printf(__VA_ARGS__)
-#else
-  inline void dbgPrintf(const char *fmt, ...)
-  {
-    char buf[128];
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-    DEBUG_SERIAL.print(buf);
-  }
-  #define DBG_PRINTF(...)  dbgPrintf(__VA_ARGS__)
-#endif
-
-/* ————— DYNAMIXEL BUS ————— */
-#define DXL_SERIAL   Serial1
-const int  DXL_DIR_PIN  = -1; // Direction pin (not used)
-const int  DXL_PWR_EN   = BDPIN_DXL_PWR_EN; // Power enable pin
-const uint32_t DXL_BAUD = 57600;            // Dynamixel baud rate
-const float     DXL_PROTOCOL = 2.0;         // Protocol version
-
-/* ————— CORE-2 LINK (now Serial3 / D14, D13) ————— */
-const uint32_t LINK_BAUD = 115200;          // UART baud rate
-#define HANDSHAKE_TIMEOUT_MS 10000          // Handshake timeout (ms)
-
-/* ————— CALIBRATION SETTINGS ————— */
-const float STEP_DEG        = 15.0f;        // Step size for calibration (deg)
-const int   WAIT_MS         = 500;          // Wait after move (ms)
-const float STALL_THRESHOLD = 0.20f;        // Threshold for stall detection
-const float VELOCITY_DEG_S  = 10.0f;        // Default velocity (deg/s)
-const int   SWEEP_DELAY_MS  = 5000;         // Delay for demo sweep (ms)
-
-/* ————— Angle ↔︎ Tick helpers ————— */
-constexpr float DEG_PER_TICK = 360.0f / 4096.0f;
-inline int32_t deg2t(float d)  { return int32_t(d / DEG_PER_TICK + 0.5f); }
-inline float   t2deg(int32_t t){ return t * DEG_PER_TICK; }
-
-Dynamixel2Arduino dxl(DXL_SERIAL, DXL_DIR_PIN);
-using namespace ControlTableItem;
-
-/* -------------------- SERVO TABLE -------------------- */
-#define NUM_SERVOS 7
-const uint8_t SERVOS[NUM_SERVOS] = {0,1,2,3,4,5,6};
-const char* SERVO_NAMES[NUM_SERVOS] = {
+const char* SERVO_NAMES[activeServos] = {
   "lens","eyelid1","eyelid2","eyeX","eyeY","handle1","handle2"
 };
-const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {true,false,true,false,false,true,false};
-const float MANUAL_MIN[NUM_SERVOS]        = {-90,0,-45,0,0,-60,0};
-const float MANUAL_MAX[NUM_SERVOS]        = { 90,0, 45,0,0, 60,0};
 
-int32_t minPosArr[NUM_SERVOS]; // Min position (ticks) for each servo
-int32_t maxPosArr[NUM_SERVOS]; // Max position (ticks) for each servo
+/* ---------------- UI Layout ---------------- */
+constexpr int lineHeight  = 30;            // Height of each row in UI
+constexpr int yOffset     = 20;            // Top margin
+constexpr int visibleRows = 7;             // Number of rows visible at once
+constexpr uint16_t GREY = 0x7BEF;          // Color for disabled servos
 
-/* ------------- helper routines ------------- */
-// Find mechanical limit for a servo in a given direction
-int32_t findLimit(uint8_t id,int dir)
-{
-  const int32_t step = deg2t(STEP_DEG)*dir;
-  int32_t last = dxl.getPresentPosition(id);
-  while (true) {
-    dxl.setGoalPosition(id,last+step);
-    while (dxl.readControlTableItem(MOVING,id));
-    delay(WAIT_MS);
-    int32_t now = dxl.getPresentPosition(id);
-    if (abs(now-last) < abs(step)*STALL_THRESHOLD) return last;
-    last = now;
-  }
-}
+int selected     = 0;                      // Currently selected servo
+int scrollOffset = 0;                      // Scroll position in UI
 
-// Print all servo status to debug serial
-void printAllServoStatus()
-{
-  DEBUG_SERIAL.println(F("\nID\tName\t\tMin°\tMax°\tCurrent°"));
-  for (uint8_t i=0;i<NUM_SERVOS;++i) {
-    float cur = dxl.ping(SERVOS[i])? t2deg(dxl.getPresentPosition(SERVOS[i])):0;
-    DBG_PRINTF("%d\t%-8s\t%5.1f\t%5.1f\t%5.1f\n",
-               SERVOS[i],SERVO_NAMES[i],
-               t2deg(minPosArr[i]),t2deg(maxPosArr[i]),cur);
-  }
-}
-
-// Calibrate or assign manual limits for a servo
-void calibrateOrAssignLimits(uint8_t idx)
-{
-  uint8_t id = SERVOS[idx];
-  if (USE_MANUAL_LIMITS[idx]) {
-    minPosArr[idx]=deg2t(MANUAL_MIN[idx]);
-    maxPosArr[idx]=deg2t(MANUAL_MAX[idx]);
-    DBG_PRINTF("[INFO] Servo %d (%s) manual min=%.1f max=%.1f\n",
-               id,SERVO_NAMES[idx],MANUAL_MIN[idx],MANUAL_MAX[idx]);
-  } else {
-    DBG_PRINTF("[CAL]  Servo %d (%s) auto-calibrating…\n",id,SERVO_NAMES[idx]);
-    dxl.torqueOff(id);
-    dxl.setOperatingMode(id,OP_EXTENDED_POSITION);
-    dxl.writeControlTableItem(PROFILE_VELOCITY,id,deg2t(VELOCITY_DEG_S));
-    dxl.torqueOn(id);
-    int32_t centre = dxl.getPresentPosition(id);
-    minPosArr[idx] = findLimit(id,-1);
-    maxPosArr[idx] = findLimit(id, 1);
-    DBG_PRINTF("[CAL]  min=%.1f°, max=%.1f°\n",
-               t2deg(minPosArr[idx]),t2deg(maxPosArr[idx]));
-    dxl.setGoalPosition(id,centre);
-    while (dxl.readControlTableItem(MOVING,id));
-  }
-}
-
-/* ---------------- UART helpers ---------------- */
-// dryRun: If true, disables all servo actions and calibration (set if handshake fails)
+// dryRun: If true, disables all servo actions and UI (set if handshake/calibration fails)
 bool dryRun = true; 
-// servoPingResult: For each servo, true if it responded to ping, false if not
-bool servoPingResult[NUM_SERVOS] = {false}; 
+// servoPingResult: For each servo, true if OpenRB found it, false if not
+bool servoPingResult[activeServos] = {false}; 
+// calibrationReceived: Only allow UI and servo commands after calibration is received
+bool calibrationReceived = false; 
 
-// sendLimitsToCore2: Send calibration and ping results to Core2 as a CSV string
-// Format: id,min,max,ping;id,min,max,ping;...
-void sendLimitsToCore2()
+/* ---------------- UI Drawing Helpers ---------------- */
+// Draw a single line (servo row) in the UI
+// - If servo is dead (not found by OpenRB), draw in red
+// - If selected, highlight background
+void drawLine(int i, int y)
 {
-  for (uint8_t i=0;i<NUM_SERVOS;++i){
-    Serial2.print(SERVOS[i]); Serial2.print(',');
-    Serial2.print(t2deg(minPosArr[i]),1); Serial2.print(',');
-    Serial2.print(t2deg(maxPosArr[i]),1); Serial2.print(',');
-    Serial2.print(servoPingResult[i] ? '1' : '0');
-    if (i<NUM_SERVOS-1) Serial2.print(';');
+  bool isSel = (i == selected);
+  bool isDead = (i < activeServos && !servoPingResult[i]);
+  uint16_t bg = isSel ? BLUE : BLACK;
+  uint16_t fg = isDead ? RED : (isSel ? WHITE : WHITE);
+  M5.Lcd.fillRect(0, y, M5.Lcd.width(), lineHeight, bg);
+  M5.Lcd.setCursor(10, y + 4);
+  if (i < activeServos) {
+    M5.Lcd.setTextColor(fg, bg);
+    M5.Lcd.printf("%d: %3d V:%d I:%d F:%lu",
+                  i, servos[i].angle, servos[i].velocity,
+                  servos[i].idle_range, servos[i].idleUpdateInterval);
+  } else {
+    M5.Lcd.setTextColor(GREY, BLACK);
+    M5.Lcd.printf("Servo %d: disabled", i);
   }
-  Serial2.println();
 }
 
-// handleMoveServoCommand: Parse and execute a MOVE_SERVO command from Core2
-// Only acts if not in dryRun mode and ID is valid
-void handleMoveServoCommand(const String& cmd)
+// Draw the entire visible window of servo rows
+void drawWindow()
 {
-  int id = cmd.substring(cmd.indexOf("ID=")+3,
-                         cmd.indexOf(';',cmd.indexOf("ID="))).toInt();
-  float tgt = cmd.substring(cmd.indexOf("TARGET=")+7,
-                            cmd.indexOf(';',cmd.indexOf("TARGET="))).toFloat();
-  float vel = cmd.substring(cmd.indexOf("VELOCITY=")+9,
-                            cmd.lastIndexOf(';')).toFloat();
-  if (id<0||id>=NUM_SERVOS){ DEBUG_SERIAL.println(F("[ERR] Bad ID")); return; }
-  tgt = constrain(tgt,t2deg(minPosArr[id]),t2deg(maxPosArr[id]));
-  dxl.writeControlTableItem(PROFILE_VELOCITY,id,deg2t(vel));
-  dxl.setGoalPosition(id,deg2t(tgt));
-  DBG_PRINTF("[ACT] Servo %d → %.1f° @ %.1f deg/s\n",id,tgt,vel);
+  M5.Lcd.fillScreen(BLACK);
+  for (int row = 0; row < visibleRows; ++row) {
+    int i = scrollOffset + row;
+    if (i >= totalServos) break;
+    drawLine(i, yOffset + row * lineHeight);
+  }
 }
 
-// blinkOnboardLED: Blink the onboard LED (LED_BUILTIN) a given number of times
-void blinkOnboardLED(int times) {
-  pinMode(LED_BUILTIN, OUTPUT);
+// Redraw a single servo row (if visible)
+void drawSingle(int i)
+{
+  int row = i - scrollOffset;
+  if (row < 0 || row >= visibleRows) return;
+  drawLine(i, yOffset + row * lineHeight);
+}
+
+// Blink the screen background a given number of times (handshake feedback)
+void blinkScreen(int times) {
   for (int i = 0; i < times; ++i) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(200);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(200);
+    M5.Lcd.fillScreen(RED);
+    delay(150);
+    M5.Lcd.fillScreen(BLACK);
+    delay(150);
   }
+  drawWindow();
 }
 
-/* -------------------- SETUP -------------------- */
-void setup()
+/* ---------------- UART Helpers ---------------- */
+// Send a MOVE_SERVO command to OpenRB
+void sendMoveServoCommand(int id, int tgt, int vel)
 {
-  DEBUG_SERIAL.begin(115200);
-  DEBUG_SERIAL.println(F("\n[BOOT] OpenRB-150"));
+  String cmd = "MOVE_SERVO;ID=" + String(id) +
+               ";TARGET="  + String(tgt) +
+               ";VELOCITY="+ String(vel) + ";\n";
+  OpenRB.print(cmd);
+  Serial.printf("[→RB] %s", cmd.c_str());
+}
 
-  pinMode(DXL_PWR_EN,OUTPUT);           // Enable Dynamixel power
-  digitalWrite(DXL_PWR_EN,HIGH);
-
-  dxl.begin(DXL_BAUD);                  // Start Dynamixel bus
-  dxl.setPortProtocolVersion(DXL_PROTOCOL);
-
-  Serial2.begin(LINK_BAUD);             // Start Core-2 link on Serial3
-
-  // --- 10 s bidirectional handshake with Core-2 ---
-  unsigned long start = millis();
-  while (millis() - start < HANDSHAKE_TIMEOUT_MS) {
-    Serial2.println("HELLO");                     // Announce ourselves
-    unsigned long sliceEnd = millis() + 300;      // Short listen window
-    while (millis() < sliceEnd) {
-      if (Serial2.available() && Serial2.find("ESP32")) {
-        dryRun = false;
-        DEBUG_SERIAL.println(F("[INFO] Core-2 detected"));
-        blinkOnboardLED(3);                       // Blink onboard LED 3×
-        break;
+// Parse calibration data from OpenRB and update servo limits and ping
+// Format: id,min,max,ping;id,min,max,ping;...
+//   id   = servo ID
+//   min  = min angle (deg)
+//   max  = max angle (deg)
+//   ping = 1 if found, 0 if not found
+void handleCalibrationData(const String& line)
+{
+  int last = 0;
+  int idx = 0;
+  while (last < line.length() && idx < activeServos) {
+    int next = line.indexOf(';', last);
+    String chunk = (next == -1) ? line.substring(last)
+                                : line.substring(last, next);
+    int c1 = chunk.indexOf(',');
+    int c2 = chunk.indexOf(',', c1 + 1);
+    int c3 = chunk.indexOf(',', c2 + 1);
+    if (c1 > 0 && c2 > c1 && c3 > c2) {
+      int id = chunk.substring(0, c1).toInt();
+      float mn = chunk.substring(c1 + 1, c2).toFloat();
+      float mx = chunk.substring(c2 + 1, c3).toFloat();
+      int ping = chunk.substring(c3 + 1).toInt();
+      if (id >= 0 && id < activeServos) {
+        servos[id].min_angle = round(mn);
+        servos[id].max_angle = round(mx);
+        servos[id].angle     = constrain(servos[id].angle, servos[id].min_angle,
+                                                       servos[id].max_angle);
+        servos[id].initial_angle = servos[id].angle;
+        servoPingResult[id] = (ping == 1);
       }
     }
-    if (!dryRun) break;                           // Success
+    if (next == -1) break;
+    last = next + 1;
+    idx++;
   }
-  if (dryRun) {
-    DEBUG_SERIAL.println(F("[WARN] No Core-2 response after 10 s ⇒ dry-run"));
-    return;                                       // Skip calibration in dry-run
-  }
-
-  // --- Probe & calibrate all servos ---
-  for (uint8_t i=0;i<NUM_SERVOS;++i){
-    uint8_t id = SERVOS[i];
-    DBG_PRINTF("[PING] ID %d (%s)… ",id,SERVO_NAMES[i]);
-    if (!dxl.ping(id)){
-      DEBUG_SERIAL.println("❌ not found, limits = 0");
-      minPosArr[i]=maxPosArr[i]=0;
-      servoPingResult[i] = false;
-      continue;
-    }
-    DEBUG_SERIAL.println("✅");
-    servoPingResult[i] = true;
-    calibrateOrAssignLimits(i);
-    dxl.torqueOn(id);            // Ensure torque for demo
-  }
-
-  printAllServoStatus();
-  sendLimitsToCore2();           // Send calibration & ping result to Core-2
+  calibrationReceived = true;
+  dryRun = false;
+  drawWindow();
+  Serial.println("[OK] Calibration table updated");
 }
 
-/* --------------------- LOOP --------------------- */
+// Print any other command received from OpenRB
+void handleSerialCommand(const String& cmd)
+{
+  Serial.printf("[RB>] %s\n", cmd.c_str());
+}
+
+// handleLink: Poll robot UART for messages and handle handshake, calibration, or commands
+// - On HELLO: respond, blink screen
+// - On calibration: update state, enable UI
+// - On other: print debug
+void handleLink()
+{
+  while (OpenRB.available()) {
+    String msg = OpenRB.readStringUntil('\n');
+    msg.trim();
+
+    if (msg.startsWith("HELLO")) {
+      OpenRB.println("ESP32");
+      Serial.printf("[<RB] %s\n", msg.c_str());
+      blinkScreen(3); // Blink screen 3 times on handshake
+    } else if (msg.indexOf(',') > 0 && msg.indexOf(';') > 0) {
+      handleCalibrationData(msg); // Servo calibration data
+    } else if (msg.length()) {
+      handleSerialCommand(msg);   // Other commands
+    }
+  }
+}
+
+/* ===================================================================== */
+/*                               SETUP                                   */
+/* ===================================================================== */
+// setup: Main setup sequence
+// 1. Start M5Stack and UART
+// 2. Draw initial UI
+// 3. Attempt handshake (send ESP32)
+// 4. Wait for calibration before enabling UI
+void setup()
+{
+  auto cfg = M5.config();
+  M5.begin(cfg);                        // Initialize M5Stack Core2
+
+  Serial.begin(115200);                 // USB debug
+  OpenRB.begin(LINK_BAUD, SERIAL_8N1, RX2_PIN, TX2_PIN); // UART2
+
+  M5.Lcd.setTextSize(2);
+  drawWindow();                         // Draw initial UI
+
+  /* ───── proactive handshake (in case we boot first) ───── */
+  OpenRB.println("ESP32");
+}
+
+/* ===================================================================== */
+/*                                LOOP                                   */
+/* ===================================================================== */
+// loop: Main loop
+// - Only allow UI and servo commands after calibration is received
+// - Skip dead servos in idle animation and button logic
 void loop()
 {
-  // Handle incoming commands from Core-2
-  if (!dryRun && Serial2.available()){
-    String msg = Serial2.readStringUntil('\n'); msg.trim();
-    if (msg.startsWith("MOVE_SERVO")) handleMoveServoCommand(msg);
+  M5.update();         // Update button and touch state
+  handleLink();        // Handle UART messages
+
+  // Only allow UI and servo commands after calibration is received
+  if (!calibrationReceived) {
+    delay(33);
+    return;
   }
 
-  // Demo: sweep first servo back and forth twice, then turn on LED
-  static int cycles=0; static bool sweeping=true;
-  const uint8_t demoIdx=0, demoID=SERVOS[demoIdx];
+  /* --- idle animation: random servo movement when idle --- */
+  for (int i = 0; i < activeServos; ++i) {
+    if (!servoPingResult[i]) continue; // Skip dead servos
+    unsigned long now = millis();
+    ServoState& s = servos[i];
+    if (s.idle_range > 0 &&
+        now - s.lastIdleUpdate >
+            s.idleUpdateInterval + random(0, 1000)) {
 
-  if (sweeping) dxl.torqueOn(demoID);   // Keep powered
-
-  if (sweeping && cycles<2){
-    dxl.setGoalPosition(demoID,minPosArr[demoIdx]);
-    while (dxl.readControlTableItem(MOVING,demoID)); delay(SWEEP_DELAY_MS);
-    dxl.setGoalPosition(demoID,maxPosArr[demoIdx]);
-    while (dxl.readControlTableItem(MOVING,demoID)); delay(SWEEP_DELAY_MS);
-    cycles++;
-  } else if (sweeping){
-    dxl.writeControlTableItem(LED,demoID,1); // Turn on demo servo LED
-    dxl.torqueOff(demoID);
-    DEBUG_SERIAL.println(F("[DONE] Demo sweep finished"));
-    sweeping=false;
+      int minIdle = max(s.min_angle, s.initial_angle - s.idle_range);
+      int maxIdle = min(s.max_angle, s.initial_angle + s.idle_range);
+      int newAngle = constrain(s.angle + random(-s.idle_range, s.idle_range + 1),
+                               minIdle, maxIdle);
+      if (newAngle != s.angle) {
+        s.angle = newAngle;
+        drawSingle(i);
+        sendMoveServoCommand(i, s.angle, s.velocity);
+      }
+      s.lastIdleUpdate = now;
+    }
   }
+
+  /* --- buttons: left (A) / centre (B) / right (C) --- */
+  if (M5.BtnA.isPressed() && selected < activeServos && servoPingResult[selected]) {
+    if (servos[selected].angle > servos[selected].min_angle) {
+      --servos[selected].angle;
+      drawSingle(selected);
+      sendMoveServoCommand(selected, servos[selected].angle,
+                                          servos[selected].velocity);
+    }
+  }
+  if (M5.BtnB.isPressed() && selected < activeServos && servoPingResult[selected]) {
+    if (servos[selected].angle < servos[selected].max_angle) {
+      ++servos[selected].angle;
+      drawSingle(selected);
+      sendMoveServoCommand(selected, servos[selected].angle,
+                                          servos[selected].velocity);
+    }
+  }
+  if (M5.BtnC.wasPressed()) {
+    int old = selected;
+    // Only select next working servo
+    int next = selected;
+    for (int tries = 0; tries < activeServos; ++tries) {
+      next = (next + 1) % activeServos;
+      if (servoPingResult[next]) break;
+    }
+    selected = next;
+    if (selected < scrollOffset)                scrollOffset = selected;
+    else if (selected >= scrollOffset + visibleRows)
+                                                scrollOffset = selected - visibleRows + 1;
+
+    if (scrollOffset == 0 ||
+        selected == scrollOffset ||
+        selected == scrollOffset + visibleRows - 1)
+      drawWindow();
+    else {
+      drawSingle(old);
+      drawSingle(selected);
+    }
+  }
+
+  delay(33);          // ~30 FPS UI refresh
 }
