@@ -193,11 +193,23 @@ class SpotifyAgent:
 
         if name == "get_queue":
             queue_lim = arguments.get("limit", 10)
-            q = self.spotify._queue_wait_times()[: queue_lim]
-            return [
-                {**t, "eta_hms": self.spotify._ms_to_mmss(eta)}
-                for t, eta in q
-            ]
+            q = self.spotify._queue_wait_times()[:queue_lim]
+            lines = []
+            if q:
+                #currently playing track
+                current_track = self.spotify.get_current_track(simple=True)
+                if current_track:
+                    lines.append(f"Now playing '{current_track.get('name')}' by {current_track.get('artists')} from the album '{current_track.get('album')}'.")
+                lines.append("Upcoming Queue:")
+                for idx, (track, eta) in enumerate(q, start=1):
+                    eta_str = self.spotify._ms_to_mmss(eta)
+                    name = track.get("name", "Unknown")
+                    artists = track.get("artists", "Unknown")
+                    album = track.get("album", "Unknown")
+                    lines.append(f"{idx}. {name} by {artists} from '{album}' (ETA: {eta_str})")
+            else:
+                lines.append("No upcoming tracks in the queue.")
+            return "\n".join(lines)
 
         if name == "toggle_play_pause":
             self.spotify.toggle_play_pause()
