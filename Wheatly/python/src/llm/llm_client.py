@@ -280,125 +280,128 @@ if "search_context_size" in web_search_config:
     web_search_tool["search_context_size"] = web_search_config["search_context_size"]
 
 tools = [
-    web_search_tool,
-    {
-        "type": "function",
-        "name": "get_weather",
-        "description": "Get current temperature and forecast for provided coordinates.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "latitude": {"type": "number"},
-                "longitude": {"type": "number"},
-                "include_forecast": {"type": "boolean"},
-                "forecast_days": {"type": "integer"},
-                "extra_hourly": {
-                    "type": "array",
-                    "items": {"type": "string"}
-                },
-                "temperature_unit": {"type": "string", 
-                "enum": ["celsius", "fahrenheit"]},
-                "wind_speed_unit": {"type": "string", "enum": ["kmh", "ms", "mph", "kn"]}
-            },
-            "required": ["latitude", "longitude"],
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
-        "name": "test_function",
-        "description": "Test function to check if the function calling works.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "test": {"type": "string"}
-            },
-            "required": ["test"],
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
-        "name": "get_joke",
-        "description": "Get a random joke.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
-        "name": "get_quote",
-        "description": "Retrieve a random inspirational quote.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
-        "name": "reverse_text",
-        "description": "Reverse the provided text.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "text": {"type": "string"}
-            },
-            "required": ["text"],
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
-        "name": "get_city_coordinates",
-        "description": "Get accurate coordinates for a given city.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "city": {"type": "string"}
-            },
-            "required": ["city"],
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
-        "name": "get_advice",
-        "description": "Retrieve a piece of advice.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
-        "name": "call_google_agent",
-        "description": "Delegate any Google-related request to the Google Agent. Use this if the user asks about Google services, calendar, or anything Google-related. if user asks about calendar use this function. this agent can delete events, create/add events, and get events.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "user_request": {"type": "string", "description": "The user's request or question related to Google services."}
-            },
-            "required": ["user_request"],
-            "additionalProperties": False
-        }
-    },
-    {
-        "type": "function",
-        "name": "call_spotify_agent",
-        "description": "Delegate any Spotify request—play, pause, search, queue, device control, etc.—to the Spotify Agent. Use this whenever the user mentions Spotify or music playback.",
-        "parameters": {
-            "type": "object",
-            "properties": {"user_request": {"type": "string"}},
-            "required": ["user_request"],
+  web_search_tool,
+  {
+    "type": "function",
+    "name": "get_weather",
+    "description": "Get current temperature and forecast for provided coordinates.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "latitude": {"type": "number"},
+        "longitude": {"type": "number"},
+        "include_forecast": {"type": "boolean"},
+        "forecast_days": {"type": "integer"},
+        "extra_hourly": {
+          "type": "array",
+          "items": {"type": "string"}
         },
+        "temperature_unit": {"type": "string", 
+        "enum": ["celsius", "fahrenheit"]},
+        "wind_speed_unit": {"type": "string", "enum": ["kmh", "ms", "mph", "kn"]}
+      },
+      "required": ["latitude", "longitude"],
+      "additionalProperties": False
     }
+  },
+  {
+    "type": "function",
+    "name": "test_function",
+    "description": "Test function to check if the function calling works.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "test": {"type": "string"}
+      },
+      "required": ["test"],
+      "additionalProperties": False
+    }
+  },
+  {
+    "type": "function",
+    "name": "get_joke",
+    "description": "Get a random joke.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": False
+    }
+  },
+  {
+    "type": "function",
+    "name": "get_quote",
+    "description": "Retrieve a random inspirational quote.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": False
+    }
+  },
+  {
+    "type": "function",
+    "name": "reverse_text",
+    "description": "Reverse the provided text.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "text": {"type": "string"}
+      },
+      "required": ["text"],
+      "additionalProperties": False
+    }
+  },
+  {
+    "type": "function",
+    "name": "get_city_coordinates",
+    "description": "Get accurate coordinates for a given city.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "city": {"type": "string"}
+      },
+      "required": ["city"],
+      "additionalProperties": False
+    }
+  },
+  {
+    "type": "function",
+    "name": "get_advice",
+    "description": "Retrieve a piece of advice.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": False
+    }
+  },
+  {
+    "type": "function",
+    "name": "call_google_agent",
+    "description": "Delegate any Google-related request to the Google Agent. Use this if the user asks about Google services, calendar, or anything Google-related. if user asks about calendar use this function. this agent can delete events, create/add events, and get events.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user_request": {"type": "string", "description": "The user's request or question related to Google services."}
+      },
+      "required": ["user_request"],
+      "additionalProperties": False
+    }
+  },
+  {
+    "type": "function",
+    "name": "call_spotify_agent",
+    "description": "Delegate any Spotify request—play, pause, search, queue, device control, etc.—to the Spotify Agent. Use this whenever the user mentions Spotify or music playback. supply device id when transferring playback.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user_request": {"type": "string"},
+        "device_id": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      },
+      "required": ["user_request"],
+    },
+  }
 ]
 
 tts_engine = TextToSpeech()
@@ -434,7 +437,7 @@ class Functions:
 
             elif func_name == "call_spotify_agent":
                 user_req = item.get("arguments", {}).get("user_request", "")
-                args = item.get("arguments", {}).get("arguments", {})
+                args = item.get("arguments", {}).get("device_id", {})
                 response = self.spotify_agent.llm_decide_and_dispatch(user_req, args)
                 results.append((func_name, response))
                 

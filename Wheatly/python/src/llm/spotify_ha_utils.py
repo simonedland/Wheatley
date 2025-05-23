@@ -184,6 +184,7 @@ class SpotifyHA:  # ────────────────────
     # ── search & queue helpers ────────────────────────────────────────
     def search_tracks(self, query: str, *, limit: int = 10, simple: bool = True):
         items = self._sp.search(q=query, type="track", limit=limit)["tracks"]["items"]
+        #return nicely formated track description and action
         return [self._flat(t) for t in items] if simple else items
 
     def add_to_queue(
@@ -221,7 +222,8 @@ class SpotifyHA:  # ────────────────────
             return None
         track = tracks[0] if pick_first else random.choice(tracks)
         self.add_to_queue(track["uri"], device_id=device_id, verify=True)
-        return self._flat(track) if simple else track
+        result = f"Queued: {track['name']} – {track['artists'][0]['name']}"
+        return result
 
     # ── queue removal (precise) ───────────────────────────────────────
     def remove_from_queue(self, pos: int = 1) -> Optional[Dict[str, Any]]:
@@ -284,6 +286,21 @@ class SpotifyHA:  # ────────────────────
         items = self._sp.current_user_recently_played(limit=limit)["items"]
         tracks = [it["track"] for it in items]
         return [self._flat(t) for t in tracks] if simple else tracks
+
+    # ── album playback ────────────────────────────────────────────────
+    def play_album_by_name(self, album_name: str, artist: str = None, device_id: str | None = None) -> str:
+        """Search for an album by name (and optional artist) and start playback of that album."""
+        query = album_name
+        if artist:
+            query += f" artist:{artist}"
+        results = self._sp.search(q=query, type="album", limit=5)
+        albums = results.get("albums", {}).get("items", [])
+        if not albums:
+            return f"No album found for '{album_name}'" + (f" by {artist}" if artist else "")
+        album = albums[0]
+        album_uri = album["uri"]
+        self.start_playback(device_id=device_id, context_uri=album_uri)
+        return f"Started album: {album['name']} by {', '.join(a['name'] for a in album['artists'])}"
 
     # ── CLI demo remains unchanged (rich table) ────────────────────────
     def demo(self, artist: str = "Kaizers"):

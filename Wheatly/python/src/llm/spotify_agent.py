@@ -7,6 +7,7 @@ Adds tools:
 • get_recently_played    – latest listening history.
 • list_devices           – show user's Spotify devices.
 • transfer_playback      – switch playback to a specific device.
+• play_album_by_name     – play an entire album by name (optional artist/device)
 All previous tools remain.
 """
 
@@ -21,9 +22,9 @@ import openai
 import yaml
 
 try:
-  from spotify_ha_utils import SpotifyHA
+    from spotify_ha_utils import SpotifyHA
 except ImportError:
-  from llm.spotify_ha_utils import SpotifyHA
+    from llm.spotify_ha_utils import SpotifyHA
 
 # ── tools visible to the LLM ──────────────────────────────────────────
 SPOTIFY_TOOLS = [
@@ -55,7 +56,7 @@ SPOTIFY_TOOLS = [
         "description": "Skip to the next track.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
-    # ── NEW: search for songs ─────────────────────────────────────────
+    # ── search for songs ─────────────────────────────────────────
     {
         "type": "function",
         "name": "search_tracks",
@@ -100,16 +101,16 @@ SPOTIFY_TOOLS = [
     {
         "type": "function",
         "name": "remove_queue_item",
-        "description": "Remove the N-th upcoming track (1 = next).",
+        "description": "Remove the N-1 upcoming track (1 = current). this will skip the current track and remove next n-1 tracks from queue.",
         "parameters": {
             "type": "object",
             "properties": {
-                "position": {"type": "integer", "default": 1},
+                "count": {"type": "integer", "default": 1},
             },
-            "required": ["position"],
+            "required": ["count"],
         },
     },
-    # ── NEW: playback devices helpers ────────────────────────────────
+    # ── playback devices helpers ────────────────────────────────
     {
         "type": "function",
         "name": "list_devices",
@@ -123,13 +124,13 @@ SPOTIFY_TOOLS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "device_id": {"type": "string"},
+                "device_id": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
                 "force_play": {"type": "boolean", "default": True},
             },
             "required": ["device_id"],
         },
     },
-    # ── NEW: recently played ─────────────────────────────────────────
+    # ── recently played ─────────────────────────────────────────
     {
         "type": "function",
         "name": "get_recently_played",
@@ -138,6 +139,21 @@ SPOTIFY_TOOLS = [
             "type": "object",
             "properties": {"limit": {"type": "integer", "default": 10}},
             "required": [],
+        },
+    },
+    # ── play album by name ──────────────────────────────────────
+    {
+        "type": "function",
+        "name": "play_album_by_name",
+        "description": "Search for an album by name (and optional artist) and start playback of that album.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "album_name": {"type": "string"},
+                "artist": {"type": "string"},
+                "device_id": {"type": "string"},
+            },
+            "required": ["album_name"],
         },
     },
 ]
@@ -159,6 +175,7 @@ class SpotifyAgent:
 
     # ── dispatch mapping ──────────────────────────────────────────────
     def _dispatch(self, name: str, arguments: Dict[str, Any]):
+        print(f"dispatching {name} with {arguments}")
         if isinstance(arguments, str):
             try:
                 arguments = json.loads(arguments)
@@ -171,13 +188,8 @@ class SpotifyAgent:
         if name == "get_current_track":
             track = self.spotify.get_current_track(simple=True)
             if track:
-              message = (
-                  f"Now playing '{track.get('name')}' by {track.get('artists')}"
-                  f" from the album '{track.get('album')}'."
-              )
-              return message
-            else:
-              return "No track is currently playing."
+                return f"Now playing '{track.get('name')}' by {track.get('artists')} from the album '{track.get('album')}'."
+            return "No track is currently playing."
 
         if name == "get_queue":
             queue_lim = arguments.get("limit", 10)
@@ -189,11 +201,11 @@ class SpotifyAgent:
 
         if name == "toggle_play_pause":
             self.spotify.toggle_play_pause()
-            return {"status": "toggled play/pause"}
+            return "toggled play/pause"
 
         if name == "skip_next_track":
             self.spotify.skip_next()
-            return {"status": "skipped to next track"}
+            return "skipped to next track"
 
         if name == "search_tracks":
             return self.spotify.search_tracks(arguments["query"], limit=limit, simple=True)
@@ -211,31 +223,49 @@ class SpotifyAgent:
             )
 
         if name == "remove_queue_item":
-            removed = self.spotify.remove_from_queue(arguments["position"])
-            return (
-                {"status": "queue item removed", "track": removed}
-                if removed
-                else {"status": "nothing removed"}
-            )
+            self.spotify.remove_from_queue(arguments["count"])
+            return f"{arguments['count']} queue item removed"
 
         if name == "list_devices":
-            return self.spotify.list_devices()
+            devices = self.spotify.list_devices()
+            if not devices:
+              return "No available devices."
+            pretty_lines = []
+            #add "available devices" header
+            pretty_lines.append("Available devices:")
+            for idx, device in enumerate(devices, start=1):
+              pretty_lines.append(f"Device {idx}:")
+              for key, value in device.items():
+                pretty_lines.append(f"  {key}: {value}")
+              pretty_lines.append("")  # add a blank line after each device
+            return "\n".join(pretty_lines) + "\n"
 
         if name == "transfer_playback":
             self.spotify.transfer_playback(
                 arguments["device_id"], force_play=arguments.get("force_play", True)
             )
-            return {"status": "playback transferred"}
+            return f"playback transferred to device {arguments['device_id']}"
 
         if name == "get_recently_played":
             return self.spotify.get_recently_played(limit=limit, simple=True)
 
+        if name == "play_album_by_name":
+            return self.spotify.play_album_by_name(
+                arguments["album_name"],
+                artist=arguments.get("artist"),
+                device_id=arguments.get("device_id"),
+            )
+
         raise NotImplementedError(f"No handler for tool {name}")
 
     # ── main interface ────────────────────────────────────────────────
-    def llm_decide_and_dispatch(self, user_request, arguments: dict = None):
+    def llm_decide_and_dispatch(self, user_request: str, arguments: Dict[str, Any] | None = None):
         now = datetime.now()
         tool_list = "\n".join(f"- {t['name']}: {t['description']}" for t in self.tools)
+
+        #user request and arguments are passed to the LLM
+        if arguments:
+            user_request = f"{user_request} {json.dumps(arguments)}"
 
         messages = [
             {
@@ -264,7 +294,6 @@ class SpotifyAgent:
                 return self._dispatch(msg.name, msg.arguments)
 
         raise RuntimeError("LLM did not return a function_call.")
-
 
 
 def _pretty(obj):
@@ -304,17 +333,19 @@ def _pretty(obj):
 
     print(obj)
 
+
 if __name__ == "__main__":
-  print("🎙  Spotify chat – Ctrl-C to quit")
-  while True:
-      try:
-          user = input("You ➜ ").strip()
-      except (EOFError, KeyboardInterrupt):
-          break
-      if not user:
-          continue
-      try:
-          _pretty(agent.llm_decide_and_dispatch(user))
-          print()
-      except Exception as e:
-          print("⚠️ ", e, "\n")
+    agent = SpotifyAgent()
+    print("🎙  Spotify chat – Ctrl-C to quit")
+    while True:
+        try:
+            user = input("You ➜ ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if not user:
+            continue
+        try:
+            _pretty(agent.llm_decide_and_dispatch(user))
+            print()
+        except Exception as e:
+            print("⚠️ ", e, "\n")
