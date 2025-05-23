@@ -1,29 +1,33 @@
 /******************************************************************************
  *  OpenRB-150  ⇄  Core-2 UART bridge + multi-servo calibration demo
  *  fixed: 2025-05-21  (10 s handshake & servo-torque tweak)
+ *  modified: 2025-05-23  (moved Core-2 link to Serial3 on pins D14/D13)
  ******************************************************************************/
 
 #include <Arduino.h>
 #include <Dynamixel2Arduino.h>
-#include <stdarg.h>               // for vsnprintf
+#include <stdarg.h>
+#include <stdio.h>
 
-// -----------------------------------------------------------------------------
-// OpenRB-150  ⇄  Core-2 UART bridge + multi-servo calibration demo
-// -----------------------------------------------------------------------------
-// Talks to M5Stack Core2 over UART2, calibrates Dynamixel servos, and responds
-// to servo move commands. Blinks onboard LED after handshake with Core2.
-// -----------------------------------------------------------------------------
+/* ---------- FIX: force printf off on SAMD ---------- */
+#undef  PRINT_HAS_PRINTF      // throw away the previous value if any
+#define PRINT_HAS_PRINTF 0    // SAMD core has no Serial.printf()
+/* --------------------------------------------------- */
+
 
 /* --------------------------------------------------------------------------
- *  Serial alias (define this *first* so helpers can use it)
+ *  SERIAL ALIASES
  * --------------------------------------------------------------------------*/
 #define DEBUG_SERIAL  Serial
+#define LINK_SERIAL   Serial3           //  <-- change this line if you want
+#define Serial2       LINK_SERIAL       //  pre-processor alias
 
 /* --------------------------------------------------------------------------
  *  printf-compat layer – works on every core
  * --------------------------------------------------------------------------*/
 #ifndef PRINT_HAS_PRINTF
-  #if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_STM32)
+  #if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_STM32) || \
+      defined(ARDUINO_ARCH_SAMD)
     #define PRINT_HAS_PRINTF  1
   #else
     #define PRINT_HAS_PRINTF  0
@@ -52,8 +56,8 @@ const int  DXL_PWR_EN   = BDPIN_DXL_PWR_EN; // Power enable pin
 const uint32_t DXL_BAUD = 57600;            // Dynamixel baud rate
 const float     DXL_PROTOCOL = 2.0;         // Protocol version
 
-/* ————— CORE-2 LINK ————— */
-const uint32_t LINK_BAUD = 115200;          // UART2 baud rate
+/* ————— CORE-2 LINK (now Serial3 / D14, D13) ————— */
+const uint32_t LINK_BAUD = 115200;          // UART baud rate
 #define HANDSHAKE_TIMEOUT_MS 10000          // Handshake timeout (ms)
 
 /* ————— CALIBRATION SETTINGS ————— */
@@ -175,7 +179,6 @@ void handleMoveServoCommand(const String& cmd)
 }
 
 // blinkOnboardLED: Blink the onboard LED (LED_BUILTIN) a given number of times
-// Used for visual feedback after successful handshake
 void blinkOnboardLED(int times) {
   pinMode(LED_BUILTIN, OUTPUT);
   for (int i = 0; i < times; ++i) {
@@ -187,11 +190,6 @@ void blinkOnboardLED(int times) {
 }
 
 /* -------------------- SETUP -------------------- */
-// Main setup sequence:
-// 1. Start serial and Dynamixel bus
-// 2. Attempt handshake with Core2 (10s timeout)
-// 3. If handshake fails, enter dryRun (do nothing else)
-// 4. If handshake succeeds, calibrate all servos and send results to Core2
 void setup()
 {
   DEBUG_SERIAL.begin(115200);
@@ -203,10 +201,9 @@ void setup()
   dxl.begin(DXL_BAUD);                  // Start Dynamixel bus
   dxl.setPortProtocolVersion(DXL_PROTOCOL);
 
-  Serial2.begin(LINK_BAUD);             // Start UART2 for Core2 link
+  Serial2.begin(LINK_BAUD);             // Start Core-2 link on Serial3
 
-  // --- 10 s bidirectional handshake with Core2 ---
-  // Only proceed if handshake is successful
+  // --- 10 s bidirectional handshake with Core-2 ---
   unsigned long start = millis();
   while (millis() - start < HANDSHAKE_TIMEOUT_MS) {
     Serial2.println("HELLO");                     // Announce ourselves
@@ -215,7 +212,7 @@ void setup()
       if (Serial2.available() && Serial2.find("ESP32")) {
         dryRun = false;
         DEBUG_SERIAL.println(F("[INFO] Core-2 detected"));
-        blinkOnboardLED(3); // Blink onboard LED 3 times on handshake
+        blinkOnboardLED(3);                       // Blink onboard LED 3×
         break;
       }
     }
@@ -223,15 +220,10 @@ void setup()
   }
   if (dryRun) {
     DEBUG_SERIAL.println(F("[WARN] No Core-2 response after 10 s ⇒ dry-run"));
-    // Do not calibrate or send anything in dryRun
-    return;
+    return;                                       // Skip calibration in dry-run
   }
 
-  // --- Probe & calibrate all servos only if not dryRun ---
-  // For each servo:
-  //   - Ping to check if present
-  //   - If present, calibrate and enable torque
-  //   - If not present, set limits to 0
+  // --- Probe & calibrate all servos ---
   for (uint8_t i=0;i<NUM_SERVOS;++i){
     uint8_t id = SERVOS[i];
     DBG_PRINTF("[PING] ID %d (%s)… ",id,SERVO_NAMES[i]);
@@ -248,16 +240,13 @@ void setup()
   }
 
   printAllServoStatus();
-  sendLimitsToCore2(); // Send calibration and ping to Core2
+  sendLimitsToCore2();           // Send calibration & ping result to Core-2
 }
 
 /* --------------------- LOOP --------------------- */
-// Main loop:
-// - Only handle servo commands if not in dryRun mode
-// - Demo sweep is always safe (only acts on working servos)
 void loop()
 {
-  // Handle incoming commands from Core2
+  // Handle incoming commands from Core-2
   if (!dryRun && Serial2.available()){
     String msg = Serial2.readStringUntil('\n'); msg.trim();
     if (msg.startsWith("MOVE_SERVO")) handleMoveServoCommand(msg);
