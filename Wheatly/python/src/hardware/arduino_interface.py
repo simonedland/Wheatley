@@ -15,7 +15,54 @@ class ArduinoInterface:
             print(f"[DRY RUN] Would connect to Arduino on port {self.port} at {self.baud_rate} baud.")
             return
         import serial
-        self.serial_connection = serial.Serial(self.port, self.baud_rate)
+        self.serial_connection = serial.Serial(self.port, self.baud_rate, timeout=2)
+        # NEW: Try to fetch servo config from M5Stack after connecting
+        self.fetch_servo_config_from_m5()
+
+    def fetch_servo_config_from_m5(self):
+        """Fetch servo config from M5Stack if available, else use defaults."""
+        if self.dry_run or not self.serial_connection or not self.serial_connection.is_open:
+            print("[DRY RUN or not connected] Using default servo config.")
+            return
+        import time
+        self.serial_connection.reset_input_buffer()
+        # Wait and look for SERVO_CONFIG: line (wait up to 60 seconds)
+        start = time.time()
+        config_line = None
+        while time.time() - start < 60.0:  # Wait up to 60 seconds
+            if self.serial_connection.in_waiting:
+                line = self.serial_connection.readline().decode(errors='ignore').strip()
+                if line.startswith('SERVO_CONFIG:'):
+                    config_line = line[len('SERVO_CONFIG:'):]
+                    break
+            time.sleep(0.05)  # Avoid busy loop
+        if config_line:
+            print(f"[INFO] Got servo config from M5Stack: {config_line}")
+            self.update_servo_config_from_string(config_line)
+        else:
+            print("[WARN] No servo config received from M5Stack after 60s, using defaults.")
+
+    def update_servo_config_from_string(self, config_str):
+        """Parse and update servo configs from calibration string."""
+        # Format: id,min,max,ping;id,min,max,ping;...
+        chunks = config_str.strip().split(';')
+        for chunk in chunks:
+            if not chunk: continue
+            parts = chunk.split(',')
+            if len(parts) != 4:
+                continue
+            try:
+                idx = int(parts[0])
+                mn = float(parts[1])
+                mx = float(parts[2])
+                ping = int(parts[3])
+                if 0 <= idx < len(self.servo_controller.servos):
+                    servo = self.servo_controller.servos[idx]
+                    servo.min_angle = mn
+                    servo.max_angle = mx
+                    # Optionally, you can store ping status if needed
+            except Exception as e:
+                print(f"[ERROR] Failed to parse servo config chunk '{chunk}': {e}")
 
     def disconnect(self):
         """Close the connection to the Arduino."""
@@ -112,20 +159,20 @@ class ServoController:
         self.servo_count = servo_count
         # Updated servo configurations with names and sensible ranges.
         servo_configs = [
-            {'name': 'lens',    'min_angle': -720, 'max_angle': 720, 'interval': 2000},
-            {'name': 'eyelid1', 'min_angle': 30,  'max_angle': 60,  'interval': 2000},
-            {'name': 'eyelid2', 'min_angle': 30,  'max_angle': 60,  'interval': 2000},
-            {'name': 'eyeX',    'min_angle': 45,  'max_angle': 135, 'interval': 2000},
-            {'name': 'eyeY',    'min_angle': 40,  'max_angle': 140, 'interval': 2000},
-            {'name': 'handle1', 'min_angle': 0,   'max_angle': 170, 'interval': 2000},
-            {'name': 'handle2', 'min_angle': 0,   'max_angle': 170, 'interval': 2000}
+            {'name': 'lens',    "idle_range": 10, 'min_angle': -720, 'max_angle': 720, 'interval': 2000},
+            {'name': 'eyelid1', "idle_range": 10, 'min_angle': 30,  'max_angle': 60,  'interval': 2000},
+            {'name': 'eyelid2', "idle_range": 10, 'min_angle': 30,  'max_angle': 60,  'interval': 2000},
+            {'name': 'eyeX',    "idle_range": 10, 'min_angle': 45,  'max_angle': 135, 'interval': 2000},
+            {'name': 'eyeY',    "idle_range": 10, 'min_angle': 40,  'max_angle': 140, 'interval': 2000},
+            {'name': 'handle1', "idle_range": 10, 'min_angle': 0,   'max_angle': 170, 'interval': 2000},
+            {'name': 'handle2', "idle_range": 10, 'min_angle': 0,   'max_angle': 170, 'interval': 2000}
         ]
         self.servos = []
         for i in range(self.servo_count):
             config = servo_configs[i]
             self.servos.append(Servo(
                 i,
-                idle_range=10,
+                idle_range=config['idle_range'],
                 min_angle=config['min_angle'],
                 max_angle=config['max_angle'],
                 name=config['name'],

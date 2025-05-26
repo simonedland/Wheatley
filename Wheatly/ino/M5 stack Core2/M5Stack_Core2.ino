@@ -197,6 +197,9 @@ void handleCalibrationData(const String& line)
   dryRun = false;
   drawWindow();
   Serial.println("[OK] Calibration table updated");
+  // --- NEW: Forward calibration data to USB serial for Python ---
+  Serial.print("SERVO_CONFIG:");
+  Serial.println(line); // Send the raw calibration string prefixed for Python to parse
 }
 
 // Print any other command received from OpenRB
