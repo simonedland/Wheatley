@@ -1,8 +1,14 @@
 # AI Summary
 
 ### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\stt\stt_engine.py
-The Python code defines a `SpeechToTextEngine` class designed to record audio, detect speech, and transcribe it into text. The class initializes by loading configuration settings from a YAML file, which specify audio parameters like chunk size, channels, rate, threshold, and silence limit.
+The Python code defines a class `SpeechToTextEngine` designed to record audio and transcribe it into text. Here's a summary of its purpose and logic:
 
-The `record_until_silent` method captures audio input until silence is detected, using PyAudio. It monitors the amplitude of the audio signal to determine when to start and stop recording based on a predefined threshold. The recorded audio is saved as a temporary WAV file.
+1. **Initialization**: The class loads configuration settings from a YAML file, setting parameters for audio recording such as chunk size, format, channels, rate, threshold, and silence limit.
 
-The `transcribe` method uses OpenAI's Whisper model to convert the recorded audio file into text. The `record_and_transcribe` method combines these functionalities: it records audio until silence is detected, transcribes the audio, and then deletes the temporary audio file. The class also includes a `dry_run` method for simulating transcription without actual processing.
+2. **Dry Run Method**: A placeholder method simulates speech recognition using a Whisper model deployed on Azure, returning a dummy text.
+
+3. **Audio Recording**: The `record_until_silent` method captures audio input until a period of silence is detected. It uses PyAudio to handle audio streams, monitoring amplitude to determine when to start and stop recording. It saves the recorded audio to a temporary WAV file.
+
+4. **Transcription**: The `transcribe` method sends the recorded audio file to OpenAI's Whisper model to obtain a transcription of the audio content.
+
+5. **Combined Recording and Transcription**: The `record_and_transcribe` method integrates the recording and transcription processes, returning the transcribed text and deleting the temporary audio file after processing.

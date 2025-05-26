@@ -1,66 +1,77 @@
 # AI Summary
 
 ### C:\GIT\Wheatly\Wheatley\Wheatly\ino\OpenRB150\default.ino
-This Arduino sketch is designed to facilitate communication between a computer and Dynamixel motors using a microcontroller. Here's a breakdown of its purpose, main functions, and hardware usage:
+This Arduino sketch is designed to facilitate communication between a computer and Dynamixel motors using an Arduino board. Here's a breakdown of its purpose, main functions, and hardware usage:
 
-### Overall Purpose
-The sketch acts as a bridge to transmit data between a computer (via USB) and Dynamixel motors (via a serial bus). It allows for sending and receiving data packets between these two interfaces.
+### Purpose
+The sketch acts as a bridge, transferring data between a computer (via USB) and Dynamixel motors (via a serial bus). It allows commands and data to be sent and received between the two, enabling control and monitoring of the motors.
 
 ### Main Functions
-1. **setup()**: 
-   - Initializes the built-in LED for output.
+1. **Setup Function:**
+   - Initializes the built-in LED as an output.
    - Sets up the USB serial communication at a baud rate of 57600.
-   - Initializes the Dynamixel communication with the same baud rate.
+   - Initializes the Dynamixel communication using the same baud rate.
 
-2. **loop()**:
-   - Continuously calls the `dataTransceiver()` function to handle data transmission.
-   - Checks if the USB baud rate matches the Dynamixel port baud rate and updates it if necessary.
+2. **Loop Function:**
+   - Continuously calls the `dataTransceiver` function to handle data transmission.
+   - Checks if the USB baud rate has changed and updates the Dynamixel communication accordingly.
 
-3. **dataTransceiver()**:
-   - Handles data transfer in both directions:
-     - **USB to Dynamixel (DXL)**: Reads available data from the USB and writes it to the Dynamixel bus.
-     - **Dynamixel to USB**: Reads available data from the Dynamixel bus, stores it in a buffer, and writes it to the USB.
-   - Calls `ledStatus()` to update the LED status after data transfer.
+3. **dataTransceiver Function:**
+   - Handles data transfer in two directions:
+     - **USB to Dynamixel (DXL):** Reads available data from the USB and writes it to the Dynamixel bus.
+     - **Dynamixel to USB:** Reads available data from the Dynamixel bus and writes it to the USB.
+   - Calls `ledStatus` to update the LED indicator.
 
-4. **ledStatus()**:
+4. **ledStatus Function:**
    - Toggles the built-in LED every 200 milliseconds to indicate activity.
 
 ### Hardware Peripherals Used
-- **Serial Ports**: 
-  - `Serial1` (DXL_BUS) is used for communication with the Dynamixel motors.
-  - `Serial` (USB) is used for communication with the computer.
+- **Serial Ports:**
+  - **USB Serial:** Used for communication with the computer.
+  - **DXL_BUS (Serial1):** Used for communication with the Dynamixel motors.
   
-- **Built-in LED**: 
-  - Used as a visual indicator to show data transmission activity. It blinks every 200 milliseconds during data transfer.
+- **Built-in LED:**
+  - Provides a visual indicator of data transmission activity. It blinks every 200 milliseconds when data is being transferred.
 
-This setup allows for real-time communication and control of Dynamixel motors from a computer, using the microcontroller as an intermediary.
+This setup allows for real-time communication and control of Dynamixel motors from a computer, with visual feedback provided by the LED.
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\ino\OpenRB150\test_calibration.ino
-This Arduino sketch is designed to calibrate the range of motion for DYNAMIXEL servos that support Protocol 2.0 and Extended-Position mode. The calibration process involves finding the mechanical limits of the servo by moving it until the shaft stalls. If no stop is detected within one turn, it defaults to a ±30° range.
+### C:\GIT\Wheatly\Wheatley\Wheatly\ino\OpenRB150\OpenRB-150.ino
+This Arduino sketch is designed to control and calibrate multiple servos using a UART bridge between an OpenRB-150 and a Core-2 microcontroller. It facilitates communication and servo calibration, allowing for precise control and monitoring of servo positions.
 
 ### Overall Purpose
-The main goal is to determine the mechanical minimum and maximum positions of the servos, which helps in accurately controlling their motion within safe limits.
+The sketch serves as a bridge between the OpenRB-150 and Core-2, enabling servo calibration and control through UART communication. It can automatically calibrate servos or use predefined limits, and it communicates the results back to the Core-2.
 
 ### Main Functions
+1. **Setup and Initialization:**
+   - Initializes serial communication for debugging and linking with Core-2.
+   - Powers up and configures the Dynamixel bus for servo control.
+   - Performs a handshake with Core-2 to determine if it should proceed with calibration or enter a dry-run mode.
 
-1. **findLimit**: This function moves the servo incrementally in a specified direction until it detects a stall (indicating a mechanical limit) or reaches a maximum sweep angle. It returns the position where the stall is detected or a default value if no stall is found.
+2. **Servo Calibration:**
+   - Calibrates each servo by finding mechanical limits unless manual limits are specified.
+   - Uses functions like `findLimit` to determine the range of motion for each servo.
 
-2. **calibrate**: This function calibrates a single servo by:
-   - Turning off the torque to allow EEPROM writes.
-   - Setting the servo to Extended-Position mode.
-   - Finding the minimum and maximum positions using `findLimit`.
-   - Using default limits if no mechanical stops are detected.
-   - Parking the servo at the center of the detected range and turning on an LED to indicate completion.
+3. **Communication:**
+   - Sends calibration results and servo status to Core-2 as a CSV string.
+   - Listens for and executes servo movement commands from Core-2.
 
-3. **setup**: Initializes the serial ports, enables power to the servos, and iterates through a list of servo IDs to calibrate each one. It reports any non-responsive servos.
+4. **Demo Mode:**
+   - Demonstrates servo movement by sweeping the first servo back and forth.
+   - Turns on an LED on the servo to indicate the end of the demo.
 
-4. **loop**: Remains empty as the calibration is a one-time setup process.
+### Hardware Peripherals Used
+- **Dynamixel Servos:**
+  - Controlled via a dedicated serial port (`Serial1`).
+  - Calibrated for position using feedback from the servos.
 
-### Hardware Peripherals
+- **UART Communication:**
+  - Uses `Serial3` for communication with Core-2.
+  - Exchanges handshake messages and servo commands.
 
-- **Serial1**: Used for communication with the DYNAMIXEL servos via a hardware UART interface.
-- **Serial**: Used for debugging and outputting information to the USB-C console.
-- **BDPIN_DXL_PWR_EN (Pin 31)**: Controls the power to the servos. It must be turned on to enable servo movement.
-- **Servos**: The sketch is configured to work with servos specified by their IDs in the `SERVOS` array.
+- **Onboard LED:**
+  - Used for visual feedback during the handshake process and demo mode.
 
-The sketch ensures that the servos are properly calibrated to avoid mechanical damage by detecting their physical limits or using a safe default range if limits are not detected.
+- **Power Control:**
+  - A pin (`DXL_PWR_EN`) is used to enable power to the servos.
+
+This sketch effectively manages servo calibration and control, providing a robust interface for interacting with multiple servos through a UART bridge.

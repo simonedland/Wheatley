@@ -1,38 +1,41 @@
 # AI Summary
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\ino\M5 stack Core2\test.ino
-This Arduino sketch is designed to control and display the status of multiple servos using an M5Stack device, which includes an LCD screen and buttons. Here's a breakdown of its purpose, main functions, and hardware usage:
+### C:\GIT\Wheatly\Wheatley\Wheatly\ino\M5 stack Core2\M5Stack_Core2.ino
+This Arduino sketch is designed to control a 7-servo robotic head using a touch interface on an M5Stack Core2 device. It communicates with an OpenRB-150 controller via UART2 to manage servo movements.
 
-### Purpose
-The sketch manages up to 11 servos, with 7 being actively adjustable. It allows for manual and automated control of servo angles, displaying their status on an LCD screen, and accepting serial commands to adjust servo parameters.
+### Overall Purpose
+The sketch provides a user interface to control and monitor the state of seven servos in a robotic head. It handles communication with the OpenRB-150 controller to send commands and receive calibration data.
 
 ### Main Functions
+1. **Setup and Initialization:**
+   - Initializes the M5Stack Core2 and sets up UART2 for communication with the OpenRB-150.
+   - Draws the initial user interface on the screen.
+   - Sends a proactive handshake message ("ESP32") to the OpenRB-150.
 
-1. **Servo Management**: 
-   - Each servo has properties like angle, velocity, min/max angles, idle range, and idle update interval.
-   - Servos can be moved to specific angles with defined velocities and idle behaviors.
+2. **Communication Handling:**
+   - Listens for messages from the OpenRB-150. Handles "HELLO" messages by responding and blinking the screen.
+   - Processes calibration data to update servo limits and availability.
+   - Handles other commands by printing them for debugging.
 
-2. **Display**:
-   - The LCD displays the current status of each servo, including its ID, angle, velocity, idle range, and update interval.
-   - The display updates dynamically as servos are adjusted.
+3. **User Interface:**
+   - Displays a scrolling list of servos, showing their current angle, velocity, and idle range.
+   - Highlights the selected servo and shows disabled servos in grey.
+   - Allows interaction through buttons to adjust servo angles.
 
-3. **Serial Command Handling**:
-   - Commands can be sent via serial to move servos to target angles with specified parameters.
-   - The command format is `MOVE_SERVO;ID=x;TARGET=y;VELOCITY=z;IDLE=a;INTERVAL=b`.
+4. **Servo Control:**
+   - Sends commands to move servos based on user input or idle animations.
+   - Implements idle animations by randomly adjusting servo angles within specified limits when the system is idle.
 
-4. **Idle Movement**:
-   - Servos can perform random idle movements within a specified range and interval, simulating natural motion.
+5. **Button Handling:**
+   - Uses buttons A, B, and C on the M5Stack to decrease, increase, or switch the selected servo, respectively.
 
-5. **Button Controls**:
-   - Button A decreases the selected servo's angle.
-   - Button B increases the selected servo's angle.
-   - Button C cycles through the servos, updating the display to reflect the current selection.
+### Hardware Peripherals Used
+- **M5Stack Core2:**
+  - Acts as the main interface device, providing a touchscreen and buttons for user interaction.
+  - Displays the servo control interface.
 
-### Hardware Peripherals
+- **UART2:**
+  - Used for communication with the OpenRB-150 controller, sending servo commands and receiving calibration data.
+  - Configured with specific RX and TX pins and a baud rate of 115200.
 
-- **M5Stack Device**: 
-  - **LCD Screen**: Used to display servo information and status.
-  - **Buttons (A, B, C)**: Allow manual control of servo angles and selection of servos.
-  - **Serial Communication**: Enables external control and configuration of servos via serial commands.
-
-This setup is ideal for applications requiring precise servo control and monitoring, such as robotics or interactive displays.
+This setup allows for interactive control of the robotic head's servos, providing feedback and ensuring safe operation through calibration and status checks.

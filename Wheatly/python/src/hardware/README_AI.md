@@ -1,26 +1,16 @@
 # AI Summary
 
 ### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\hardware\arduino_interface.py
-The Python code defines a system for interfacing with Arduino hardware, specifically focusing on controlling servos to perform animations based on different emotions. 
+The Python code defines an interface for communicating with Arduino hardware, specifically focusing on controlling servos to perform animations based on emotions. The main components include:
 
-### Key Components:
+1. **ArduinoInterface Class**: Manages the connection to the Arduino via a specified port and baud rate. It can send commands to the Arduino and handle responses. A dry-run mode is available for testing without actual hardware.
 
-1. **ArduinoInterface Class**:
-   - Manages the connection to an Arduino device via a specified port and baud rate.
-   - Supports a "dry run" mode for testing without actual hardware.
-   - Provides methods to connect, disconnect, send commands, and check connection status.
-   - Integrates a `ServoController` to manage servo animations.
+2. **Servo Class**: Represents a servo motor with attributes like ID, angle, velocity, and range. It includes a method to move the servo to a target angle within its defined range.
 
-2. **Servo Class**:
-   - Represents individual servos with properties like ID, angle, velocity, range, and animation interval.
-   - Includes a method to move the servo to a specified angle within its range.
+3. **ServoController Class**: Manages multiple servos, each configured with specific parameters like name, angle range, and animation interval. It defines a variety of emotional animations, each with specific servo configurations (velocities, target factors, idle ranges, and intervals).
 
-3. **ServoController Class**:
-   - Manages multiple servos and their configurations.
-   - Defines animations for various emotions (e.g., happy, angry, sad) with specific parameters like velocities, target factors, idle ranges, and intervals.
-   - Provides methods to print servo statuses and set emotions, adjusting servos accordingly.
+4. **Emotion Animations**: The `ServoController` class includes predefined animations for different emotions (e.g., happy, angry, sad), which adjust the servos' movements to reflect these emotions.
 
-### Purpose and Logic:
-- The system is designed to control servos connected to an Arduino, allowing them to perform animations that correspond to different emotional states.
-- The `ArduinoInterface` handles communication with the Arduino, while the `ServoController` manages the logic for animating servos based on predefined emotional configurations.
-- The code supports testing without hardware through a dry run mode, ensuring flexibility in development and debugging.
+5. **Set Animation Method**: The `ArduinoInterface` class can set animations on the Arduino hardware by sending commands that adjust the servos according to the selected emotion's parameters.
+
+Overall, the code provides a structured way to control servos connected to an Arduino, allowing for expressive animations based on emotional states.
