@@ -12,6 +12,46 @@ constexpr int RX2_PIN = 13;                // Grove Port-C white
 constexpr int TX2_PIN = 14;                // Grove Port-C yellow
 constexpr uint32_t LINK_BAUD = 115200;     // UART2 baud rate (must match OpenRB)
 
+/* ──────────────────────────────────────────────────────────────────────────
+ *  VARIABLE & CONSTANT REFERENCE
+ *  (reflects only how the sketch itself uses each symbol)
+ *  ------------------------------------------------------------------------
+ *  Communication
+ *      OpenRB(2)            – HardwareSerial bound to UART2.
+ *      RX2_PIN, TX2_PIN     – GPIOs for UART2 RX/TX.
+ *      LINK_BAUD            – Baud rate used in OpenRB.begin().
+ *
+ *  Servo bookkeeping
+ *      totalServos          – Upper bound of the scroll list.
+ *      activeServos         – Highest servo index that can be commanded
+ *                              (0‥activeServos-1).
+ *
+ *      struct ServoState
+ *          angle               Current target angle (deg).
+ *          initial_angle       Angle used as center for idle jitter.
+ *          velocity            Value forwarded in MOVE_SERVO ;VELOCITY=.
+ *          min_angle,max_angle Safety limits; overwritten by calibration.
+ *          idle_range          ±amplitude allowed during idle jitter (deg).
+ *          lastIdleUpdate      millis() timestamp of last idle move.
+ *          idleUpdateInterval  Base delay (ms) between idle moves; a random
+ *                              0‥1000 ms is added each cycle.
+ *
+ *      servos[]             – Startup defaults for each controllable servo.
+ *      SERVO_NAMES[]        – Labels printed in the UI.
+ *
+ *  UI layout
+ *      lineHeight, yOffset, visibleRows  – Geometry of the scrolling list.
+ *      GREY                – 16-bit colour for disabled rows.
+ *      selected            – Index of highlighted row.
+ *      scrollOffset        – First row index currently visible.
+ *
+ *  Runtime flags
+ *      dryRun              – Starts true; no servo commands are sent until
+ *                             a successful handshake + calibration.
+ *      servoPingResult[]   – One bool per servo; filled by calibration.
+ *      calibrationReceived – Blocks UI interaction until first calibration.
+ * ──────────────────────────────────────────────────────────────────────────*/
+
 /* ---------------- Servo State ---------------- */
 constexpr int totalServos  = 11;           // Number of lines in UI
 constexpr int activeServos = 7;            // 0…6 controllable servos
@@ -26,12 +66,12 @@ struct ServoState {
 // Initial values for each servo
 ServoState servos[activeServos] = {
   {  0,  0, 5,-720, 720,10,0,2000},   // lens
-  { 180, 180, 5, 30, 60,40,0,2000},     // eyelid1
-  { 180, 180, 5, 30, 60,40,0,2000},     // eyelid2
-  { 90, 90, 5, 45,135,10,0,2000},     // eyeX
-  {120,120, 5, 40,140,10,0,2000},     // eyeY
-  {150,150, 5,  0,170,10,0,2000},     // handle1
-  {170,170, 5,  0,170,10,0,2000}      // handle2
+  {200,200, 5,  30,  60,40,0,2000},   // eyelid1
+  {200,200, 5,  30,  60,40,0,2000},   // eyelid2
+  { 90, 90, 5,  45, 135,10,0,2000},   // eyeX
+  {120,120, 5,  40, 140,10,0,2000},   // eyeY
+  {150,150, 5,   0, 170,10,0,2000},   // handle1
+  {170,170, 5,   0, 170,10,0,2000}    // handle2
 };
 
 const char* SERVO_NAMES[activeServos] = {
@@ -229,21 +269,37 @@ void loop()
 
   /* --- idle animation: random servo movement when idle --- */
   for (int i = 0; i < activeServos; ++i) {
-    if (!servoPingResult[i]) continue; // Skip dead servos
-    unsigned long now = millis();
+    if (!servoPingResult[i]) continue;           // Skip dead servos
+
     ServoState& s = servos[i];
+    unsigned long now = millis();
+
     if (s.idle_range > 0 &&
         now - s.lastIdleUpdate >
             s.idleUpdateInterval + random(0, 1000)) {
 
+      // Compute legal idle window
       int minIdle = max(s.min_angle, s.initial_angle - s.idle_range);
       int maxIdle = min(s.max_angle, s.initial_angle + s.idle_range);
-      int newAngle = constrain(s.angle + random(-s.idle_range, s.idle_range + 1),
-                               minIdle, maxIdle);
-      if (newAngle != s.angle) {
-        s.angle = newAngle;
-        drawSingle(i);
-        sendMoveServoCommand(i, s.angle, s.velocity);
+
+      if (minIdle < maxIdle) {                   // Valid window exists
+        int newAngle;
+
+        /* -------- NEW LOGIC --------
+         * Always pick a value inside [minIdle,maxIdle] that
+         * differs from the current angle.  Up to 10 attempts,
+         * then fall back to current angle if window is a single step.
+         */
+        for (int tries = 0; tries < 10; ++tries) {
+          newAngle = random(minIdle, maxIdle + 1);   // inclusive range
+          if (newAngle != s.angle) break;
+        }
+
+        if (newAngle != s.angle) {               // Move only if changed
+          s.angle = newAngle;
+          drawSingle(i);
+          sendMoveServoCommand(i, s.angle, s.velocity);
+        }
       }
       s.lastIdleUpdate = now;
     }
