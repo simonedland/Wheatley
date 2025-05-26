@@ -235,12 +235,12 @@ def main():
     feature_summary += f" - Text-to-Speech (TTS): {'Active' if tts_enabled else 'Inactive'}\n"
     print(feature_summary)
 
-    # NEW: Initialize assistant components
+    # Initialize assistant components
     manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(config)
     
     print_welcome()
     
-    # NEW: Print the status of all servos
+    # Print the status of all servos
     arduino_interface.set_animation("neutral")  # Set initial animation to neutral
     arduino_interface.servo_controller.print_servo_status()
     

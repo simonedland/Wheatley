@@ -165,12 +165,9 @@ void sendLimitsToCore2()
 // Only acts if not in dryRun mode and ID is valid
 void handleMoveServoCommand(const String& cmd)
 {
-  int id = cmd.substring(cmd.indexOf("ID=")+3,
-                         cmd.indexOf(';',cmd.indexOf("ID="))).toInt();
-  float tgt = cmd.substring(cmd.indexOf("TARGET=")+7,
-                            cmd.indexOf(';',cmd.indexOf("TARGET="))).toFloat();
-  float vel = cmd.substring(cmd.indexOf("VELOCITY=")+9,
-                            cmd.lastIndexOf(';')).toFloat();
+  int id = cmd.substring(cmd.indexOf("ID=")+3, cmd.indexOf(';',cmd.indexOf("ID="))).toInt();
+  float tgt = cmd.substring(cmd.indexOf("TARGET=")+7,cmd.indexOf(';',cmd.indexOf("TARGET="))).toFloat();
+  float vel = cmd.substring(cmd.indexOf("VELOCITY=")+9,cmd.lastIndexOf(';')).toFloat();
   if (id<0||id>=NUM_SERVOS){ DEBUG_SERIAL.println(F("[ERR] Bad ID")); return; }
   tgt = constrain(tgt,t2deg(minPosArr[id]),t2deg(maxPosArr[id]));
   dxl.writeControlTableItem(PROFILE_VELOCITY,id,deg2t(vel));

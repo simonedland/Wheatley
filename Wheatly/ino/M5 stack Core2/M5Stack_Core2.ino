@@ -167,31 +167,30 @@ void sendMoveServoCommand(int id, int tgt, int vel)
 void handleCalibrationData(const String& line)
 {
   int last = 0;
-  int idx = 0;
-  while (last < line.length() && idx < activeServos) {
-    int next = line.indexOf(';', last);
-    String chunk = (next == -1) ? line.substring(last)
-                                : line.substring(last, next);
-    int c1 = chunk.indexOf(',');
-    int c2 = chunk.indexOf(',', c1 + 1);
-    int c3 = chunk.indexOf(',', c2 + 1);
-    if (c1 > 0 && c2 > c1 && c3 > c2) {
-      int id = chunk.substring(0, c1).toInt();
-      float mn = chunk.substring(c1 + 1, c2).toFloat();
-      float mx = chunk.substring(c2 + 1, c3).toFloat();
-      int ping = chunk.substring(c3 + 1).toInt();
-      if (id >= 0 && id < activeServos) {
-        servos[id].min_angle = round(mn);
-        servos[id].max_angle = round(mx);
-        servos[id].angle     = constrain(servos[id].angle, servos[id].min_angle,
-                                                       servos[id].max_angle);
-        servos[id].initial_angle = servos[id].angle;
-        servoPingResult[id] = (ping == 1);
+  int servoIndex = 0;
+  while (last < line.length() && servoIndex < activeServos) {
+    int semicolonIndex = line.indexOf(';', last);
+    String servoConfigChunk = (semicolonIndex == -1) ? line.substring(last)
+                                                    : line.substring(last, semicolonIndex);
+    int idComma = servoConfigChunk.indexOf(',');
+    int minComma = servoConfigChunk.indexOf(',', idComma + 1);
+    int maxComma = servoConfigChunk.indexOf(',', minComma + 1);
+    if (idComma > 0 && minComma > idComma && maxComma > minComma) {
+      int servoId = servoConfigChunk.substring(0, idComma).toInt();
+      float minAngle = servoConfigChunk.substring(idComma + 1, minComma).toFloat();
+      float maxAngle = servoConfigChunk.substring(minComma + 1, maxComma).toFloat();
+      int pingStatus = servoConfigChunk.substring(maxComma + 1).toInt();
+      if (servoId >= 0 && servoId < activeServos) {
+        servos[servoId].min_angle = round(minAngle);
+        servos[servoId].max_angle = round(maxAngle);
+        servos[servoId].angle     = constrain(servos[servoId].angle, servos[servoId].min_angle, servos[servoId].max_angle);
+        servos[servoId].initial_angle = servos[servoId].angle;
+        servoPingResult[servoId] = (pingStatus == 1);
       }
     }
-    if (next == -1) break;
-    last = next + 1;
-    idx++;
+    if (semicolonIndex == -1) break;
+    last = semicolonIndex + 1;
+    servoIndex++;
   }
   calibrationReceived = true;
   dryRun = false;
@@ -264,6 +263,53 @@ void loop()
   M5.update();         // Update button and touch state
   handleLink();        // Handle UART messages
 
+  // --- Forward commands from USB Serial to OpenRB UART2 and handle config commands ---
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    if (cmd.length() > 0) {
+      // Check for configuration command
+      if (cmd.startsWith("SET_SERVO_CONFIG:")) {
+        // Format: SET_SERVO_CONFIG:id,min,max,vel,idle_range;id,min,max,vel,idle_range;...
+        int configStartIndex = String("SET_SERVO_CONFIG:").length();
+        int servoIndex = 0;
+        while (configStartIndex < cmd.length() && servoIndex < activeServos) {
+          int semicolonIndex = cmd.indexOf(';', configStartIndex);
+          String servoConfigChunk = (semicolonIndex == -1) ? cmd.substring(configStartIndex) : cmd.substring(configStartIndex, semicolonIndex);
+          // Parse comma-separated fields for servo config
+          int idComma = servoConfigChunk.indexOf(',');
+          int minComma = servoConfigChunk.indexOf(',', idComma + 1);
+          int maxComma = servoConfigChunk.indexOf(',', minComma + 1);
+          int velocityComma = servoConfigChunk.indexOf(',', maxComma + 1);
+          if (idComma > 0 && minComma > idComma && maxComma > minComma && velocityComma > maxComma) {
+            int servoId = servoConfigChunk.substring(0, idComma).toInt();
+            float minAngle = servoConfigChunk.substring(idComma + 1, minComma).toFloat();
+            float maxAngle = servoConfigChunk.substring(minComma + 1, maxComma).toFloat();
+            int velocity = servoConfigChunk.substring(maxComma + 1, velocityComma).toInt();
+            int idleRange = servoConfigChunk.substring(velocityComma + 1).toInt();
+            if (servoId >= 0 && servoId < activeServos) {
+              servos[servoId].min_angle = round(minAngle);
+              servos[servoId].max_angle = round(maxAngle);
+              servos[servoId].velocity = velocity;
+              servos[servoId].idle_range = idleRange;
+              servos[servoId].angle = constrain(servos[servoId].angle, servos[servoId].min_angle, servos[servoId].max_angle);
+              servos[servoId].initial_angle = servos[servoId].angle;
+            }
+          }
+          if (semicolonIndex == -1) break;
+          configStartIndex = semicolonIndex + 1;
+          servoIndex++;
+        }
+        Serial.println("[OK] Servo config updated from USB");
+        drawWindow();
+      } else {
+        // Forward any other command to OpenRB
+        OpenRB.println(cmd);
+        Serial.printf("[→RB] (from USB) %s\n", cmd.c_str());
+      }
+    }
+  }
+
   // Only allow UI and servo commands after calibration is received
   if (!calibrationReceived) {
     delay(33);
@@ -331,22 +377,4 @@ void loop()
     int next = selected;
     for (int tries = 0; tries < activeServos; ++tries) {
       next = (next + 1) % activeServos;
-      if (servoPingResult[next]) break;
-    }
-    selected = next;
-    if (selected < scrollOffset)                scrollOffset = selected;
-    else if (selected >= scrollOffset + visibleRows)
-                                                scrollOffset = selected - visibleRows + 1;
-
-    if (scrollOffset == 0 ||
-        selected == scrollOffset ||
-        selected == scrollOffset + visibleRows - 1)
-      drawWindow();
-    else {
-      drawSingle(old);
-      drawSingle(selected);
-    }
-  }
-
-  delay(33);          // ~30 FPS UI refresh
-}
+      if (servoPingResult[next]
