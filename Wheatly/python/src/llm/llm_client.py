@@ -6,6 +6,7 @@ import os
 import logging
 import requests
 import time
+import asyncio
 
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
@@ -401,6 +402,21 @@ tools = [
       },
       "required": ["user_request"],
     },
+  },
+  {
+    "type": "function",
+    "name": "set_timer",
+    "description": "Set a timer for a specified number of seconds or minutes. When the timer expires, an event will be triggered in the assistant's event queue. Use this to remind the user or trigger actions after a delay.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "duration": {"type": "number", "description": "The duration of the timer in seconds."},
+        "reason": {"type": "string", "description": "The reason or label for the timer (optional)."
+        }
+      },
+      "required": ["duration"],
+      "additionalProperties": False
+    }
   }
 ]
 
@@ -416,7 +432,7 @@ class Functions:
         self.spotify_agent = SpotifyAgent()
         
 
-    def execute_workflow(self, workflow):
+    def execute_workflow(self, workflow, event_queue=None):
         results = []
         for item in workflow:
             func_name = item.get("name")
@@ -434,13 +450,19 @@ class Functions:
                 args = item.get("arguments", {}).get("arguments", {})
                 response = self.google_agent.llm_decide_and_dispatch(user_request, args)
                 results.append((func_name, response))
-
             elif func_name == "call_spotify_agent":
                 user_req = item.get("arguments", {}).get("user_request", "")
                 args = item.get("arguments", {}).get("device_id", {})
                 response = self.spotify_agent.llm_decide_and_dispatch(user_req, args)
                 results.append((func_name, response))
-                
+            elif func_name == "set_timer":
+                if event_queue is not None:
+                    duration = item.get("arguments", {}).get("duration")
+                    reason = item.get("arguments", {}).get("reason", f"Timer expired!")
+                    self._schedule_timer_event(duration, reason, event_queue)
+                    results.append((func_name, f"Timer set for {duration} seconds. Reason: {reason}"))
+                else:
+                    results.append((func_name, "No event queue provided for timer!"))
             elif func_name == "get_weather":
                 get_weather_args = item.get("arguments")
                 latitude = get_weather_args.get("latitude")
@@ -541,6 +563,35 @@ class Functions:
         except Exception as e:
             return f"Error retrieving weather: {e}"
 
+    def _schedule_timer_event(self, duration, reason, event_queue):
+        async def timer_task():
+            await asyncio.sleep(duration)
+            from datetime import datetime
+            try:
+                from main import Event as MainEvent
+                timer_event = MainEvent(
+                    source="timer",
+                    payload=reason,
+                    metadata={
+                        "set_by": "llm_agent",
+                        "duration": duration,
+                        "set_at": str(datetime.utcnow())
+                    },
+                    ts=datetime.utcnow()
+                )
+            except Exception:
+                timer_event = type('Event', (), {})()
+                timer_event.source = "timer"
+                timer_event.payload = reason
+                timer_event.metadata = {
+                    "set_by": "llm_agent",
+                    "duration": duration,
+                    "set_at": str(datetime.utcnow())
+                }
+                timer_event.ts = datetime.utcnow()
+            await event_queue.put(timer_event)
+        asyncio.create_task(timer_task())
+        
     def get_joke(self):
         response = requests.get("https://official-joke-api.appspot.com/random_joke")
         data = response.json()

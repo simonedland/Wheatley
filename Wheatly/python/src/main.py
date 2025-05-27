@@ -2,6 +2,10 @@
 import os  # For file and path operations
 import logging  # For logging events and timings
 import time  # For timing actions
+import asyncio
+import datetime
+from dataclasses import dataclass
+from typing import Dict, Any, Optional
 
 # =================== Imports: Third-Party Libraries ===================
 import yaml  # For reading YAML config files
@@ -138,6 +142,18 @@ def initialize_assistant(config):
     # Return all initialized components and feature flags
     return manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled
 
+# =================== Event Dataclass ===================
+@dataclass
+class Event:
+    source: str        # e.g. "user", "timer", "gpio", "webhook", etc.
+    payload: str       # human-readable description
+    metadata: Optional[Dict[str, Any]] = None
+    ts: datetime.datetime = datetime.datetime.utcnow()
+
+    def __str__(self) -> str:
+        meta = f" {self.metadata}" if self.metadata else ""
+        return f"[{self.source.upper()}] {self.payload}{meta}"
+
 # =================== Conversation loop handling ===================
 # Main loop for user interaction, workflow execution, and response
 def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
@@ -222,6 +238,87 @@ def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_inter
             logging.info(f"Assistant: {gpt_text}")
         logging.info(f"TTS or print response in {time.time() - action_start:.3f} seconds.")
         logging.info("\n" + "=" * 60 + "\n")
+
+# =================== Async Event Handling ===================
+async def user_input_producer(q: asyncio.Queue):
+    loop = asyncio.get_event_loop()
+    while True:
+        text = await loop.run_in_executor(None, input, "You: ")
+        await q.put(Event("user", text.strip()))
+        if text.strip().lower() == "exit":
+            break
+
+def print_event(event: Event):
+    print(event)
+
+async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
+    queue: asyncio.Queue = asyncio.Queue()
+    # Start event producers
+    asyncio.create_task(user_input_producer(queue))
+    print("🤖 Assistant running. Type 'exit' to quit.\n")
+    while True:
+        event: Event = await queue.get()
+        print_event(event)
+        if event.source == "user":
+            manager.add_text_to_conversation("user", event.payload)
+            if event.payload.lower() == "exit":
+                break
+        else:
+            # If this is a timer event, make the system message more explicit
+            if event.source == "timer":
+                timer_label = event.payload if hasattr(event, 'payload') else "Timer"
+                timer_duration = None
+                if hasattr(event, 'metadata') and event.metadata:
+                    timer_duration = event.metadata.get("duration")
+                timer_msg = f"TIMER for {timer_duration} sec UP: {timer_label}" if timer_duration else f"TIMER UP: {timer_label}"
+                manager.add_text_to_conversation("system", timer_msg)
+            else:
+                manager.add_text_to_conversation("system", str(event))
+        # --- TOOL/WORKFLOW SECTION ---
+        chain_retry = 0
+        while chain_retry < 3:
+            try:
+                workflow = gpt_client.get_workflow(manager.get_conversation())
+            except Exception as e:
+                logging.error(f"Error getting GPT workflow: {e}")
+                break
+            if workflow:
+                for call in workflow:
+                    print(f"Tool Name: {call.get('name', 'unknown')}")
+                    print(f"Arguments: {call.get('arguments', {})}")
+                for item in workflow:
+                    if item.get("name") == "web_search_call_result":
+                        context_text = item.get("arguments", {}).get("text", "")
+                        if context_text:
+                            manager.add_text_to_conversation("system", f"Info: {context_text}")
+                workflow = [item for item in workflow if item.get("name") != "web_search_call_result"]
+            if not workflow:
+                break
+            try:
+                fn_results = Functions().execute_workflow(workflow, event_queue=queue) or []
+            except Exception as e:
+                logging.error(f"Error executing workflow tools: {e}")
+                break
+            for fn_name, result in fn_results:
+                manager.add_text_to_conversation("system", str(result))
+            chain_retry += 1
+        # --- ASSISTANT RESPONSE SECTION ---
+        try:
+            gpt_text = gpt_client.get_text(manager.get_conversation())
+        except Exception as e:
+            logging.error(f"Error getting GPT text: {e}")
+            continue
+        manager.add_text_to_conversation("assistant", gpt_text)
+        manager.print_memory()
+        animation = gpt_client.reply_with_animation(manager.get_conversation())
+        arduino_interface.set_animation(animation)
+        arduino_interface.servo_controller.print_servo_status()
+        if tts_enabled:
+            tts_engine.generate_and_play_advanced(gpt_text)
+        else:
+            print(f"Assistant: {gpt_text}")
+    print("👋 Exiting…")
+
 # =================== Main Code ===================
 def main():
     config = load_config()
@@ -258,8 +355,8 @@ def main():
     else:
         print("Assistant:", gpt_text)
     
-    # Start the conversation loop
-    conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled)
+    # Start the async event-based conversation loop
+    asyncio.run(async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled))
     logging.info("Assistant finished.")
 
 if __name__ == "__main__":
