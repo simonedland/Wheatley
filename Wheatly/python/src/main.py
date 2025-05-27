@@ -13,6 +13,7 @@ import pyaudio  # For audio input/output
 import openai  # For OpenAI API access
 from playsound import playsound  # For playing audio files
 from colorama import init, Fore, Style  # For colored terminal output
+import pathlib
 
 # Try to import RPi.GPIO for Raspberry Pi GPIO control; disable if not available
 try:
@@ -270,7 +271,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                 timer_duration = None
                 if hasattr(event, 'metadata') and event.metadata:
                     timer_duration = event.metadata.get("duration")
-                timer_msg = f"TIMER for {timer_duration} sec UP: {timer_label}" if timer_duration else f"TIMER UP: {timer_label}"
+                timer_msg = f"TIMER labeled {timer_label} for {timer_duration} is up inform the user." if timer_duration else f"TIMER UP: {timer_label}"
                 manager.add_text_to_conversation("system", timer_msg)
             else:
                 manager.add_text_to_conversation("system", str(event))
@@ -310,13 +311,48 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             continue
         manager.add_text_to_conversation("assistant", gpt_text)
         manager.print_memory()
-        animation = gpt_client.reply_with_animation(manager.get_conversation())
-        arduino_interface.set_animation(animation)
-        arduino_interface.servo_controller.print_servo_status()
+        
+        # Print currently scheduled async events (timers, etc.)
+        # Improved: Pretty, colored, box-drawn async task table with truncation
+        def truncate(text, width):
+            return text if len(text) <= width else text[:width-1] + '…'
+        tasks = []
+        for t in asyncio.all_tasks():
+            f = getattr(t.get_coro(), 'cr_frame', None)
+            loc = f"{pathlib.Path(f.f_code.co_filename).name}:{f.f_lineno}" if f else ''
+            tasks.append({
+                "name": t.get_name(),
+                "state": t._state,
+                "coro": t.get_coro().__qualname__,
+                "loc": loc
+            })
+        # Set max widths for columns
+        name_w = 10
+        state_w = 9
+        coro_w = 22
+        loc_w = 14
+        table_w = name_w + state_w + coro_w + loc_w + 13  # 13 for box chars and spaces
+        if tasks:
+            print(Fore.CYAN + Style.BRIGHT + f"\n┌{'─'*table_w}┐")
+            print(f"│{' Active Async Tasks '.center(table_w)}│")
+            print(f"├{'─'*name_w}┬{'─'*state_w}┬{'─'*coro_w}┬{'─'*loc_w}┤")
+            print(f"│ {'Name':<{name_w}} │ {'State':<{state_w}} │ {'Coroutine':<{coro_w}} │ {'Location':<{loc_w}} │")
+            print(f"├{'─'*name_w}┼{'─'*state_w}┼{'─'*coro_w}┼{'─'*loc_w}┤")
+            for t in tasks:
+                name = f"{Fore.YELLOW}{truncate(t['name'],name_w):<{name_w}}{Style.RESET_ALL}"
+                state = f"{Fore.GREEN if t['state']=='PENDING' else Fore.RED}{truncate(t['state'],state_w):<{state_w}}{Style.RESET_ALL}"
+                coro = f"{truncate(t['coro'],coro_w):<{coro_w}}"
+                loc = f"{truncate(t['loc'],loc_w):<{loc_w}}"
+                print(f"│ {name} │ {state} │ {coro} │ {loc} │")
+            print(Fore.CYAN + Style.BRIGHT + f"└{'─'*name_w}┴{'─'*state_w}┴{'─'*coro_w}┴{'─'*loc_w}┘" + Style.RESET_ALL)
+        else:
+            print(Fore.CYAN + Style.BRIGHT + "No async tasks running." + Style.RESET_ALL)
+
+        # Print assistant output and clear input prompt
+        print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
+        print(Fore.LIGHTBLACK_EX + Style.BRIGHT + "\n»»» Ready for your input! Type below..." + Style.RESET_ALL)
         if tts_enabled:
             tts_engine.generate_and_play_advanced(gpt_text)
-        else:
-            print(f"Assistant: {gpt_text}")
     print("👋 Exiting…")
 
 # =================== Main Code ===================

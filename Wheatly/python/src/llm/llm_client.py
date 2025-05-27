@@ -292,7 +292,7 @@ tools = [
         "latitude": {"type": "number"},
         "longitude": {"type": "number"},
         "include_forecast": {"type": "boolean"},
-        "forecast_days": {"type": "integer"},
+        "forecast_days": {"type": "integer", "description": "Number of days to include in the forecast from today."},
         "extra_hourly": {
           "type": "array",
           "items": {"type": "string"}
