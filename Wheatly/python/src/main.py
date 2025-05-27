@@ -313,40 +313,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
         manager.print_memory()
         
         # Print currently scheduled async events (timers, etc.)
-        # Improved: Pretty, colored, box-drawn async task table with truncation
-        def truncate(text, width):
-            return text if len(text) <= width else text[:width-1] + '…'
-        tasks = []
-        for t in asyncio.all_tasks():
-            f = getattr(t.get_coro(), 'cr_frame', None)
-            loc = f"{pathlib.Path(f.f_code.co_filename).name}:{f.f_lineno}" if f else ''
-            tasks.append({
-                "name": t.get_name(),
-                "state": t._state,
-                "coro": t.get_coro().__qualname__,
-                "loc": loc
-            })
-        # Set max widths for columns
-        name_w = 10
-        state_w = 9
-        coro_w = 22
-        loc_w = 14
-        table_w = name_w + state_w + coro_w + loc_w + 13  # 13 for box chars and spaces
-        if tasks:
-            print(Fore.CYAN + Style.BRIGHT + f"\n┌{'─'*table_w}┐")
-            print(f"│{' Active Async Tasks '.center(table_w)}│")
-            print(f"├{'─'*name_w}┬{'─'*state_w}┬{'─'*coro_w}┬{'─'*loc_w}┤")
-            print(f"│ {'Name':<{name_w}} │ {'State':<{state_w}} │ {'Coroutine':<{coro_w}} │ {'Location':<{loc_w}} │")
-            print(f"├{'─'*name_w}┼{'─'*state_w}┼{'─'*coro_w}┼{'─'*loc_w}┤")
-            for t in tasks:
-                name = f"{Fore.YELLOW}{truncate(t['name'],name_w):<{name_w}}{Style.RESET_ALL}"
-                state = f"{Fore.GREEN if t['state']=='PENDING' else Fore.RED}{truncate(t['state'],state_w):<{state_w}}{Style.RESET_ALL}"
-                coro = f"{truncate(t['coro'],coro_w):<{coro_w}}"
-                loc = f"{truncate(t['loc'],loc_w):<{loc_w}}"
-                print(f"│ {name} │ {state} │ {coro} │ {loc} │")
-            print(Fore.CYAN + Style.BRIGHT + f"└{'─'*name_w}┴{'─'*state_w}┴{'─'*coro_w}┴{'─'*loc_w}┘" + Style.RESET_ALL)
-        else:
-            print(Fore.CYAN + Style.BRIGHT + "No async tasks running." + Style.RESET_ALL)
+        print_async_tasks()
 
         # Print assistant output and clear input prompt
         print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
@@ -354,6 +321,27 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
         if tts_enabled:
             tts_engine.generate_and_play_advanced(gpt_text)
     print("👋 Exiting…")
+
+def print_async_tasks():
+    """Minimal async task list, one line per task, no table formatting."""
+    tasks = []
+    for t in asyncio.all_tasks():
+        f = getattr(t.get_coro(), 'cr_frame', None)
+        loc = f"{pathlib.Path(f.f_code.co_filename).name}:{f.f_lineno}" if f else ''
+        tasks.append({
+            "name": t.get_name(),
+            "state": t._state,
+            "coro": t.get_coro().__qualname__,
+            "loc": loc
+        })
+    if tasks:
+        print(Fore.CYAN + Style.BRIGHT + "\nAsync Tasks:")
+        for t in tasks:
+            name = f"{Fore.YELLOW}{t['name']}{Style.RESET_ALL}"
+            state = f"{Fore.GREEN if t['state']=='PENDING' else Fore.RED}{t['state']}{Style.RESET_ALL}"
+            print(f"  {name} | {state} | {t['coro']} | {t['loc']}")
+    else:
+        print(Fore.CYAN + Style.BRIGHT + "No async tasks running." + Style.RESET_ALL)
 
 # =================== Main Code ===================
 def main():
