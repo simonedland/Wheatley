@@ -155,91 +155,6 @@ class Event:
         meta = f" {self.metadata}" if self.metadata else ""
         return f"[{self.source.upper()}] {self.payload}{meta}"
 
-# =================== Conversation loop handling ===================
-# Main loop for user interaction, workflow execution, and response
-def conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
-    RESET = "\033[0m"
-    RETRO_COLOR = "\033[95m"
-    SEPARATOR = f"\n{RETRO_COLOR}" + "=" * 50 + f"{RESET}\n"
-
-    while True:
-        # --- New User Input Section ---
-        action_start = time.time()
-        # Get user input (via STT if enabled, else text input)
-        if stt_enabled:
-            user_input = stt_engine.record_and_transcribe()
-        else:
-            user_input = input("User: ")
-        # Log the new user input and timing
-        logging.info(f"\n=== New User Input: {user_input} ===")
-        action_start = time.time()
-        manager.add_text_to_conversation("user", user_input)
-        
-        # Exit if user types 'exit'
-        if user_input.lower() == "exit":
-            break
-        
-        # --- Workflow/Function Execution Section ---
-        chain_retry = 0
-        while chain_retry < 3:
-            action_start = time.time()
-            # Get workflow (function/tool calls) from GPT based on conversation
-            workflow = gpt_client.get_workflow(manager.get_conversation())
-            logging.info(f"GPT workflow generation took {time.time() - action_start:.3f} seconds.")
-            if workflow:
-                # Log each function call in the workflow
-                for call in workflow:
-                    print(f"{RETRO_COLOR}Name: {call.get('name', 'unknown')}{RESET}")
-                    print(f"{RETRO_COLOR}Arguments: {call.get('arguments', {})}{RESET}")
-                # If the workflow includes web_search_call_result items, add their text as system context
-                for item in workflow:
-                    if item.get("name") == "web_search_call_result":
-                        context_text = item.get("arguments", {}).get("text", "")
-                        if context_text:
-                            manager.add_text_to_conversation("system", f"Info: {context_text}")
-                # Remove non-executable info items
-                workflow = [item for item in workflow if item.get("name") != "web_search_call_result"]
-            if not workflow:
-                break
-            # Execute all tools/functions in the workflow and add results to conversation
-            logging.info(f"--- Executing Tool Workflow ---")
-            fn_results = Functions().execute_workflow(workflow) or []
-            for fn_name, result in fn_results:
-                manager.add_text_to_conversation("system", str(result))
-            chain_retry += 1
-
-        # --- Assistant Response Section ---
-        try:
-            action_start = time.time()
-            # Get assistant's text response from GPT
-            gpt_text = gpt_client.get_text(manager.get_conversation())
-            logging.info(f"GPT text response in {time.time() - action_start:.3f} seconds.")
-        except Exception as e:
-            logging.error(f"Error getting GPT text: {e}")
-            continue
-        
-        # Add assistant response to conversation and print memory (for debugging)
-        manager.add_text_to_conversation("assistant", gpt_text)
-        manager.print_memory()
-        
-        # --- Animation/Servo Section ---
-        action_start = time.time()
-        # Get animation from GPT and update Arduino/servo
-        animation = gpt_client.reply_with_animation(manager.get_conversation())
-        arduino_interface.set_animation(animation)
-        arduino_interface.servo_controller.print_servo_status()
-        logging.info(f"Animation and servo status in {time.time() - action_start:.3f} seconds.")
-        
-        # --- TTS/Output Section ---
-        action_start = time.time()
-        # Speak or log the assistant's response
-        if tts_enabled:
-            tts_engine.generate_and_play_advanced(gpt_text)
-        else:
-            logging.info(f"Assistant: {gpt_text}")
-        logging.info(f"TTS or print response in {time.time() - action_start:.3f} seconds.")
-        logging.info("\n" + "=" * 60 + "\n")
-
 # =================== Async Event Handling ===================
 async def user_input_producer(q: asyncio.Queue):
     loop = asyncio.get_event_loop()
@@ -260,6 +175,9 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
     while True:
         event: Event = await queue.get()
         print_event(event)
+        animation = gpt_client.reply_with_animation(manager.get_conversation())
+        print(f"[Animation chosen]: {animation}")
+        arduino_interface.set_animation(animation)
         if event.source == "user":
             manager.add_text_to_conversation("user", event.payload)
             if event.payload.lower() == "exit":
@@ -311,10 +229,15 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             continue
         manager.add_text_to_conversation("assistant", gpt_text)
         manager.print_memory()
+
+        # --- ANIMATION SECTION ---
+        animation = gpt_client.reply_with_animation(manager.get_conversation())
+        print(f"[Animation chosen]: {animation}")
+        arduino_interface.set_animation(animation)
         
         # Print currently scheduled async events (timers, etc.)
         print_async_tasks()
-
+        arduino_interface.servo_controller.print_servo_status()
         # Print assistant output and clear input prompt
         print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
         print(Fore.LIGHTBLACK_EX + Style.BRIGHT + "\n»»» Ready for your input! Type below..." + Style.RESET_ALL)

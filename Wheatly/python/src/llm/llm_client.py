@@ -285,7 +285,7 @@ tools = [
   {
     "type": "function",
     "name": "get_weather",
-    "description": "Get current temperature and forecast for provided coordinates.",
+    "description": "Get current temperature and forecast for provided coordinates. make shure that the forecast day is FROM today. if the user asks for the weekend and we are on a monday, the weekend is then 6 days away. if the user asks for tomorrow, it is 1 day away.",
     "parameters": {
       "type": "object",
       "properties": {
