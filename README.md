@@ -32,25 +32,22 @@
     - [ ] make a memmory "time out" for the LLM, so it can forget things after a certain time.
 
 ### Tools
-- [ ] Add a google search tool to the LLM.
-- [ ] Add a google callender tool to the LLM.
 - [ ] Add a google notes tool to the LLM.
 
 ### ideas
-diggital twin?
-readup in another voice?
-self aware of mood?
-object spotting???
-proactive conversation?
-briefing?
-air quality allert?
-multi speaker recognition
-todo list
-Multi-room audio orchestrator
-   add a tool that can inject music in the queue
-Quirkiness slider 
-Voiceprint authentication – owner unlocks high-impact commands; guests get limited scope.
-Web search preferences
+    - [ ] Proactive conversation
+      - [ ] Monitoring calendar?
+      - [ ] Air quality alert?
+    - [ ] Digital twin?
+    - [ ] Readup in another voice?
+    - [ ] Self aware of mood?
+    - [ ] Object spotting???
+    - [ ] Briefing?
+    - [ ] Multi speaker recognition?
+    - [ ] Todo list
+    - [ ] Multi-room audio orchestrator
+    - [ ] Quirkiness slider
+    - [ ] Voiceprint authentication – owner unlocks high-impact commands; guests get limited scope.
 
 
 ![image](https://github.com/user-attachments/assets/8a19e5c1-a585-4bda-a584-b9c9db2b953a)
