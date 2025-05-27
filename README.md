@@ -38,6 +38,7 @@
     - [ ] Proactive conversation
       - [ ] Monitoring calendar?
       - [ ] Air quality alert?
+      - [ ] Sett timer for x minutes?
     - [ ] Digital twin?
     - [ ] Readup in another voice?
     - [ ] Self aware of mood?
