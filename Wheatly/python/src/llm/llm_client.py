@@ -25,7 +25,8 @@ except ImportError:
     from spotify_agent import SpotifyAgent
 
 from llm.google_agent import GoogleAgent
-  
+from llm.llm_client_utils import WEATHER_CODE_DESCRIPTIONS, set_animation_tool, build_tools, _load_config
+
 logging.basicConfig(level=logging.WARN)
 
 def _load_config():
@@ -33,37 +34,6 @@ def _load_config():
     config_path = os.path.join(base_dir, "config", "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
-
-WEATHER_CODE_DESCRIPTIONS = {
-    0: "Clear sky",
-    1: "Mainly clear, partly cloudy, and overcast",
-    2: "Mainly clear, partly cloudy, and overcast",
-    3: "Mainly clear, partly cloudy, and overcast",
-    45: "Fog and depositing rime fog",
-    48: "Fog and depositing rime fog",
-    51: "Drizzle: Light intensity",
-    53: "Drizzle: Moderate intensity",
-    55: "Drizzle: Dense intensity",
-    56: "Freezing Drizzle: Light intensity",
-    57: "Freezing Drizzle: Dense intensity",
-    61: "Rain: Slight intensity",
-    63: "Rain: Moderate intensity",
-    65: "Rain: Heavy intensity",
-    66: "Freezing Rain: Light intensity",
-    67: "Freezing Rain: Heavy intensity",
-    71: "Snow fall: Slight intensity",
-    73: "Snow fall: Moderate intensity",
-    75: "Snow fall: Heavy intensity",
-    77: "Snow grains",
-    80: "Rain showers: Slight intensity",
-    81: "Rain showers: Moderate intensity",
-    82: "Rain showers: Violent",
-    85: "Snow showers: Slight intensity",
-    86: "Snow showers: Heavy intensity",
-    95: "Thunderstorm: Slight or moderate",
-    96: "Thunderstorm with slight hail (Central Europe only)",
-    99: "Thunderstorm with heavy hail (Central Europe only)"
-}
 
 class TextToSpeech:
     def __init__(self):
@@ -216,6 +186,7 @@ class GPTClient:
         
     def get_workflow(self, conversation):
         start_time = time.time()
+        tools = build_tools()
         completion = openai.responses.create(
             model=self.model,
             input=conversation,
@@ -251,26 +222,6 @@ class GPTClient:
                     })
         return results if results else None
 
-
-set_animation_tool = [
-    {
-        "type": "function",
-        "name": "set_animation",
-        "description": "The Wheatley bot should select an animation based on the emotional state it determines from the current context or input. Last known mood: {last_mood}. Use this as context for your choice. The function will analyze the tone, keywords, and interaction style to decide which emotional state best reflects the bot's current mood or reaction.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "animation": {
-                    "type": "string",
-                    "enum": ["happy", "angry", "sad", "neutral", "excited", "confused", "surprised", "curious", "bored", "fearful", "hopeful", "embarrassed", "frustrated", "proud", "nostalgic", "relieved", "grateful", "shy", "disappointed", "jealous"]  # allowed animations
-                }
-            },
-            "required": ["animation"],
-            "additionalProperties": False
-        }
-    }
-]
-
 # Dynamically build the tools list to include web_search_preview preferences from config
 config = _load_config()
 web_search_config = config.get("web_search", {})
@@ -280,148 +231,9 @@ if "user_location" in web_search_config:
 if "search_context_size" in web_search_config:
     web_search_tool["search_context_size"] = web_search_config["search_context_size"]
 
-tools = [
-  web_search_tool,
-  {
-    "type": "function",
-    "name": "get_weather",
-    "description": "Get current temperature and forecast for provided coordinates. make shure that the forecast day is FROM today. if the user asks for the weekend and we are on a monday, the weekend is then 6 days away. if the user asks for tomorrow, it is 1 day away.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "latitude": {"type": "number"},
-        "longitude": {"type": "number"},
-        "include_forecast": {"type": "boolean"},
-        "forecast_days": {"type": "integer", "description": "Number of days to include in the forecast from today."},
-        "extra_hourly": {
-          "type": "array",
-          "items": {"type": "string"}
-        },
-        "temperature_unit": {"type": "string", 
-        "enum": ["celsius", "fahrenheit"]},
-        "wind_speed_unit": {"type": "string", "enum": ["kmh", "ms", "mph", "kn"]}
-      },
-      "required": ["latitude", "longitude"],
-      "additionalProperties": False
-    }
-  },
-  {
-    "type": "function",
-    "name": "test_function",
-    "description": "Test function to check if the function calling works.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "test": {"type": "string"}
-      },
-      "required": ["test"],
-      "additionalProperties": False
-    }
-  },
-  {
-    "type": "function",
-    "name": "get_joke",
-    "description": "Get a random joke.",
-    "parameters": {
-      "type": "object",
-      "properties": {},
-      "required": [],
-      "additionalProperties": False
-    }
-  },
-  {
-    "type": "function",
-    "name": "get_quote",
-    "description": "Retrieve a random inspirational quote.",
-    "parameters": {
-      "type": "object",
-      "properties": {},
-      "required": [],
-      "additionalProperties": False
-    }
-  },
-  {
-    "type": "function",
-    "name": "reverse_text",
-    "description": "Reverse the provided text.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "text": {"type": "string"}
-      },
-      "required": ["text"],
-      "additionalProperties": False
-    }
-  },
-  {
-    "type": "function",
-    "name": "get_city_coordinates",
-    "description": "Get accurate coordinates for a given city.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "city": {"type": "string"}
-      },
-      "required": ["city"],
-      "additionalProperties": False
-    }
-  },
-  {
-    "type": "function",
-    "name": "get_advice",
-    "description": "Retrieve a piece of advice.",
-    "parameters": {
-      "type": "object",
-      "properties": {},
-      "required": [],
-      "additionalProperties": False
-    }
-  },
-  {
-    "type": "function",
-    "name": "call_google_agent",
-    "description": "Delegate any Google-related request to the Google Agent. Use this if the user asks about Google services, calendar, or anything Google-related. if user asks about calendar use this function. this agent can delete events, create/add events, and get events.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "user_request": {"type": "string", "description": "The user's request or question related to Google services."}
-      },
-      "required": ["user_request"],
-      "additionalProperties": False
-    }
-  },
-  {
-    "type": "function",
-    "name": "call_spotify_agent",
-    "description": "Delegate any Spotify request—play, pause, search, queue, device control, etc.—to the Spotify Agent. Use this whenever the user mentions Spotify or music playback. supply device id when transferring playback.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "user_request": {"type": "string"},
-        "device_id": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
-      },
-      "required": ["user_request"],
-    },
-  },
-  {
-    "type": "function",
-    "name": "set_timer",
-    "description": "Set a timer for a specified number of seconds or minutes. When the timer expires, an event will be triggered in the assistant's event queue. Use this to remind the user or trigger actions after a delay.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "duration": {"type": "number", "description": "The duration of the timer in seconds."},
-        "reason": {"type": "string", "description": "The reason or label for the timer (optional)."
-        }
-      },
-      "required": ["duration"],
-      "additionalProperties": False
-    }
-  }
-]
-
 tts_engine = TextToSpeech()
 
+#tools = build_tools()
 
 class Functions:
     def __init__(self):
@@ -498,6 +310,15 @@ class Functions:
             elif func_name == "get_advice":
                 response = self.get_advice()
                 results.append((func_name, response))
+            elif func_name == "set_reminder":
+                if event_queue is not None:
+                    args = item.get("arguments", {})
+                    time_str = args.get("time")
+                    reason = args.get("reason", "Reminder!")
+                    self.set_reminder(time_str, reason, event_queue)
+                    results.append((func_name, f"Reminder set for {time_str}. Reason: {reason}"))
+                else:
+                    results.append((func_name, "No event queue provided for reminder!"))
             tool_elapsed = time.time() - tool_start
             logging.info(f"Tool '{func_name}' execution took {tool_elapsed:.3f} seconds.")
         return results
@@ -567,28 +388,17 @@ class Functions:
         async def timer_task():
             await asyncio.sleep(duration)
             from datetime import datetime
-            try:
-                from main import Event as MainEvent
-                timer_event = MainEvent(
-                    source="timer",
-                    payload=reason,
-                    metadata={
-                        "set_by": "llm_agent",
-                        "duration": duration,
-                        "set_at": str(datetime.utcnow())
-                    },
-                    ts=datetime.utcnow()
-                )
-            except Exception:
-                timer_event = type('Event', (), {})()
-                timer_event.source = "timer"
-                timer_event.payload = reason
-                timer_event.metadata = {
+            from main import Event as MainEvent
+            timer_event = MainEvent(
+                source="timer",
+                payload=reason,
+                metadata={
                     "set_by": "llm_agent",
                     "duration": duration,
                     "set_at": str(datetime.utcnow())
-                }
-                timer_event.ts = datetime.utcnow()
+                },
+                ts=datetime.utcnow()
+            )
             await event_queue.put(timer_event)
         asyncio.create_task(timer_task())
         
@@ -636,6 +446,56 @@ class Functions:
       advice = None
       advice = data.get("advice")
       return f"Give the following advice: {advice}"
+
+    def set_reminder(self, time_str, reason=None, event_queue=None):
+        """
+        Schedule a reminder for a specific clock time. When the time is reached, an event will be triggered in the assistant's event queue.
+        :param time_str: The target time for the reminder, e.g., '07:00', '19:30', or '7am'.
+        :param reason: The reason or label for the reminder (optional).
+        :param event_queue: The event queue to put the reminder event into (optional).
+        """
+        import asyncio
+        from datetime import datetime, timedelta
+        import re
+        
+        # Parse the time string (supports 'HH:MM', 'H:MM', '7am', '7pm', etc.)
+        now = datetime.now()
+        match = re.match(r"(\d{1,2}):(\d{2})", time_str)
+        if match:
+            hour, minute = int(match.group(1)), int(match.group(2))
+        else:
+            # Try to parse '7am', '7pm', etc.
+            match = re.match(r"(\d{1,2})(am|pm)", time_str.lower())
+            if match:
+                hour = int(match.group(1))
+                if match.group(2) == 'pm' and hour != 12:
+                    hour += 12
+                elif match.group(2) == 'am' and hour == 12:
+                    hour = 0
+                minute = 0
+            else:
+                raise ValueError(f"Invalid time format: {time_str}")
+        # Calculate the target datetime
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target < now:
+            target += timedelta(days=1)  # Schedule for next day if time has passed
+        delay = (target - now).total_seconds()
+        async def reminder_task():
+            await asyncio.sleep(delay)
+            from main import Event as MainEvent
+            reminder_event = MainEvent(
+                source="reminder",
+                payload=reason or time_str,
+                metadata={
+                    "set_by": "llm_agent",
+                    "reminder_time": time_str,
+                    "set_at": str(now)
+                },
+                ts=datetime.now()
+            )
+            if event_queue:
+                await event_queue.put(reminder_event)
+        asyncio.create_task(reminder_task())
 
 
 if __name__ == "__main__":

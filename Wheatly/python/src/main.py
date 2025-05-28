@@ -175,9 +175,9 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
     while True:
         event: Event = await queue.get()
         print_event(event)
-        animation = gpt_client.reply_with_animation(manager.get_conversation())
-        print(f"[Animation chosen]: {animation}")
-        arduino_interface.set_animation(animation)
+        #animation = gpt_client.reply_with_animation(manager.get_conversation())
+        #print(f"[Animation chosen]: {animation}")
+        #arduino_interface.set_animation(animation)
         if event.source == "user":
             manager.add_text_to_conversation("user", event.payload)
             if event.payload.lower() == "exit":
@@ -186,11 +186,15 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             # If this is a timer event, make the system message more explicit
             if event.source == "timer":
                 timer_label = event.payload if hasattr(event, 'payload') else "Timer"
-                timer_duration = None
                 if hasattr(event, 'metadata') and event.metadata:
                     timer_duration = event.metadata.get("duration")
                 timer_msg = f"TIMER labeled {timer_label} for {timer_duration} is up inform the user." if timer_duration else f"TIMER UP: {timer_label}"
                 manager.add_text_to_conversation("system", timer_msg)
+
+            elif event.source == "reminder":
+                reminder_text = event.payload if hasattr(event, 'payload') else "Reminder"
+                manager.add_text_to_conversation("system", f"Reminder has triggered with the following text: {reminder_text}")
+
             else:
                 manager.add_text_to_conversation("system", str(event))
         # --- TOOL/WORKFLOW SECTION ---
