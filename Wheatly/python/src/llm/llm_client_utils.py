@@ -3,6 +3,7 @@
 import os
 import yaml
 from datetime import datetime
+import requests
 
 # Weather code descriptions
 WEATHER_CODE_DESCRIPTIONS = {
@@ -43,6 +44,36 @@ def _load_config():
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
     
+def get_joke():
+    response = requests.get("https://official-joke-api.appspot.com/random_joke")
+    data = response.json()
+    joke = f"Provide the following joke to the user: {data.get('setup')} - {data.get('punchline')}"
+    return joke
+
+def get_quote():
+    config = _load_config()
+    api_key = config["secrets"].get("api_ninjas_api_key", "")
+    headers = {"X-Api-Key": api_key}
+    response = requests.get("https://api.api-ninjas.com/v1/quotes", headers=headers)
+    data = response.json()
+    if data and isinstance(data, list):
+        item = data[0]
+        return f"Tell the user: {item.get('quote', '')} — {item.get('author', '')}"
+    return "No quote available."
+
+def get_city_coordinates(city):
+    config = _load_config()
+    api_key = config["secrets"].get("api_ninjas_api_key", "")
+    headers = {"X-Api-Key": api_key}
+    url = f"https://api.api-ninjas.com/v1/city?name={city}"
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    if data and isinstance(data, list) and len(data) > 0:
+        item = data[0]
+        lat = item.get("latitude")
+        lon = item.get("longitude")
+        return f"Coordinates for {city}: Latitude {lat}, Longitude {lon}."
+    return f"No data available for {city}."
 
 set_animation_tool = [
     {
@@ -129,19 +160,6 @@ def build_tools():
                 "type": "object",
                 "properties": {},
                 "required": [],
-                "additionalProperties": False
-            }
-        },
-        {
-            "type": "function",
-            "name": "reverse_text",
-            "description": "Reverse the provided text.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string"}
-                },
-                "required": ["text"],
                 "additionalProperties": False
             }
         },

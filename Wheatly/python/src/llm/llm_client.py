@@ -25,7 +25,7 @@ except ImportError:
     from spotify_agent import SpotifyAgent
 
 from llm.google_agent import GoogleAgent
-from llm.llm_client_utils import WEATHER_CODE_DESCRIPTIONS, set_animation_tool, build_tools, _load_config
+from llm.llm_client_utils import get_city_coordinates, get_quote, get_joke, WEATHER_CODE_DESCRIPTIONS, set_animation_tool, build_tools, _load_config
 
 logging.basicConfig(level=logging.WARN)
 
@@ -292,20 +292,15 @@ class Functions:
                 response = f"Test function executed with argument: {test}"
                 results.append((func_name, response))
             elif func_name == "get_joke":
-                response = self.get_joke()
+                response = get_joke()
                 results.append((func_name, response))
             elif func_name == "get_quote":
-                response = self.get_quote()
-                results.append((func_name, response))
-            elif func_name == "reverse_text":
-                args = item.get("arguments")
-                text_val = args.get("text")
-                response = self.reverse_text(text_val)
+                response = get_quote()
                 results.append((func_name, response))
             elif func_name == "get_city_coordinates":
                 args = item.get("arguments")
                 city = args.get("city")
-                response = self.get_city_coordinates(city)
+                response = get_city_coordinates(city)
                 results.append((func_name, response))
             elif func_name == "get_advice":
                 response = self.get_advice()
@@ -401,40 +396,6 @@ class Functions:
             )
             await event_queue.put(timer_event)
         asyncio.create_task(timer_task())
-        
-    def get_joke(self):
-        response = requests.get("https://official-joke-api.appspot.com/random_joke")
-        data = response.json()
-        joke = f"Provide the following joke to the user: {data.get('setup')} - {data.get('punchline')}"
-        return joke
-
-    def get_quote(self):
-        config = _load_config()
-        api_key = config["secrets"].get("api_ninjas_api_key", "")
-        headers = {"X-Api-Key": api_key}
-        response = requests.get("https://api.api-ninjas.com/v1/quotes", headers=headers)
-        data = response.json()
-        if data and isinstance(data, list):
-            item = data[0]
-            return f"Tell the user: {item.get('quote', '')} — {item.get('author', '')}"
-        return "No quote available."
-
-    def reverse_text(self, text):
-        return text[::-1]
-
-    def get_city_coordinates(self, city):
-        config = _load_config()
-        api_key = config["secrets"].get("api_ninjas_api_key", "")
-        headers = {"X-Api-Key": api_key}
-        url = f"https://api.api-ninjas.com/v1/city?name={city}"
-        response = requests.get(url, headers=headers)
-        data = response.json()
-        if data and isinstance(data, list) and len(data) > 0:
-            item = data[0]
-            lat = item.get("latitude")
-            lon = item.get("longitude")
-            return f"Coordinates for {city}: Latitude {lat}, Longitude {lon}."
-        return f"No data available for {city}."
 
     def get_advice(self):
       config = _load_config()
