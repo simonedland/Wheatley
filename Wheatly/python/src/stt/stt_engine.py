@@ -20,6 +20,9 @@ class SpeechToTextEngine:
         self.RATE = stt_config.get("rate", 44100)
         self.THRESHOLD = stt_config.get("threshold", 3000)
         self.SILENCE_LIMIT = stt_config.get("silence_limit", 1)
+        self._audio = None
+        self._stream = None
+        self._porcupine = None
 
     def dry_run(self, filename):
         # Recognize speech using Whisper model deployed in Azure (dry run)
@@ -28,11 +31,11 @@ class SpeechToTextEngine:
 
     def record_until_silent(self):
         """Record audio until silence is detected."""
-        audio = pyaudio.PyAudio()
+        self._audio = pyaudio.PyAudio()
         try:
-            stream = audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
+            self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
         except:
-            stream = audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=1)
+            self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=1)
         frames = []
         silent_frames = 0
         recording = False
@@ -42,7 +45,7 @@ class SpeechToTextEngine:
         max_amplitude = float('-inf')
 
         while True:
-            data = stream.read(self.CHUNK, exception_on_overflow = False)
+            data = self._stream.read(self.CHUNK, exception_on_overflow = False)
             data_int = np.frombuffer(data, dtype=np.int16)
             amplitude = np.max(np.abs(data_int))
             min_amplitude = min(min_amplitude, amplitude)
@@ -64,13 +67,15 @@ class SpeechToTextEngine:
         print(f"Minimum amplitude: {min_amplitude}")
         print(f"Maximum amplitude: {max_amplitude}")
 
-        stream.stop_stream()
-        stream.close()
-        audio.terminate()
+        self._stream.stop_stream()
+        self._stream.close()
+        self._stream = None
+        self._audio.terminate()
+        self._audio = None
         wav_filename = "temp_recording.wav"
         wf = wave.open(wav_filename, 'wb')
         wf.setnchannels(self.CHANNELS)
-        wf.setsampwidth(audio.get_sample_size(self.FORMAT))
+        wf.setsampwidth(pyaudio.PyAudio().get_sample_size(self.FORMAT))
         wf.setframerate(self.RATE)
         wf.writeframes(b''.join(frames))
         wf.close()
@@ -106,25 +111,27 @@ class SpeechToTextEngine:
             keywords = ["computer", "jarvis"]
         if sensitivities is None:
             sensitivities = [0.5] * len(keywords)
-        porcupine = pvporcupine.create(
+        self._porcupine = pvporcupine.create(
             access_key=access_key,
             keywords=keywords,
             sensitivities=sensitivities
         )
         pa = pyaudio.PyAudio()
+        self._audio = pa
         stream = pa.open(
-            rate=porcupine.sample_rate,
+            rate=self._porcupine.sample_rate,
             channels=1,
             format=pyaudio.paInt16,
             input=True,
-            frames_per_buffer=porcupine.frame_length
+            frames_per_buffer=self._porcupine.frame_length
         )
+        self._stream = stream
         print(f"[Hotword] Listening for hotword(s): {keywords}")
         try:
             while True:
-                pcm = stream.read(porcupine.frame_length, exception_on_overflow=False)
-                pcm_unpacked = struct.unpack_from("h" * porcupine.frame_length, pcm)
-                keyword_index = porcupine.process(pcm_unpacked)
+                pcm = stream.read(self._porcupine.frame_length, exception_on_overflow=False)
+                pcm_unpacked = struct.unpack_from("h" * self._porcupine.frame_length, pcm)
+                keyword_index = self._porcupine.process(pcm_unpacked)
                 if keyword_index >= 0:
                     print(f"[Hotword] Detected: {keywords[keyword_index]}")
                     return keyword_index
@@ -133,8 +140,11 @@ class SpeechToTextEngine:
         finally:
             stream.stop_stream()
             stream.close()
+            self._stream = None
             pa.terminate()
-            porcupine.delete()
+            self._audio = None
+            self._porcupine.delete()
+            self._porcupine = None
         return None
 
     def get_voice_input(self):
@@ -152,6 +162,30 @@ class SpeechToTextEngine:
         text = self.transcribe(wav_file)
         os.remove(wav_file)
         return text
+
+    def cleanup(self):
+        """
+        Cleanup any open audio streams, PyAudio instances, and Porcupine resources.
+        """
+        if self._stream is not None:
+            try:
+                self._stream.stop_stream()
+                self._stream.close()
+            except Exception:
+                pass
+            self._stream = None
+        if self._audio is not None:
+            try:
+                self._audio.terminate()
+            except Exception:
+                pass
+            self._audio = None
+        if self._porcupine is not None:
+            try:
+                self._porcupine.delete()
+            except Exception:
+                pass
+            self._porcupine = None
 
 if __name__ == "__main__":
     print("Starting SpeechToTextEngine test. Speak into your microphone...")
