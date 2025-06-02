@@ -74,10 +74,10 @@ struct ServoState {
 // - lastIdleUpdate: millis() timestamp of last idle move
 // - idleUpdateInterval: Base delay (ms) between idle moves; a random 0‥1000 ms is added each cycle
 ServoState servos[activeServos] = {
-  {  0,  0, 5,-720, 720,10,0,2000},   // lens
+  {  0,  0, 5,   0,   0,10,0,2000},   // lens
   {200,200, 5,  30,  60,40,0,2000},   // eyelid1
   {200,200, 5,  30,  60,40,0,2000},   // eyelid2
-  { 90, 90, 5,  45, 135,10,0,2000},   // eyeX
+  {130,220, 5,  45, 135,10,0,2000},   // eyeX
   {120,120, 5,  40, 140,10,0,2000},   // eyeY
   {150,150, 5,   0, 170,10,0,2000},   // handle1
   {170,170, 5,   0, 170,10,0,2000}    // handle2

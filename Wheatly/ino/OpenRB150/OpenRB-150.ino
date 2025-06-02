@@ -81,9 +81,9 @@ const uint8_t SERVOS[NUM_SERVOS] = {0,1,2,3,4,5,6};
 const char* SERVO_NAMES[NUM_SERVOS] = {
   "lens","eyelid1","eyelid2","eyeX","eyeY","handle1","handle2"
 };
-const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {false,true,true,false,false,true,false};
-const float MANUAL_MIN[NUM_SERVOS]        = {0,180,140,0,0,-60,0};
-const float MANUAL_MAX[NUM_SERVOS]        = {0,220,180,0,0, 60,0};
+const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {false,true,true,true,true,true,true};
+const float MANUAL_MIN[NUM_SERVOS]        = {0,180,140,130,140,-60,0};
+const float MANUAL_MAX[NUM_SERVOS]        = {0,220,180,220,210, 60,0};
 
 int32_t minPosArr[NUM_SERVOS]; // Min position (ticks) for each servo
 int32_t maxPosArr[NUM_SERVOS]; // Max position (ticks) for each servo
