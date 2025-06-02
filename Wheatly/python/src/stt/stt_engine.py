@@ -6,6 +6,7 @@ import openai
 import yaml
 import struct
 import pvporcupine
+import time
 
 class SpeechToTextEngine:
     def __init__(self):
@@ -23,6 +24,12 @@ class SpeechToTextEngine:
         self._audio = None
         self._stream = None
         self._porcupine = None
+        # Set OpenAI API key from config
+        openai_api_key = config.get("secrets", {}).get("openai_api_key")
+        if not openai_api_key:
+            openai_api_key = config.get("openai_api_key")
+        if openai_api_key:
+            openai.api_key = openai_api_key
 
     def dry_run(self, filename):
         # Recognize speech using Whisper model deployed in Azure (dry run)
@@ -84,7 +91,10 @@ class SpeechToTextEngine:
 
     def transcribe(self, filename):
         with open(filename, "rb") as audio_file:
-            transcription_result = openai.Audio.transcribe("whisper-1", audio_file)
+            transcription_result = openai.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file
+            )
         return transcription_result.text
 
     def record_and_transcribe(self):
@@ -135,6 +145,10 @@ class SpeechToTextEngine:
                 if keyword_index >= 0:
                     print(f"[Hotword] Detected: {keywords[keyword_index]}")
                     return keyword_index
+                #once every 10 seconds, print a status update
+                if time.time() % 10 < 0.03:
+                    print("[Hotword] Still listening...")
+
         except KeyboardInterrupt:
             print("[Hotword] Listener interrupted.")
         finally:
