@@ -66,15 +66,23 @@ class LLMClient:
     # ------------------------------------------------------------------
     @staticmethod
     def _instructions_for(filename: str) -> str:
-        """Return concise instructions tailored to file type."""
+        """Return detailed instructions tailored to file type for in-depth summaries."""
         base = os.path.basename(filename)
         if base.endswith(".ino"):
             return (
-                "Summarise this Arduino (.ino) sketch in plain English. "
-                "Explain the overall purpose, main functions, and how hardware peripherals are used."
+                "Provide a detailed summary of this Arduino (.ino) sketch in plain English. "
+                "Describe the overall purpose, main functions, and how hardware peripherals are used. "
+                "List and explain the key classes, functions, and their responsibilities. "
+                "Describe the structure of the code, how components interact, and any notable algorithms or logic. "
+                "Mention any external libraries or dependencies, and highlight configuration or environment requirements."
             )
         return (
-            "Summarise the following Python code, focusing on its purpose and logic. Avoid code snippets."
+            "Provide a detailed summary of the following Python script. "
+            "Describe its overall purpose, main classes and functions, and their responsibilities. "
+            "Explain the structure of the code and how its components interact. "
+            "Highlight any external dependencies, APIs, or configuration requirements. "
+            "Describe any notable algorithms or logic, and their purpose. "
+            "Avoid code snippets, but be thorough in your explanation."
         )
 
     # ------------------------------------------------------------------

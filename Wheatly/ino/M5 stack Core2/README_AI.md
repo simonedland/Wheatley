@@ -1,41 +1,60 @@
 # AI Summary
 
 ### C:\GIT\Wheatly\Wheatley\Wheatly\ino\M5 stack Core2\M5Stack_Core2.ino
-This Arduino sketch is designed to control a 7-servo robotic head using a touch interface on an M5Stack Core2 device. It communicates with an OpenRB-150 controller via UART2 to manage servo movements.
+This Arduino sketch is designed to control a 7-servo robotic head using an ESP32 microcontroller. It communicates with an OpenRB-150 board via UART2 and provides a touch-based user interface on an M5Stack Core2 device. The sketch also manages NeoPixel LEDs for visual feedback.
 
-### Overall Purpose
-The sketch provides a user interface to control and monitor the state of seven servos in a robotic head. It handles communication with the OpenRB-150 controller to send commands and receive calibration data.
+### Purpose
+The sketch's primary purpose is to control and monitor a set of servos, displaying their states on a touch interface and allowing user interaction to adjust servo angles. It also handles communication with an OpenRB-150 board for servo calibration and status updates.
 
-### Main Functions
-1. **Setup and Initialization:**
-   - Initializes the M5Stack Core2 and sets up UART2 for communication with the OpenRB-150.
-   - Draws the initial user interface on the screen.
-   - Sends a proactive handshake message ("ESP32") to the OpenRB-150.
+### Main Components and Functions
 
-2. **Communication Handling:**
-   - Listens for messages from the OpenRB-150. Handles "HELLO" messages by responding and blinking the screen.
-   - Processes calibration data to update servo limits and availability.
-   - Handles other commands by printing them for debugging.
+1. **HardwareSerial OpenRB(2):** 
+   - Initializes UART2 for communication with the OpenRB-150 board.
+   - Uses GPIO pins 13 (RX) and 14 (TX) for data transmission.
 
-3. **User Interface:**
-   - Displays a scrolling list of servos, showing their current angle, velocity, and idle range.
-   - Highlights the selected servo and shows disabled servos in grey.
-   - Allows interaction through buttons to adjust servo angles.
+2. **ServoState Structure:**
+   - Holds the configuration and state for each servo, including current angle, velocity, and idle behavior parameters.
 
-4. **Servo Control:**
-   - Sends commands to move servos based on user input or idle animations.
-   - Implements idle animations by randomly adjusting servo angles within specified limits when the system is idle.
+3. **Servo Management:**
+   - `totalServos` and `activeServos` define the number of servos and those that are controllable.
+   - `servos[]` array stores the state for each servo.
+   - `SERVO_NAMES[]` provides labels for the UI.
 
-5. **Button Handling:**
-   - Uses buttons A, B, and C on the M5Stack to decrease, increase, or switch the selected servo, respectively.
+4. **UI Layout:**
+   - Manages the display of servo information using parameters like `lineHeight`, `yOffset`, and `visibleRows`.
+   - Functions like `drawLine()`, `drawWindow()`, and `drawSingle()` handle the drawing of the UI.
 
-### Hardware Peripherals Used
-- **M5Stack Core2:**
-  - Acts as the main interface device, providing a touchscreen and buttons for user interaction.
-  - Displays the servo control interface.
+5. **Runtime Flags:**
+   - `dryRun`: Prevents servo commands until a successful handshake and calibration.
+   - `servoPingResult[]`: Tracks the status of each servo.
+   - `calibrationReceived`: Ensures UI interaction only after calibration data is received.
 
-- **UART2:**
-  - Used for communication with the OpenRB-150 controller, sending servo commands and receiving calibration data.
-  - Configured with specific RX and TX pins and a baud rate of 115200.
+6. **Communication:**
+   - `handleLink()`: Manages incoming messages from the OpenRB-150, handling handshakes, calibration data, and other commands.
+   - `sendMoveServoCommand()`: Sends commands to move servos to specified angles.
 
-This setup allows for interactive control of the robotic head's servos, providing feedback and ensuring safe operation through calibration and status checks.
+7. **LED Management:**
+   - Uses the Adafruit_NeoPixel library to control a strip of NeoPixel LEDs connected to GPIO pin 21.
+   - Provides visual feedback for events like handshakes.
+
+8. **Setup and Loop:**
+   - `setup()`: Initializes the M5Stack, UART, and LEDs, and attempts an initial handshake.
+   - `loop()`: Continuously updates the UI, processes user input, handles idle animations, and manages communication with the OpenRB-150.
+
+### External Libraries
+- **M5Unified:** For managing the M5Stack Core2 hardware.
+- **HardwareSerial:** For serial communication.
+- **Adafruit_NeoPixel:** For controlling the NeoPixel LED strip.
+
+### Key Logic and Algorithms
+- **Idle Animation:** Randomly moves servos within a defined range when idle, ensuring continuous motion.
+- **UI Interaction:** Allows users to select and adjust servo angles using buttons on the M5Stack.
+- **Handshake and Calibration:** Ensures the system is ready for operation by waiting for a successful handshake and calibration data from the OpenRB-150.
+
+### Configuration and Environment
+- Requires an ESP32-based M5Stack Core2.
+- Connected to an OpenRB-150 board via UART2.
+- Uses a NeoPixel LED strip for visual feedback.
+- The sketch assumes a specific hardware setup with defined GPIO pins for communication and LED control.
+
+This sketch provides a comprehensive interface for controlling servos, with robust communication and user interaction capabilities, suitable for applications requiring precise servo management and feedback.
