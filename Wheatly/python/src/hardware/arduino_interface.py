@@ -107,7 +107,7 @@ class ArduinoInterface:
         return self.serial_connection is not None and self.serial_connection.is_open
 
     def set_animation(self, animation):
-        """Set animation on the Arduino hardware. Uses per-animation intervals from emotion_animations."""
+        """Set animation on the Arduino hardware. Uses per-animation intervals from emotion_animations. Also sets LED color."""
         if self.is_connected() or self.dry_run:
             params = self.servo_controller.set_emotion(animation)
             velocities = params['velocities']
@@ -121,6 +121,10 @@ class ArduinoInterface:
                 interval = intervals[i]
                 command = f"MOVE_SERVO;ID={servo.servo_id};TARGET={int(target_angle)};VELOCITY={velocity};IDLE={idle};INTERVAL={interval}\n"
                 self.send_command(command)
+            # Set LED color for this emotion
+            r, g, b = self.servo_controller.get_led_color(animation)
+            led_command = f"SET_LED;R={r};G={g};B={b}\n"
+            self.send_command(led_command)
         else:
             print("Arduino not connected. Cannot set animation.")
 
@@ -186,120 +190,140 @@ class ServoController:
                 "target_factors": [0.22, 0.25, 0.22, 0.25, 0.22, 0.25, 0.22],
                 "idle_ranges": [100, 10, 10, 10, 10, 10, 10],
                 "intervals": [1200, 1200, 1200, 1000, 1000, 15000, 15000],
+                "color": (255, 255, 0),        # yellow
             },
             "angry": {
                 "velocities": [8] * self.servo_count,
                 "target_factors": [0.60, 0.65, 0.60, 0.65, 0.60, 0.65, 0.60],
                 "idle_ranges": [5, 5, 5, 5, 5, 5, 5],
                 "intervals": [700, 700, 700, 600, 600, 900, 900],
+                "color": (255, 0, 0),          # red
             },
             "sad": {
                 "velocities": [3] * self.servo_count,
                 "target_factors": [0.10, 0.15, 0.10, 0.15, 0.10, 0.15, 0.10],
                 "idle_ranges": [15, 15, 15, 15, 15, 15, 15],
                 "intervals": [2500, 2500, 2500, 2000, 2000, 3000, 3000],
+                "color": (0, 0, 255),          # blue
             },
             "neutral": {
                 "velocities": [4] * self.servo_count,
                 "target_factors": [0.5] * self.servo_count,
                 "idle_ranges": [8, 8, 8, 8, 8, 8, 8],
                 "intervals": [2000, 2000, 2000, 2000, 2000, 2000, 2000],
+                "color": (255, 255, 255),      # white
             },
             "excited": {
                 "velocities": [9] * self.servo_count,
                 "target_factors": [0.70] * self.servo_count,
                 "idle_ranges": [3, 3, 3, 3, 3, 3, 3],
                 "intervals": [500, 500, 500, 400, 400, 600, 600],
+                "color": (255, 128, 0),        # orange
             },
             "confused": {
                 "velocities": [6, 5, 6, 5, 6, 5, 6],
                 "target_factors": [0.45, 0.55, 0.45, 0.55, 0.45, 0.55, 0.45],
                 "idle_ranges": [20, 15, 20, 15, 20, 15, 20],
                 "intervals": [1800, 1700, 1800, 1700, 1800, 1700, 1800],
+                "color": (128, 0, 255),        # purple
             },
             "surprised": {
                 "velocities": [10, 9, 10, 9, 10, 9, 10],
                 "target_factors": [0.85, 0.80, 0.85, 0.80, 0.85, 0.80, 0.85],
                 "idle_ranges": [2, 2, 2, 2, 2, 2, 2],
                 "intervals": [300, 300, 300, 250, 250, 350, 350],
+                "color": (0, 255, 255),        # cyan
             },
             "curious": {
                 "velocities": [7, 6, 7, 6, 7, 6, 7],
                 "target_factors": [0.60, 0.55, 0.60, 0.55, 0.60, 0.55, 0.60],
                 "idle_ranges": [12, 10, 12, 10, 12, 10, 12],
                 "intervals": [1200, 1100, 1200, 1100, 1200, 1100, 1200],
+                "color": (0, 255, 128),        # teal
             },
             "bored": {
                 "velocities": [2] * self.servo_count,
                 "target_factors": [0.35, 0.30, 0.35, 0.30, 0.35, 0.30, 0.35],
                 "idle_ranges": [30, 30, 30, 30, 30, 30, 30],
                 "intervals": [4000, 4000, 4000, 3500, 3500, 5000, 5000],
+                "color": (128, 128, 128),      # gray
             },
             "fearful": {
                 "velocities": [10, 8, 10, 8, 10, 8, 10],
                 "target_factors": [0.15, 0.80, 0.15, 0.80, 0.15, 0.80, 0.15],
                 "idle_ranges": [5, 5, 5, 5, 5, 5, 5],
                 "intervals": [400, 400, 400, 350, 350, 500, 500],
+                "color": (255, 0, 255),        # magenta
             },
             "hopeful": {
                 "velocities": [6, 5, 6, 5, 6, 5, 6],
                 "target_factors": [0.65, 0.60, 0.65, 0.60, 0.65, 0.60, 0.65],
                 "idle_ranges": [10, 10, 10, 10, 10, 10, 10],
                 "intervals": [1500, 1500, 1500, 1400, 1400, 1600, 1600],
+                "color": (0, 255, 0),          # green
             },
             "embarrassed": {
                 "velocities": [4, 7, 4, 7, 4, 7, 4],
                 "target_factors": [0.40, 0.20, 0.40, 0.20, 0.40, 0.20, 0.40],
                 "idle_ranges": [18, 8, 18, 8, 18, 8, 18],
                 "intervals": [2200, 1000, 2200, 1000, 2200, 1000, 2200],
+                "color": (255, 192, 203),      # pink
             },
             "frustrated": {
                 "velocities": [9, 8, 9, 8, 9, 8, 9],
                 "target_factors": [0.75, 0.20, 0.75, 0.20, 0.75, 0.20, 0.75],
                 "idle_ranges": [6, 6, 6, 6, 6, 6, 6],
                 "intervals": [800, 800, 800, 700, 700, 900, 900],
+                "color": (255, 69, 0),         # orange-red
             },
             "proud": {
                 "velocities": [7, 6, 7, 6, 7, 6, 7],
                 "target_factors": [0.80, 0.75, 0.80, 0.75, 0.80, 0.75, 0.80],
                 "idle_ranges": [8, 8, 8, 8, 8, 8, 8],
                 "intervals": [1300, 1300, 1300, 1200, 1200, 1400, 1400],
+                "color": (255, 215, 0),        # gold
             },
             "nostalgic": {
                 "velocities": [3, 4, 3, 4, 3, 4, 3],
                 "target_factors": [0.30, 0.60, 0.30, 0.60, 0.30, 0.60, 0.30],
                 "idle_ranges": [20, 15, 20, 15, 20, 15, 20],
                 "intervals": [3000, 2500, 3000, 2500, 3000, 2500, 3000],
+                "color": (255, 182, 193),      # light pink
             },
             "relieved": {
                 "velocities": [5, 4, 5, 4, 5, 4, 5],
                 "target_factors": [0.55, 0.60, 0.55, 0.60, 0.55, 0.60, 0.55],
                 "idle_ranges": [12, 12, 12, 12, 12, 12, 12],
                 "intervals": [1700, 1700, 1700, 1600, 1600, 1800, 1800],
+                "color": (173, 216, 230),      # light blue
             },
             "grateful": {
                 "velocities": [6, 5, 6, 5, 6, 5, 6],
                 "target_factors": [0.60, 0.65, 0.60, 0.65, 0.60, 0.65, 0.60],
                 "idle_ranges": [10, 10, 10, 10, 10, 10, 10],
                 "intervals": [1400, 1400, 1400, 1300, 1300, 1500, 1500],
+                "color": (0, 255, 127),        # spring green
             },
             "shy": {
                 "velocities": [3, 5, 3, 5, 3, 5, 3],
                 "target_factors": [0.25, 0.20, 0.25, 0.20, 0.25, 0.20, 0.25],
                 "idle_ranges": [25, 8, 25, 8, 25, 8, 25],
                 "intervals": [2600, 1000, 2600, 1000, 2600, 1000, 2600],
+                "color": (238, 130, 238),      # violet
             },
             "disappointed": {
                 "velocities": [2, 3, 2, 3, 2, 3, 2],
                 "target_factors": [0.15, 0.10, 0.15, 0.10, 0.15, 0.10, 0.15],
                 "idle_ranges": [20, 20, 20, 20, 20, 20, 20],
                 "intervals": [3500, 3500, 3500, 3000, 3000, 4000, 4000],
+                "color": (105, 105, 105),      # dim gray
             },
             "jealous": {
                 "velocities": [7, 6, 7, 6, 7, 6, 7],
                 "target_factors": [0.40, 0.80, 0.40, 0.80, 0.40, 0.80, 0.40],
                 "idle_ranges": [10, 5, 10, 5, 10, 5, 10],
                 "intervals": [1200, 800, 1200, 800, 1200, 800, 1200],
+                "color": (0, 128, 0),          # dark green
             },
         }
 
@@ -332,4 +356,7 @@ class ServoController:
             target_angle = servo.min_angle + factor * (servo.max_angle - servo.min_angle)
             servo.move_to(target_angle)
         return params
+
+    def get_led_color(self, emotion):
+        return self.emotion_animations.get(emotion, {}).get("color", (255, 255, 255))
 

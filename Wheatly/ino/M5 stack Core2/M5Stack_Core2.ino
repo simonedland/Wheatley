@@ -5,6 +5,8 @@
 
 #include <M5Unified.h>
 #include <HardwareSerial.h>
+#include <Adafruit_NeoPixel.h>
+
 HardwareSerial OpenRB(2);                  // use ESP32 UART2
 
 // UART2 pin assignments for Grove Port-C
@@ -229,6 +231,11 @@ void handleLink()
   }
 }
 
+// --- NeoPixel LED setup ---
+#define LED_PIN 21           // GPIO pin for WS2812B data line
+#define NUM_LEDS 8           // Number of LEDs in the strip (adjust as needed)
+Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+
 /* ===================================================================== */
 /*                               SETUP                                   */
 /* ===================================================================== */
@@ -244,6 +251,10 @@ void setup()
 
   Serial.begin(115200);                 // USB debug
   OpenRB.begin(LINK_BAUD, SERIAL_8N1, RX2_PIN, TX2_PIN); // UART2
+
+  // --- Initialize NeoPixel LEDs ---
+  leds.begin();
+  leds.show(); // Turn off all LEDs at start
 
   M5.Lcd.setTextSize(2);
   drawWindow();                         // Draw initial UI
@@ -268,8 +279,28 @@ void loop()
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
     if (cmd.length() > 0) {
+      // Handle direct LED color command from Python
+      if (cmd.startsWith("SET_LED;")) {
+        int r = 0, g = 0, b = 0;
+        int rIdx = cmd.indexOf("R=");
+        int gIdx = cmd.indexOf("G=");
+        int bIdx = cmd.indexOf("B=");
+        if (rIdx >= 0) r = cmd.substring(rIdx + 2, cmd.indexOf(';', rIdx + 2)).toInt();
+        if (gIdx >= 0) g = cmd.substring(gIdx + 2, cmd.indexOf(';', gIdx + 2)).toInt();
+        if (bIdx >= 0) {
+          int bEnd = cmd.indexOf(';', bIdx + 2);
+          if (bEnd == -1) bEnd = cmd.length();
+          b = cmd.substring(bIdx + 2, bEnd).toInt();
+        }
+        uint32_t color = leds.Color(r, g, b);
+        for (int i = 0; i < NUM_LEDS; ++i) {
+          leds.setPixelColor(i, color);
+        }
+        leds.show();
+        Serial.printf("[LED] Set color to R=%d G=%d B=%d\n", r, g, b);
+      }
       // Check for configuration command
-      if (cmd.startsWith("SET_SERVO_CONFIG:")) {
+      else if (cmd.startsWith("SET_SERVO_CONFIG:")) {
         // Format: SET_SERVO_CONFIG:id,min,max,vel,idle_range;id,min,max,vel,idle_range;...
         int configStartIndex = String("SET_SERVO_CONFIG:").length();
         int servoIndex = 0;
@@ -377,4 +408,18 @@ void loop()
     int next = selected;
     for (int tries = 0; tries < activeServos; ++tries) {
       next = (next + 1) % activeServos;
-      if (servoPingResult[next]
+      if (servoPingResult[next]) {
+        selected = next;
+        drawSingle(selected);
+        break;
+      }
+      // Wrap around: If all servos are dead, just reset selection
+      if (tries == activeServos - 1) {
+        selected = 0;
+        drawSingle(selected);
+      }
+    }
+  }
+
+  delay(33); // Prevent watchdog reset; tune based on button debounce and UI refresh needs
+}
