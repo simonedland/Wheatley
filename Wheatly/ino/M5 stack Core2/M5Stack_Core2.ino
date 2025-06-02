@@ -145,12 +145,23 @@ void drawSingle(int i)
   drawLine(i, yOffset + row * lineHeight);
 }
 
-// Blink the screen background a given number of times (handshake feedback)
+// Blink the screen background and LEDs a given number of times (handshake feedback)
 void blinkScreen(int times) {
   for (int i = 0; i < times; ++i) {
+    // Blink screen to RED and LEDs to RED
     M5.Lcd.fillScreen(RED);
+    for (int j = 0; j < NUM_LEDS; ++j) {
+      leds.setPixelColor(j, leds.Color(255, 0, 0));
+    }
+    leds.show();
     delay(150);
+    
+    // Turn off screen and LEDs
     M5.Lcd.fillScreen(BLACK);
+    for (int j = 0; j < NUM_LEDS; ++j) {
+      leds.setPixelColor(j, 0);
+    }
+    leds.show();
     delay(150);
   }
   drawWindow();
@@ -261,7 +272,11 @@ void setup()
 
   // --- Initialize NeoPixel LEDs ---
   leds.begin();
-  leds.show(); // Turn off all LEDs at start
+  // Set all LEDs to white at startup
+  for (int i = 0; i < NUM_LEDS; ++i) {
+    leds.setPixelColor(i, leds.Color(255, 255, 255));
+  }
+  leds.show();
 
   M5.Lcd.setTextSize(2);
   drawWindow();                         // Draw initial UI
