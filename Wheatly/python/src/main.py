@@ -170,7 +170,7 @@ async def user_input_producer(q: asyncio.Queue):
 def print_event(event: Event):
     print(event)
 
-async def hotword_listener(queue, stt_engine, stt_enabled):
+async def hotword_listener(queue, stt_engine):
     """Background task: waits for hotword, records and transcribes, puts as user event."""
     print("[Hotword] Background listener started.")
     loop = asyncio.get_event_loop()
@@ -190,7 +190,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
     user_task = asyncio.create_task(user_input_producer(queue))  # Text input
     hotword_task = None
     if stt_enabled:
-        hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine, stt_enabled))  # Voice input
+        hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine))  # Voice input
     print("🤖 Assistant running. Type 'exit' to quit. Type or say hotword to speak.\n")
     try:
         while True:

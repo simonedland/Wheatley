@@ -166,13 +166,12 @@ def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Generate LLM‑based code summaries.")
     p.add_argument("--path", "-p", default=".", help="Directory to analyse.")
     p.add_argument("--dry-run", action="store_true", help="Run without calling the API.")
-    p.add_argument("--verbose", action="store_true", help="Show progress bars.")
     return p.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
-    Summariser(Config(), dry_run=args.dry_run, verbose=args.verbose).run(args.path)
+    Summariser(Config(), dry_run=args.dry_run, verbose=True).run(args.path)
 
 
 if __name__ == "__main__":
