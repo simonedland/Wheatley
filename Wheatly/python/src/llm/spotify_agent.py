@@ -167,8 +167,12 @@ class SpotifyAgent:
             return yaml.safe_load(fh)
 
     def __init__(self):
-        cfg = self._load_config()
-        self.spotify = SpotifyHA.get_default()
+        try:
+            cfg = self._load_config()
+            self.spotify = SpotifyHA.get_default()
+        except Exception as e:
+            print("❌ ERROR: Authentication failed for Spotify! Please check your credentials or login again.")
+            raise
         openai.api_key = cfg["secrets"]["openai_api_key"]
         self.model = cfg["llm"]["model"]
         self.tools = SPOTIFY_TOOLS

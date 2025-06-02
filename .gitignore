@@ -6,6 +6,7 @@ Wheatly/python/src/config/token.json
 Wheatly/python/src/config/config.yaml
 Wheatly/python/src/config/token.json
 
+..venv/
 .cache
 
 # Common Python ignores

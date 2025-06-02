@@ -57,16 +57,20 @@ class SpotifyHA:  # ────────────────────
         redirect_uri: str = "http://127.0.0.1:5000/callback",
         open_browser: bool = False,
     ):
-        cfg = _load_cfg(config_path)["secrets"]
-        self._sp = spotipy.Spotify(
-            auth_manager=SpotifyOAuth(
-                client_id=cfg["spotify_client_id"],
-                client_secret=cfg["spotify_client_secret"],
-                redirect_uri=redirect_uri,
-                scope=scopes,
-                open_browser=open_browser,
+        try:
+            cfg = _load_cfg(config_path)["secrets"]
+            self._sp = spotipy.Spotify(
+                auth_manager=SpotifyOAuth(
+                    client_id=cfg["spotify_client_id"],
+                    client_secret=cfg["spotify_client_secret"],
+                    redirect_uri=redirect_uri,
+                    scope=scopes,
+                    open_browser=open_browser,
+                )
             )
-        )
+        except Exception as e:
+            print("❌ ERROR: Authentication failed for Spotify! Please check your credentials or login again.")
+            raise
 
     @classmethod
     def get_default(cls) -> "SpotifyHA":

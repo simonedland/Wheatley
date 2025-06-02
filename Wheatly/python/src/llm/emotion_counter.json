@@ -1,12 +1,12 @@
 {
-  "happy": 115,
+  "happy": 116,
   "angry": 0,
   "sad": 5,
   "neutral": 22,
-  "excited": 116,
+  "excited": 117,
   "confused": 8,
   "surprised": 2,
-  "curious": 106,
+  "curious": 109,
   "bored": 0,
   "fearful": 0,
   "hopeful": 60,
@@ -14,9 +14,9 @@
   "frustrated": 5,
   "proud": 40,
   "nostalgic": 0,
-  "relieved": 46,
+  "relieved": 47,
   "grateful": 2,
-  "shy": 1,
+  "shy": 2,
   "disappointed": 0,
   "jealous": 0
 }
