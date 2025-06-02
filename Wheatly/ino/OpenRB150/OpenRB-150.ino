@@ -263,7 +263,7 @@ void loop()
     cycles++;
   } else if (sweeping){
     dxl.writeControlTableItem(LED,demoID,1); // Turn on demo servo LED
-    dxl.torqueOff(demoID);
+    //dxl.torqueOff(demoID);
     DEBUG_SERIAL.println(F("[DONE] Demo sweep finished"));
     sweeping=false;
   }
