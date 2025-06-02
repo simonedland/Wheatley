@@ -14,6 +14,8 @@ import openai  # For OpenAI API access
 from playsound import playsound  # For playing audio files
 from colorama import init, Fore, Style  # For colored terminal output
 import pathlib
+import struct
+import pvporcupine
 
 # Try to import RPi.GPIO for Raspberry Pi GPIO control; disable if not available
 try:
@@ -167,11 +169,26 @@ async def user_input_producer(q: asyncio.Queue):
 def print_event(event: Event):
     print(event)
 
+async def hotword_listener(queue, stt_engine, stt_enabled):
+    """Background task: waits for hotword, records and transcribes, puts as user event."""
+    if not stt_enabled:
+        return
+    print("[Hotword] Background listener started.")
+    try:
+        while True:
+            text = stt_engine.get_voice_input()
+            if text and text.strip():
+                await queue.put(Event("user", text.strip()))
+    except Exception as e:
+        print(f"[Hotword] Listener error: {e}")
+
 async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
     queue: asyncio.Queue = asyncio.Queue()
     # Start event producers
     asyncio.create_task(user_input_producer(queue))
-    print("🤖 Assistant running. Type 'exit' to quit.\n")
+    if stt_enabled:
+        asyncio.create_task(hotword_listener(queue, stt_engine, stt_enabled))
+    print("🤖 Assistant running. Type 'exit' to quit. Say hotword to speak.\n")
     while True:
         event: Event = await queue.get()
         print_event(event)

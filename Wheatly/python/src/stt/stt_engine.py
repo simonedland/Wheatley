@@ -4,6 +4,8 @@ import numpy as np
 import pyaudio
 import openai
 import yaml
+import struct
+import pvporcupine
 
 class SpeechToTextEngine:
     def __init__(self):
@@ -77,10 +79,7 @@ class SpeechToTextEngine:
 
     def transcribe(self, filename):
         with open(filename, "rb") as audio_file:
-            transcription_result = openai.Audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file
-            )
+            transcription_result = openai.Audio.transcribe("whisper-1", audio_file)
         return transcription_result.text
 
     def record_and_transcribe(self):
@@ -88,3 +87,77 @@ class SpeechToTextEngine:
         text = self.transcribe(wav_file)
         os.remove(wav_file)
         return text
+
+    def listen_for_hotword(self, access_key=None, keywords=None, sensitivities=None):
+        """
+        Listens for a predefined hotword using Porcupine.
+        Returns the index of the detected keyword, or None if interrupted.
+        """
+        if access_key is None:
+            # Try to load from config
+            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+            with open(config_path, "r") as f:
+                config = yaml.safe_load(f)
+            access_key = config.get("stt", {}).get("porcupine_api_key")
+        if not access_key:
+            print("Porcupine API key not found in config. Hotword detection disabled.")
+            return None
+        if keywords is None:
+            keywords = ["computer", "jarvis"]
+        if sensitivities is None:
+            sensitivities = [0.5] * len(keywords)
+        porcupine = pvporcupine.create(
+            access_key=access_key,
+            keywords=keywords,
+            sensitivities=sensitivities
+        )
+        pa = pyaudio.PyAudio()
+        stream = pa.open(
+            rate=porcupine.sample_rate,
+            channels=1,
+            format=pyaudio.paInt16,
+            input=True,
+            frames_per_buffer=porcupine.frame_length
+        )
+        print(f"[Hotword] Listening for hotword(s): {keywords}")
+        try:
+            while True:
+                pcm = stream.read(porcupine.frame_length, exception_on_overflow=False)
+                pcm_unpacked = struct.unpack_from("h" * porcupine.frame_length, pcm)
+                keyword_index = porcupine.process(pcm_unpacked)
+                if keyword_index >= 0:
+                    print(f"[Hotword] Detected: {keywords[keyword_index]}")
+                    return keyword_index
+        except KeyboardInterrupt:
+            print("[Hotword] Listener interrupted.")
+        finally:
+            stream.stop_stream()
+            stream.close()
+            pa.terminate()
+            porcupine.delete()
+        return None
+
+    def get_voice_input(self):
+        """
+        Waits for hotword, then records and transcribes speech.
+        Returns the transcribed text, or empty string if nothing detected.
+        """
+        idx = self.listen_for_hotword()
+        if idx is None:
+            return ""
+        wav_file = self.record_until_silent()
+        if not wav_file:
+            print("No audio detected.")
+            return ""
+        text = self.transcribe(wav_file)
+        os.remove(wav_file)
+        return text
+
+if __name__ == "__main__":
+    print("Starting SpeechToTextEngine test. Speak into your microphone...")
+    stt_engine = SpeechToTextEngine()
+    try:
+        result = stt_engine.record_and_transcribe()
+        print(f"Transcribed text: {result}")
+    except Exception as e:
+        print(f"Error during STT test: {e}")
