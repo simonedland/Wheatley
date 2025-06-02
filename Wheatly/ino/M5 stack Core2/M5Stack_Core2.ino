@@ -66,6 +66,13 @@ struct ServoState {
 };
 
 // Initial values for each servo
+// - angle: Current target angle (deg)
+// - initial_angle: Angle used as center for idle jitter
+// - velocity: Value forwarded in MOVE_SERVO ;VELOCITY=
+// - min_angle, max_angle: Safety limits; overwritten by calibration
+// - idle_range: ±amplitude allowed during idle jitter (deg)
+// - lastIdleUpdate: millis() timestamp of last idle move
+// - idleUpdateInterval: Base delay (ms) between idle moves; a random 0‥1000 ms is added each cycle
 ServoState servos[activeServos] = {
   {  0,  0, 5,-720, 720,10,0,2000},   // lens
   {200,200, 5,  30,  60,40,0,2000},   // eyelid1
