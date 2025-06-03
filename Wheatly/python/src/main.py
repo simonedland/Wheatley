@@ -115,7 +115,7 @@ def initialize_assistant(config):
     if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
         print("Available ports:")
         os.system("ls /dev/tty*")
-        port = "/dev/ttyUSB0"
+        port = "/dev/ttyACM0"
     elif sys.platform.startswith("win"):
         from serial.tools import list_ports
         ports = list(list_ports.comports())
