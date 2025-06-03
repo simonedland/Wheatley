@@ -8,6 +8,8 @@ Wheatly/python/src/config/token.json
 
 ..venv/
 .cache
+..venv/*
+..venv
 
 # Common Python ignores
 __pycache__/
