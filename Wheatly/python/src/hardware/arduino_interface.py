@@ -114,11 +114,13 @@ class ArduinoInterface:
             velocities = params['velocities']
             target_factors = params['target_factors']
             idle_ranges = params['idle_ranges']
+            intervals = params['intervals']
             # Set each servo's config (target, velocity, idle_range)
             for i, servo in enumerate(self.servo_controller.servos):
                 target_angle = servo.min_angle + target_factors[i] * (servo.max_angle - servo.min_angle)
                 servo.velocity = velocities[i]
                 servo.idle_range = idle_ranges[i]
+                servo.interval = intervals[i]
                 servo.current_angle = int(target_angle)
             self.send_servo_config()  # Send all configs in one command
             # Set LED color for this emotion
@@ -141,11 +143,11 @@ class ArduinoInterface:
         return None
 
     def send_servo_config(self):
-        """Send all servo configs to the M5Stack using SET_SERVO_CONFIG:id,target,vel,idle_range;..."""
+        """Send all servo configs to the M5Stack using SET_SERVO_CONFIG:id,target,vel,idle_range,interval;..."""
         config_chunks = []
         for servo in self.servo_controller.servos:
-            # Use current_angle as target
-            chunk = f"{servo.servo_id},{int(servo.current_angle)},{int(servo.velocity)},{int(servo.idle_range)}"
+            # Compose config: id,target,velocity,idle_range,interval
+            chunk = f"{servo.servo_id},{servo.current_angle},{servo.velocity},{servo.idle_range},{servo.interval}"
             config_chunks.append(chunk)
         config_str = ";".join(config_chunks)
         command = f"SET_SERVO_CONFIG:{config_str}\n"

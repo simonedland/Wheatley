@@ -14,7 +14,7 @@ constexpr int RX2_PIN = 13;                // Grove Port-C white
 constexpr int TX2_PIN = 14;                // Grove Port-C yellow
 constexpr uint32_t LINK_BAUD = 115200;     // UART2 baud rate (must match OpenRB)
 
-/* --- NeoPixel LED setup ---
+/* --- NeoPixel LED setup --- */
 #define LED_PIN 21           // GPIO pin for WS2812B data line
 #define NUM_LEDS 8           // Number of LEDs in the strip (adjust as needed)
 Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -323,26 +323,29 @@ void loop()
       }
       // Check for configuration command
       else if (cmd.startsWith("SET_SERVO_CONFIG:")) {
-        // Format: SET_SERVO_CONFIG:id,target,vel,idle_range;id,target,vel,idle_range;...
+        // Format: SET_SERVO_CONFIG:id,target,vel,idle_range,interval;id,target,vel,idle_range,interval;...
         int configStartIndex = String("SET_SERVO_CONFIG:").length();
         int servoIndex = 0;
         while (configStartIndex < cmd.length() && servoIndex < activeServos) {
           int semicolonIndex = cmd.indexOf(';', configStartIndex);
           String servoConfigChunk = (semicolonIndex == -1) ? cmd.substring(configStartIndex) : cmd.substring(configStartIndex, semicolonIndex);
-          // Parse comma-separated fields for servo config (id,target,vel,idle_range)
+          // Parse comma-separated fields for servo config (id,target,vel,idle_range,interval)
           int idComma = servoConfigChunk.indexOf(',');
           int tgtComma = servoConfigChunk.indexOf(',', idComma + 1);
           int velComma = servoConfigChunk.indexOf(',', tgtComma + 1);
-          if (idComma > 0 && tgtComma > idComma && velComma > tgtComma) {
+          int idleComma = servoConfigChunk.indexOf(',', velComma + 1);
+          if (idComma > 0 && tgtComma > idComma && velComma > tgtComma && idleComma > velComma) {
             int servoId = servoConfigChunk.substring(0, idComma).toInt();
             int target = servoConfigChunk.substring(idComma + 1, tgtComma).toInt();
             int velocity = servoConfigChunk.substring(tgtComma + 1, velComma).toInt();
-            int idleRange = servoConfigChunk.substring(velComma + 1).toInt();
+            int idleRange = servoConfigChunk.substring(velComma + 1, idleComma).toInt();
+            unsigned long interval = servoConfigChunk.substring(idleComma + 1).toInt();
             if (servoId >= 0 && servoId < activeServos) {
               servos[servoId].angle = constrain(target, servos[servoId].min_angle, servos[servoId].max_angle);
               servos[servoId].initial_angle = servos[servoId].angle;
               servos[servoId].velocity = velocity;
               servos[servoId].idle_range = idleRange;
+              servos[servoId].idleUpdateInterval = interval;
             }
           }
           if (semicolonIndex == -1) break;
