@@ -240,6 +240,17 @@ def build_tools():
                 "required": ["time"],
                 "additionalProperties": False
             }
+        },
+        {
+            "type": "function",
+            "name": "daily_summary",
+            "description": "Generate a daily summary of the user's activities, tasks, and events. This function will compile information from various sources, such as calendar events, task lists, and notes, to provide a comprehensive overview of the user's day.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False
+            }
         }
     ]
     #print(tools)

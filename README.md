@@ -35,15 +35,18 @@
 - [ ] Add a google notes tool to the LLM.
 
 ### ideas
-    - [ ] Proactive conversation
+    - [ ] Wifi monitoring/management
+    - [ ] remote webbhook management
+    - [ ] guest mode
+    - [X] Proactive conversation
       - [ ] Monitoring calendar?
       - [ ] Air quality alert?
-      - [ ] Sett timer for x minutes?
+      - [X] Sett timer for x minutes?
     - [ ] Digital twin?
     - [ ] Readup in another voice?
     - [ ] Self aware of mood?
     - [ ] Object spotting???
-    - [ ] Briefing?
+    - [X] Briefing?
     - [ ] Multi speaker recognition?
     - [ ] Todo list
     - [ ] Multi-room audio orchestrator

@@ -313,7 +313,33 @@ class Functions:
                     self.set_reminder(time_str, reason, event_queue)
                     results.append((func_name, f"Reminder set for {time_str}. Reason: {reason}"))
                 else:
+                    # Handle case when no event queue is provided for the reminder.
                     results.append((func_name, "No event queue provided for reminder!"))
+            elif func_name == "daily_summary":
+              user_request = "Get summary for today"
+              # Coordinates for Oslo
+              lat, lon = "59.9111", "10.7528"
+
+              # Retrieve weather with a one-day forecast.
+              weather_summary = self.get_weather(lat, lon, include_forecast=True, forecast_days=1)
+              
+              # Prepare arguments and dispatch the request to the Google Agent.
+              args = {"user_request": user_request, "arguments": {}}
+              google_response = self.google_agent.llm_decide_and_dispatch(user_request, args)
+              if isinstance(google_response, dict):
+                response = google_response.get("summary", "Nothing to summarize today.")
+              else:
+                response = google_response
+                if not response:
+                    response = "Nothing to summarize today."
+
+              # Append weather summary and a daily quote.
+              response_str = f"Google callendar summary:\n{response}"
+              response_str += f"\n\nWeather Summary for Oslo:\n{weather_summary}"
+              response_str += f"\n\nQuote of the Day: {get_quote()}"
+              
+              results.append((func_name, response_str))
+
             tool_elapsed = time.time() - tool_start
             logging.info(f"Tool '{func_name}' execution took {tool_elapsed:.3f} seconds.")
         return results
