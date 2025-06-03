@@ -29,7 +29,7 @@ class ArduinoInterface:
         # Wait and look for SERVO_CONFIG: line (wait up to 60 seconds)
         start = time.time()
         config_line = None
-        while time.time() - start < 1.0:  # Wait up to 60 seconds
+        while time.time() - start < 60.0:  # Wait up to 60 seconds
             if self.serial_connection.in_waiting:
                 line = self.serial_connection.readline().decode(errors='ignore').strip()
                 if line.startswith('SERVO_CONFIG:'):
