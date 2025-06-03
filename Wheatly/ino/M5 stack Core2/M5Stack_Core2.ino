@@ -14,6 +14,11 @@ constexpr int RX2_PIN = 13;                // Grove Port-C white
 constexpr int TX2_PIN = 14;                // Grove Port-C yellow
 constexpr uint32_t LINK_BAUD = 115200;     // UART2 baud rate (must match OpenRB)
 
+/* --- NeoPixel LED setup ---
+#define LED_PIN 21           // GPIO pin for WS2812B data line
+#define NUM_LEDS 8           // Number of LEDs in the strip (adjust as needed)
+Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+
 /* ──────────────────────────────────────────────────────────────────────────
  *  VARIABLE & CONSTANT REFERENCE
  *  (reflects only how the sketch itself uses each symbol)
@@ -249,11 +254,6 @@ void handleLink()
   }
 }
 
-// --- NeoPixel LED setup ---
-#define LED_PIN 21           // GPIO pin for WS2812B data line
-#define NUM_LEDS 8           // Number of LEDs in the strip (adjust as needed)
-Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
-
 /* ===================================================================== */
 /*                               SETUP                                   */
 /* ===================================================================== */
@@ -323,30 +323,26 @@ void loop()
       }
       // Check for configuration command
       else if (cmd.startsWith("SET_SERVO_CONFIG:")) {
-        // Format: SET_SERVO_CONFIG:id,min,max,vel,idle_range;id,min,max,vel,idle_range;...
+        // Format: SET_SERVO_CONFIG:id,target,vel,idle_range;id,target,vel,idle_range;...
         int configStartIndex = String("SET_SERVO_CONFIG:").length();
         int servoIndex = 0;
         while (configStartIndex < cmd.length() && servoIndex < activeServos) {
           int semicolonIndex = cmd.indexOf(';', configStartIndex);
           String servoConfigChunk = (semicolonIndex == -1) ? cmd.substring(configStartIndex) : cmd.substring(configStartIndex, semicolonIndex);
-          // Parse comma-separated fields for servo config
+          // Parse comma-separated fields for servo config (id,target,vel,idle_range)
           int idComma = servoConfigChunk.indexOf(',');
-          int minComma = servoConfigChunk.indexOf(',', idComma + 1);
-          int maxComma = servoConfigChunk.indexOf(',', minComma + 1);
-          int velocityComma = servoConfigChunk.indexOf(',', maxComma + 1);
-          if (idComma > 0 && minComma > idComma && maxComma > minComma && velocityComma > maxComma) {
+          int tgtComma = servoConfigChunk.indexOf(',', idComma + 1);
+          int velComma = servoConfigChunk.indexOf(',', tgtComma + 1);
+          if (idComma > 0 && tgtComma > idComma && velComma > tgtComma) {
             int servoId = servoConfigChunk.substring(0, idComma).toInt();
-            float minAngle = servoConfigChunk.substring(idComma + 1, minComma).toFloat();
-            float maxAngle = servoConfigChunk.substring(minComma + 1, maxComma).toFloat();
-            int velocity = servoConfigChunk.substring(maxComma + 1, velocityComma).toInt();
-            int idleRange = servoConfigChunk.substring(velocityComma + 1).toInt();
+            int target = servoConfigChunk.substring(idComma + 1, tgtComma).toInt();
+            int velocity = servoConfigChunk.substring(tgtComma + 1, velComma).toInt();
+            int idleRange = servoConfigChunk.substring(velComma + 1).toInt();
             if (servoId >= 0 && servoId < activeServos) {
-              servos[servoId].min_angle = round(minAngle);
-              servos[servoId].max_angle = round(maxAngle);
+              servos[servoId].angle = constrain(target, servos[servoId].min_angle, servos[servoId].max_angle);
+              servos[servoId].initial_angle = servos[servoId].angle;
               servos[servoId].velocity = velocity;
               servos[servoId].idle_range = idleRange;
-              servos[servoId].angle = constrain(servos[servoId].angle, servos[servoId].min_angle, servos[servoId].max_angle);
-              servos[servoId].initial_angle = servos[servoId].angle;
             }
           }
           if (semicolonIndex == -1) break;

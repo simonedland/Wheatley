@@ -1,7 +1,7 @@
 # Arduino interface for communicating with Arduino hardware
 
 class ArduinoInterface:
-    def __init__(self, port, baud_rate=9600, dry_run=False):
+    def __init__(self, port, baud_rate=115200, dry_run=False):
         self.port = port
         self.baud_rate = baud_rate
         self.serial_connection = None
@@ -29,7 +29,7 @@ class ArduinoInterface:
         # Wait and look for SERVO_CONFIG: line (wait up to 60 seconds)
         start = time.time()
         config_line = None
-        while time.time() - start < 60.0:  # Wait up to 60 seconds
+        while time.time() - start < 1.0:  # Wait up to 60 seconds
             if self.serial_connection.in_waiting:
                 line = self.serial_connection.readline().decode(errors='ignore').strip()
                 if line.startswith('SERVO_CONFIG:'):
@@ -85,6 +85,7 @@ class ArduinoInterface:
             print(f"[DRY RUN] Would send command to Arduino: {command}")
             return None
         if self.serial_connection and self.serial_connection.is_open:
+            print(f"Sending command to Arduino: {command.strip()}")
             self.serial_connection.write(command.encode())
             response = self.read_response()
             print(f"Arduino response: {response}")
@@ -107,20 +108,19 @@ class ArduinoInterface:
         return self.serial_connection is not None and self.serial_connection.is_open
 
     def set_animation(self, animation):
-        """Set animation on the Arduino hardware. Uses per-animation intervals from emotion_animations. Also sets LED color."""
+        """Set servo configs for the given animation on the Arduino hardware. Uses per-animation intervals from emotion_animations. Also sets LED color."""
         if self.is_connected() or self.dry_run:
             params = self.servo_controller.set_emotion(animation)
             velocities = params['velocities']
             target_factors = params['target_factors']
             idle_ranges = params['idle_ranges']
-            intervals = params['intervals']
+            # Set each servo's config (target, velocity, idle_range)
             for i, servo in enumerate(self.servo_controller.servos):
                 target_angle = servo.min_angle + target_factors[i] * (servo.max_angle - servo.min_angle)
-                velocity = velocities[i]
-                idle = idle_ranges[i]
-                interval = intervals[i]
-                command = f"MOVE_SERVO;ID={servo.servo_id};TARGET={int(target_angle)};VELOCITY={velocity};IDLE={idle};INTERVAL={interval}\n"
-                self.send_command(command)
+                servo.velocity = velocities[i]
+                servo.idle_range = idle_ranges[i]
+                servo.current_angle = int(target_angle)
+            self.send_servo_config()  # Send all configs in one command
             # Set LED color for this emotion
             r, g, b = self.servo_controller.get_led_color(animation)
             led_command = f"SET_LED;R={r};G={g};B={b}\n"
@@ -129,7 +129,7 @@ class ArduinoInterface:
             print("Arduino not connected. Cannot set animation.")
 
     @staticmethod
-    def create(use_raspberry, port='/dev/ttyACM0', baud_rate=9600):
+    def create(use_raspberry, port='COM7', baud_rate=9600):
         """Create and initialize an ArduinoInterface if use_raspberry is True."""
         if use_raspberry:
             try:
@@ -139,6 +139,17 @@ class ArduinoInterface:
             except Exception as e:
                 print(f"Warning: Arduino not connected or could not open port: {e}")
         return None
+
+    def send_servo_config(self):
+        """Send all servo configs to the M5Stack using SET_SERVO_CONFIG:id,target,vel,idle_range;..."""
+        config_chunks = []
+        for servo in self.servo_controller.servos:
+            # Use current_angle as target
+            chunk = f"{servo.servo_id},{int(servo.current_angle)},{int(servo.velocity)},{int(servo.idle_range)}"
+            config_chunks.append(chunk)
+        config_str = ";".join(config_chunks)
+        command = f"SET_SERVO_CONFIG:{config_str}\n"
+        self.send_command(command)
 
 class Servo:
     def __init__(self, servo_id, initial_angle=0, velocity=5, min_angle=0, max_angle=180, idle_range=10, name=None, interval=2000):
