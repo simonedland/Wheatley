@@ -232,6 +232,22 @@ void handleSerialCommand(const String& cmd)
   Serial.printf("[RB>] %s\n", cmd.c_str());
 }
 
+/* ─── NEW: helper that emits current table exactly like the
+ *          one we forward after a fresh calibration ─── */
+void sendServoConfig()
+{
+  Serial.print("SERVO_CONFIG:");
+  for (int i = 0; i < activeServos; ++i) {
+    Serial.print(i);                       // id
+    Serial.print(',');  Serial.print(servos[i].min_angle);
+    Serial.print(',');  Serial.print(servos[i].max_angle);
+    Serial.print(',');  Serial.print(servoPingResult[i] ? 1 : 0); // ping
+    if (i < activeServos - 1) Serial.print(';');
+  }
+  Serial.println();
+}
+
+
 // handleLink: Poll robot UART for messages and handle handshake, calibration, or commands
 // - On HELLO: respond, blink screen
 // - On calibration: update state, enable UI
@@ -354,6 +370,8 @@ void loop()
         }
         Serial.println("[OK] Servo config updated from USB");
         drawWindow();
+      } else if (cmd == "GET_SERVO_CONFIG") {      // ← NEW
+        sendServoConfig();                       // answer Python
       } else {
         // Forward any other command to OpenRB
         OpenRB.println(cmd);

@@ -19,28 +19,56 @@ class ArduinoInterface:
         # NEW: Try to fetch servo config from M5Stack after connecting
         self.fetch_servo_config_from_m5()
 
-    def fetch_servo_config_from_m5(self):
-        """Fetch servo config from M5Stack if available, else use defaults."""
+    def fetch_servo_config_from_m5(self, active_timeout: float = 10.0, passive_timeout: float = 60.0):
+        """
+        Try to obtain the current servo-calibration table from the M5Stack.
+
+        1. Actively send GET_SERVO_CONFIG and wait up to ``active_timeout`` s.
+        2. If nothing is received, keep listening passively for up to
+           ``passive_timeout`` s (covers the case where calibration hasn’t
+           finished yet and the ESP32 will push the table later).
+        3. On success the table is parsed via
+           ``update_servo_config_from_string()``; otherwise default limits stay.
+        """
         if self.dry_run or not self.serial_connection or not self.serial_connection.is_open:
             print("[DRY RUN or not connected] Using default servo config.")
             return
+
         import time
+
+        # ---- phase 1: active request ---------------------------------------
         self.serial_connection.reset_input_buffer()
-        # Wait and look for SERVO_CONFIG: line (wait up to 60 seconds)
+        self.serial_connection.write(b"GET_SERVO_CONFIG\n")
+
         start = time.time()
         config_line = None
-        while time.time() - start < 60.0:  # Wait up to 60 seconds
+        while time.time() - start < active_timeout:
             if self.serial_connection.in_waiting:
-                line = self.serial_connection.readline().decode(errors='ignore').strip()
-                if line.startswith('SERVO_CONFIG:'):
-                    config_line = line[len('SERVO_CONFIG:'):]
+                line = self.serial_connection.readline().decode(errors="ignore").strip()
+                if line.startswith("SERVO_CONFIG:"):
+                    config_line = line[len("SERVO_CONFIG:") :]
                     break
-            time.sleep(0.05)  # Avoid busy loop
+            time.sleep(0.05)
+
+        # ---- phase 2: passive wait (only if active request failed) ---------
+        if config_line is None:
+            start = time.time()
+            while time.time() - start < passive_timeout:
+                if self.serial_connection.in_waiting:
+                    line = self.serial_connection.readline().decode(errors="ignore").strip()
+                    if line.startswith("SERVO_CONFIG:"):
+                        config_line = line[len("SERVO_CONFIG:") :]
+                        break
+                time.sleep(0.05)
+
+        # ---- final-step: apply or warn -------------------------------------
         if config_line:
             print(f"[INFO] Got servo config from M5Stack: {config_line}")
             self.update_servo_config_from_string(config_line)
         else:
-            print("[WARN] No servo config received from M5Stack after 60s, using defaults.")
+            print("[WARN] No servo config received from M5Stack "
+                  f"after {active_timeout + passive_timeout:.0f}s, using defaults.")
+
 
     def update_servo_config_from_string(self, config_str):
         """Parse and update servo configs from calibration string."""
