@@ -249,7 +249,7 @@ class PuppetGUI(Tk):
         for ent,val in zip((self.r,self.g,self.b),(r,g,b)):
             ent.delete(0,END); ent.insert(0,str(val))
         self._msg(f"preset '{name}' loaded")
-        self._send_all(); self._send_led()
+        self._send_all()
 
     # commands -----------------------------------------------------------
     def _send_move(self,sid,sc,vel_ent):
