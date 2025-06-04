@@ -365,7 +365,7 @@ class ServoController:
                 "idle_ranges": [10, 5, 10, 5, 10, 5, 10],
                 "intervals": [1200, 800, 1200, 800, 1200, 800, 1200],
                 "color": (0, 128, 0),          # dark green
-            },
+            }
         }
 
     def print_servo_status(self):
