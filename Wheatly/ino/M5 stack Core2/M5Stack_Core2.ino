@@ -1,22 +1,25 @@
 /******************************************************************************
- *  Core-2 touch UI for 7-servo head • talks to OpenRB-150 on UART2
- *  fixed: 2025-05-21  (early “ESP32” handshake)
+ *  Core-2 touch UI for 7-servo head  ·  talks to OpenRB-150 on UART2
+ *  rev 2025-06-06  –  no clamping before calibration
+ *
+ *  ▸ Handshake timeout after 10 s enters demo-mode.
+ *  ▸ “SERVO_CONFIG:id,min,max,ping;…” is forwarded to the USB host.
+ *  ▸ Idle-jitter, scrolling list and RGB-LED demo exactly as before.
  ******************************************************************************/
 
 #include <M5Unified.h>
 #include <HardwareSerial.h>
 #include <Adafruit_NeoPixel.h>
 
-HardwareSerial OpenRB(2);                  // use ESP32 UART2
+/* ---------- UART link to the OpenRB-150 ---------- */
+HardwareSerial OpenRB(2);               // use ESP32 UART2
+constexpr int RX2_PIN  = 13;            // Grove Port-C white
+constexpr int TX2_PIN  = 14;            // Grove Port-C yellow
+constexpr uint32_t LINK_BAUD = 115200;  // must match OpenRB
 
-// UART2 pin assignments for Grove Port-C
-constexpr int RX2_PIN = 13;                // Grove Port-C white
-constexpr int TX2_PIN = 14;                // Grove Port-C yellow
-constexpr uint32_t LINK_BAUD = 115200;     // UART2 baud rate (must match OpenRB)
-
-/* --- NeoPixel LED setup --- */
-#define LED_PIN 21           // GPIO pin for WS2812B data line
-#define NUM_LEDS 8           // Number of LEDs in the strip (adjust as needed)
+/* ---------- NeoPixel strip ---------- */
+#define LED_PIN 21
+#define NUM_LEDS 8
 Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -79,34 +82,37 @@ struct ServoState {
 // - lastIdleUpdate: millis() timestamp of last idle move
 // - idleUpdateInterval: Base delay (ms) between idle moves; a random 0‥1000 ms is added each cycle
 ServoState servos[activeServos] = {
-  {  0,  0, 5,   0,   0,700,0,2000},   // lens
-  {200,200, 5,  30,  60,40,0,2000},   // eyelid1
-  {200,200, 5,  30,  60,40,0,2000},   // eyelid2
-  {130,220, 5,  45, 135,90,0,2000},   // eyeX
-  {120,120, 5,  40, 140,80,0,2000},   // eyeY
-  {150,150, 5,   0, 170,10,0,2000},   // handle1
-  {170,170, 5,   0, 170,10,0,2000}    // handle2
+  {  0,  0, 5,    0,   0,700,0,2000},   // lens
+  {180,180, 5,  180, 220,40,0,2000},   // eyelid1
+  {180,180, 5,  140, 180,40,0,2000},   // eyelid2
+  {130,130, 5,  130, 220,90,0,2000},   // eyeX
+  {140,140, 5,  140, 210,80,0,2000},   // eyeY
+  {0  ,0  , 5,  -60,  60,10,0,2000},   // handle1
+  {0  ,0  , 5,  -60,  60,10,0,2000}    // handle2
 };
+
 
 const char* SERVO_NAMES[activeServos] = {
   "lens","eyelid1","eyelid2","eyeX","eyeY","handle1","handle2"
 };
 
-/* ---------------- UI Layout ---------------- */
-constexpr int lineHeight  = 30;            // Height of each row in UI
-constexpr int yOffset     = 20;            // Top margin
-constexpr int visibleRows = 7;             // Number of rows visible at once
-constexpr uint16_t GREY = 0x7BEF;          // Color for disabled servos
+/* ---------- UI layout constants ---------- */
+constexpr int lineHeight  = 30;
+constexpr int yOffset     = 20;
+constexpr int visibleRows = 7;
+constexpr uint16_t GREY = 0x7BEF;
 
-int selected     = 0;                      // Currently selected servo
-int scrollOffset = 0;                      // Scroll position in UI
+int selected     = 0;   // highlighted row
+int scrollOffset = 0;   // first visible row
 
-// dryRun: If true, disables all servo actions and UI (set if handshake/calibration fails)
-bool dryRun = true; 
-// servoPingResult: For each servo, true if OpenRB found it, false if not
-bool servoPingResult[activeServos] = {false}; 
-// calibrationReceived: Only allow UI and servo commands after calibration is received
-bool calibrationReceived = false; 
+/* ---------- handshake / flags ---------- */
+bool handshakeReceived   = false;
+bool demoMode            = false;
+unsigned long handshakeStart = 0;
+
+bool dryRun              = true;   // mute until calibration
+bool servoPingResult[activeServos] = {false};
+bool calibrationReceived = false;
 
 /* ---------------- UI Drawing Helpers ---------------- */
 // Draw a single line (servo row) in the UI
@@ -114,24 +120,27 @@ bool calibrationReceived = false;
 // - If selected, highlight background
 void drawLine(int i, int y)
 {
-  bool isSel = (i == selected);
-  bool isDead = (i < activeServos && !servoPingResult[i]);
-  uint16_t bg = isSel ? BLUE : BLACK;
-  uint16_t fg = isDead ? RED : (isSel ? WHITE : WHITE);
+  bool sel  = (i == selected);
+  bool dead = (i < activeServos && !servoPingResult[i]);
+
+  uint16_t bg = sel ? BLUE  : BLACK;
+  uint16_t fg = dead ? RED  : WHITE;
+  if (demoMode && !sel) fg = BLUE;
+
   M5.Lcd.fillRect(0, y, M5.Lcd.width(), lineHeight, bg);
+  M5.Lcd.setTextColor(fg, bg);
   M5.Lcd.setCursor(10, y + 4);
+
   if (i < activeServos) {
-    M5.Lcd.setTextColor(fg, bg);
+    const ServoState& s = servos[i];
     M5.Lcd.printf("%d: %3d V:%d I:%d F:%lu",
-                  i, servos[i].angle, servos[i].velocity,
-                  servos[i].idle_range, servos[i].idleUpdateInterval);
+                  i, s.angle, s.velocity,
+                  s.idle_range, s.idleUpdateInterval);
   } else {
-    M5.Lcd.setTextColor(GREY, BLACK);
+    M5.Lcd.setTextColor(GREY, bg);
     M5.Lcd.printf("Servo %d: disabled", i);
   }
 }
-
-// Draw the entire visible window of servo rows
 void drawWindow()
 {
   M5.Lcd.fillScreen(BLACK);
@@ -141,39 +150,34 @@ void drawWindow()
     drawLine(i, yOffset + row * lineHeight);
   }
 }
-
-// Redraw a single servo row (if visible)
 void drawSingle(int i)
 {
   int row = i - scrollOffset;
   if (row < 0 || row >= visibleRows) return;
   drawLine(i, yOffset + row * lineHeight);
 }
-
-// Blink the screen background and LEDs a given number of times (handshake feedback)
-void blinkScreen(int times) {
+void blinkScreen(int times)
+{
   for (int i = 0; i < times; ++i) {
-    // Blink screen to RED and LEDs to RED
     M5.Lcd.fillScreen(RED);
-    for (int j = 0; j < NUM_LEDS; ++j) {
-      leds.setPixelColor(j, leds.Color(255, 0, 0));
-    }
-    leds.show();
-    delay(150);
-    
-    // Turn off screen and LEDs
+    for (int j = 0; j < NUM_LEDS; ++j) leds.setPixelColor(j, leds.Color(255,0,0));
+    leds.show(); delay(150);
     M5.Lcd.fillScreen(BLACK);
-    for (int j = 0; j < NUM_LEDS; ++j) {
-      leds.setPixelColor(j, 0);
-    }
-    leds.show();
-    delay(150);
+    for (int j = 0; j < NUM_LEDS; ++j) leds.setPixelColor(j,0);
+    leds.show(); delay(150);
   }
   drawWindow();
 }
-
-/* ---------------- UART Helpers ---------------- */
-// Send a MOVE_SERVO command to OpenRB
+void enterDemoMode()
+{
+  demoMode  = true;
+  dryRun    = true;
+  calibrationReceived = true;
+  for (int i = 0; i < activeServos; ++i) servoPingResult[i] = true;
+  Serial.println("[WARN] Handshake timeout – entering DEMO MODE");
+  drawWindow();
+}
+/* ---------- UART helpers ---------- */
 void sendMoveServoCommand(int id, int tgt, int vel)
 {
   String cmd = "MOVE_SERVO;ID=" + String(id) +
@@ -192,66 +196,55 @@ void sendMoveServoCommand(int id, int tgt, int vel)
 void handleCalibrationData(const String& line)
 {
   int last = 0;
-  int servoIndex = 0;
-  while (last < line.length() && servoIndex < activeServos) {
-    int semicolonIndex = line.indexOf(';', last);
-    String servoConfigChunk = (semicolonIndex == -1) ? line.substring(last)
-                                                    : line.substring(last, semicolonIndex);
-    int idComma = servoConfigChunk.indexOf(',');
-    int minComma = servoConfigChunk.indexOf(',', idComma + 1);
-    int maxComma = servoConfigChunk.indexOf(',', minComma + 1);
-    if (idComma > 0 && minComma > idComma && maxComma > minComma) {
-      int servoId = servoConfigChunk.substring(0, idComma).toInt();
-      float minAngle = servoConfigChunk.substring(idComma + 1, minComma).toFloat();
-      float maxAngle = servoConfigChunk.substring(minComma + 1, maxComma).toFloat();
-      int pingStatus = servoConfigChunk.substring(maxComma + 1).toInt();
-      if (servoId >= 0 && servoId < activeServos) {
-        servos[servoId].min_angle = round(minAngle);
-        servos[servoId].max_angle = round(maxAngle);
-        servos[servoId].angle     = constrain(servos[servoId].angle, servos[servoId].min_angle, servos[servoId].max_angle);
-        servos[servoId].initial_angle = servos[servoId].angle;
-        servoPingResult[servoId] = (pingStatus == 1);
+  while (last < line.length()) {
+    int semi = line.indexOf(';', last);
+    String chunk = (semi == -1) ? line.substring(last)
+                                : line.substring(last, semi);
+
+    int c1 = chunk.indexOf(','), c2 = chunk.indexOf(',', c1+1),
+        c3 = chunk.indexOf(',', c2+1);
+    if (c3 > c2 && c2 > c1 && c1 > 0) {
+      int id   = chunk.substring(0,  c1).toInt();
+      int mn   = round(chunk.substring(c1+1, c2).toFloat());
+      int mx   = round(chunk.substring(c2+1, c3).toFloat());
+      int ping = chunk.substring(c3+1).toInt();
+
+      if (id >= 0 && id < activeServos) {
+        ServoState& s = servos[id];
+        s.min_angle = mn;
+        s.max_angle = mx;
+        s.angle     = constrain(s.angle, mn, mx);
+        s.initial_angle = s.angle;
+        servoPingResult[id] = (ping == 1);
       }
     }
-    if (semicolonIndex == -1) break;
-    last = semicolonIndex + 1;
-    servoIndex++;
+    if (semi == -1) break;
+    last = semi + 1;
   }
+
   calibrationReceived = true;
   dryRun = false;
   drawWindow();
   Serial.println("[OK] Calibration table updated");
-  // --- NEW: Forward calibration data to USB serial for Python ---
+
   Serial.print("SERVO_CONFIG:");
-  Serial.println(line); // Send the raw calibration string prefixed for Python to parse
+  Serial.println(line);   // forward to USB host
 }
 
-// Print any other command received from OpenRB
-void handleSerialCommand(const String& cmd)
-{
-  Serial.printf("[RB>] %s\n", cmd.c_str());
-}
-
-/* ─── NEW: helper that emits current table exactly like the
- *          one we forward after a fresh calibration ─── */
+/* ---------- helpers ---------- */
 void sendServoConfig()
 {
   Serial.print("SERVO_CONFIG:");
   for (int i = 0; i < activeServos; ++i) {
-    Serial.print(i);                       // id
-    Serial.print(',');  Serial.print(servos[i].min_angle);
-    Serial.print(',');  Serial.print(servos[i].max_angle);
-    Serial.print(',');  Serial.print(servoPingResult[i] ? 1 : 0); // ping
-    if (i < activeServos - 1) Serial.print(';');
+    Serial.printf("%d,%d,%d,%d",
+                  i, servos[i].min_angle, servos[i].max_angle,
+                  servoPingResult[i] ? 1 : 0);
+    if (i < activeServos-1) Serial.print(';');
   }
   Serial.println();
 }
 
-
-// handleLink: Poll robot UART for messages and handle handshake, calibration, or commands
-// - On HELLO: respond, blink screen
-// - On calibration: update state, enable UI
-// - On other: print debug
+/* ---------- link handler ---------- */
 void handleLink()
 {
   while (OpenRB.available()) {
@@ -259,19 +252,22 @@ void handleLink()
     msg.trim();
 
     if (msg.startsWith("HELLO")) {
+      handshakeReceived = true;
       OpenRB.println("ESP32");
       Serial.printf("[<RB] %s\n", msg.c_str());
-      blinkScreen(3); // Blink screen 3 times on handshake
-    } else if (msg.indexOf(',') > 0 && msg.indexOf(';') > 0) {
-      handleCalibrationData(msg); // Servo calibration data
-    } else if (msg.length()) {
-      handleSerialCommand(msg);   // Other commands
+      blinkScreen(3);
+    }
+    else if (msg.indexOf(',') > 0 && msg.indexOf(';') > 0) {
+      handleCalibrationData(msg);
+    }
+    else if (msg.length()) {
+      Serial.printf("[RB>] %s\n", msg.c_str());
     }
   }
 }
 
 /* ===================================================================== */
-/*                               SETUP                                   */
+/*                                 SETUP                                 */
 /* ===================================================================== */
 // setup: Main setup sequence
 // 1. Start M5Stack and UART
@@ -281,184 +277,177 @@ void handleLink()
 void setup()
 {
   auto cfg = M5.config();
-  M5.begin(cfg);                        // Initialize M5Stack Core2
+  M5.begin(cfg);
 
-  Serial.begin(115200);                 // USB debug
-  OpenRB.begin(LINK_BAUD, SERIAL_8N1, RX2_PIN, TX2_PIN); // UART2
+  Serial.begin(115200);
+  OpenRB.begin(LINK_BAUD, SERIAL_8N1, RX2_PIN, TX2_PIN);
 
-  // --- Initialize NeoPixel LEDs ---
   leds.begin();
-  // Set all LEDs to white at startup
-  for (int i = 0; i < NUM_LEDS; ++i) {
-    leds.setPixelColor(i, leds.Color(255, 255, 255));
-  }
+  for (int i = 0; i < NUM_LEDS; ++i) leds.setPixelColor(i, leds.Color(255,255,255));
   leds.show();
 
   M5.Lcd.setTextSize(2);
-  drawWindow();                         // Draw initial UI
+  drawWindow();
 
-  /* ───── proactive handshake (in case we boot first) ───── */
-  OpenRB.println("ESP32");
+  OpenRB.println("ESP32");          // proactive handshake
+  handshakeStart = millis();
 }
 
 /* ===================================================================== */
-/*                                LOOP                                   */
+/*                                  LOOP                                 */
 /* ===================================================================== */
 // loop: Main loop
 // - Only allow UI and servo commands after calibration is received
 // - Skip dead servos in idle animation and button logic
 void loop()
 {
-  M5.update();         // Update button and touch state
-  handleLink();        // Handle UART messages
+  M5.update();
+  handleLink();
 
-  // --- Forward commands from USB Serial to OpenRB UART2 and handle config commands ---
+/* -------- handshake timeout → demo mode -------- */
+  if (!handshakeReceived && !demoMode &&
+      millis() - handshakeStart > 10'000) {
+    enterDemoMode();
+  }
+/* ------------------------------------------------ */
+
+/* ---------- USB-Serial pass-through & commands ---------- */
   if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
-    if (cmd.length() > 0) {
-      // Handle direct LED color command from Python
-      if (cmd.startsWith("SET_LED;")) {
-        int r = 0, g = 0, b = 0;
-        int rIdx = cmd.indexOf("R=");
-        int gIdx = cmd.indexOf("G=");
-        int bIdx = cmd.indexOf("B=");
-        if (rIdx >= 0) r = cmd.substring(rIdx + 2, cmd.indexOf(';', rIdx + 2)).toInt();
-        if (gIdx >= 0) g = cmd.substring(gIdx + 2, cmd.indexOf(';', gIdx + 2)).toInt();
-        if (bIdx >= 0) {
-          int bEnd = cmd.indexOf(';', bIdx + 2);
-          if (bEnd == -1) bEnd = cmd.length();
-          b = cmd.substring(bIdx + 2, bEnd).toInt();
-        }
-        uint32_t color = leds.Color(r, g, b);
-        for (int i = 0; i < NUM_LEDS; ++i) {
-          leds.setPixelColor(i, color);
-        }
-        leds.show();
-        Serial.printf("[LED] Set color to R=%d G=%d B=%d\n", r, g, b);
+    if (!cmd.length()) goto after_usb;
+
+    /* --- RGB LED --- */
+    if (cmd.startsWith("SET_LED;")) {
+      int r=0,g=0,b=0;
+      int rI=cmd.indexOf("R="), gI=cmd.indexOf("G="), bI=cmd.indexOf("B=");
+      if (rI>=0) r = cmd.substring(rI+2, cmd.indexOf(';', rI+2)).toInt();
+      if (gI>=0) g = cmd.substring(gI+2, cmd.indexOf(';', gI+2)).toInt();
+      if (bI>=0) {
+        int e = cmd.indexOf(';', bI+2); if (e==-1) e=cmd.length();
+        b = cmd.substring(bI+2, e).toInt();
       }
-      // Check for configuration command
-      else if (cmd.startsWith("SET_SERVO_CONFIG:")) {
-        // Format: SET_SERVO_CONFIG:id,target,vel,idle_range,interval;id,target,vel,idle_range,interval;...
-        int configStartIndex = String("SET_SERVO_CONFIG:").length();
-        int servoIndex = 0;
-        while (configStartIndex < cmd.length() && servoIndex < activeServos) {
-          int semicolonIndex = cmd.indexOf(';', configStartIndex);
-          String servoConfigChunk = (semicolonIndex == -1) ? cmd.substring(configStartIndex) : cmd.substring(configStartIndex, semicolonIndex);
-          // Parse comma-separated fields for servo config (id,target,vel,idle_range,interval)
-          int idComma = servoConfigChunk.indexOf(',');
-          int tgtComma = servoConfigChunk.indexOf(',', idComma + 1);
-          int velComma = servoConfigChunk.indexOf(',', tgtComma + 1);
-          int idleComma = servoConfigChunk.indexOf(',', velComma + 1);
-          if (idComma > 0 && tgtComma > idComma && velComma > tgtComma && idleComma > velComma) {
-            int servoId = servoConfigChunk.substring(0, idComma).toInt();
-            int target = servoConfigChunk.substring(idComma + 1, tgtComma).toInt();
-            int velocity = servoConfigChunk.substring(tgtComma + 1, velComma).toInt();
-            int idleRange = servoConfigChunk.substring(velComma + 1, idleComma).toInt();
-            unsigned long interval = servoConfigChunk.substring(idleComma + 1).toInt();
-            if (servoId >= 0 && servoId < activeServos) {
-              servos[servoId].angle = constrain(target, servos[servoId].min_angle, servos[servoId].max_angle);
-              servos[servoId].initial_angle = servos[servoId].angle;
-              servos[servoId].velocity = velocity;
-              servos[servoId].idle_range = idleRange;
-              servos[servoId].idleUpdateInterval = interval;
-            }
+      uint32_t col = leds.Color(r,g,b);
+      for (int i=0;i<NUM_LEDS;++i) leds.setPixelColor(i,col);
+      leds.show();
+      Serial.printf("[LED] Set R=%d G=%d B=%d\n", r,g,b);
+    }
+
+    /* --- SET_SERVO_CONFIG --- */
+    else if (cmd.startsWith("SET_SERVO_CONFIG:")) {
+      int pos = String("SET_SERVO_CONFIG:").length();
+      while (pos < cmd.length()) {
+        int semi = cmd.indexOf(';', pos);
+        String chunk = (semi==-1) ? cmd.substring(pos)
+                                  : cmd.substring(pos, semi);
+
+        int c1=chunk.indexOf(','), c2=chunk.indexOf(',', c1+1),
+            c3=chunk.indexOf(',', c2+1), c4=chunk.indexOf(',', c3+1);
+
+        if (c4>c3 && c3>c2 && c2>c1 && c1>0) {
+          int id  = chunk.substring(0,c1).toInt();
+          int tgt = chunk.substring(c1+1,c2).toInt();
+          int vel = chunk.substring(c2+1,c3).toInt();
+          int idle = chunk.substring(c3+1,c4).toInt();
+          unsigned long ivl = chunk.substring(c4+1).toInt();
+
+          if (id>=0 && id<activeServos) {
+            ServoState& s = servos[id];
+            /* -------- NEW LOGIC --------
+               Clamp only *after* we have a calibration table.           */
+            if (calibrationReceived)
+              s.angle = constrain(tgt, s.min_angle, s.max_angle);
+            else
+              s.angle = tgt;
+
+            s.initial_angle      = s.angle;
+            s.velocity           = vel;
+            s.idle_range         = idle;
+            s.idleUpdateInterval = ivl;
           }
-          if (semicolonIndex == -1) break;
-          configStartIndex = semicolonIndex + 1;
-          servoIndex++;
         }
-        Serial.println("[OK] Servo config updated from USB");
-        drawWindow();
-      } else if (cmd == "GET_SERVO_CONFIG") {      // ← NEW
-        sendServoConfig();                       // answer Python
-      } else {
-        // Forward any other command to OpenRB
-        OpenRB.println(cmd);
-        Serial.printf("[→RB] (from USB) %s\n", cmd.c_str());
+        if (semi==-1) break;
+        pos = semi + 1;
       }
+
+      Serial.println("[OK] Servo config updated from USB");
+      for (int i=0;i<activeServos;++i) {
+        ServoState& s = servos[i];
+        Serial.printf("Servo %d: angle=%d, velocity=%d, idle_range=%d, "
+                      "idleUpdateInterval=%lu\n",
+                      i, s.angle, s.velocity,
+                      s.idle_range, s.idleUpdateInterval);
+      }
+      drawWindow();
+    }
+
+    /* --- GET_SERVO_CONFIG --- */
+    else if (cmd == "GET_SERVO_CONFIG") {
+      sendServoConfig();
+    }
+
+    /* --- anything else: forward to OpenRB --- */
+    else {
+      OpenRB.println(cmd);
+      Serial.printf("[→RB] (from USB) %s\n", cmd.c_str());
     }
   }
+after_usb:
 
-  // Only allow UI and servo commands after calibration is received
-  if (!calibrationReceived) {
-    delay(33);
-    return;
-  }
-
-  /* --- idle animation: random servo movement when idle --- */
-  for (int i = 0; i < activeServos; ++i) {
-    if (!servoPingResult[i]) continue;           // Skip dead servos
-
-    ServoState& s = servos[i];
+/* ---------- idle jitter ---------- */
+  if (calibrationReceived) {
     unsigned long now = millis();
+    for (int i=0;i<activeServos;++i) {
+      if (!servoPingResult[i]) continue;
+      ServoState& s = servos[i];
 
-    if (s.idle_range > 0 &&
-        now - s.lastIdleUpdate >
-            s.idleUpdateInterval + random(0, 1000)) {
+      if (s.idle_range>0 &&
+          now - s.lastIdleUpdate >
+              s.idleUpdateInterval + random(0,1000)) {
 
-      // Compute legal idle window
-      int minIdle = max(s.min_angle, s.initial_angle - s.idle_range);
-      int maxIdle = min(s.max_angle, s.initial_angle + s.idle_range);
+        int minIdle = max(s.min_angle, s.initial_angle - s.idle_range);
+        int maxIdle = min(s.max_angle, s.initial_angle + s.idle_range);
 
-      if (minIdle < maxIdle) {                   // Valid window exists
-        int newAngle;
-
-        /* -------- NEW LOGIC --------
-         * Always pick a value inside [minIdle,maxIdle] that
-         * differs from the current angle.  Up to 10 attempts,
-         * then fall back to current angle if window is a single step.
-         */
-        for (int tries = 0; tries < 10; ++tries) {
-          newAngle = random(minIdle, maxIdle + 1);   // inclusive range
-          if (newAngle != s.angle) break;
+        if (minIdle < maxIdle) {
+          int newA;
+          for (int t=0;t<10;++t) {        // avoid same position
+            newA = random(minIdle, maxIdle+1);
+            if (newA != s.angle) break;
+          }
+          if (newA != s.angle) {
+            s.angle = newA;
+            drawSingle(i);
+            sendMoveServoCommand(i, s.angle, s.velocity);
+          }
         }
-
-        if (newAngle != s.angle) {               // Move only if changed
-          s.angle = newAngle;
-          drawSingle(i);
-          sendMoveServoCommand(i, s.angle, s.velocity);
-        }
+        s.lastIdleUpdate = now;
       }
-      s.lastIdleUpdate = now;
     }
   }
 
-  /* --- buttons: left (A) / centre (B) / right (C) --- */
-  if (M5.BtnA.isPressed() && selected < activeServos && servoPingResult[selected]) {
+/* ---------- buttons ---------- */
+  if (M5.BtnA.isPressed() && selected<activeServos && servoPingResult[selected]) {
     if (servos[selected].angle > servos[selected].min_angle) {
       --servos[selected].angle;
       drawSingle(selected);
-      sendMoveServoCommand(selected, servos[selected].angle,
-                                          servos[selected].velocity);
+      sendMoveServoCommand(selected, servos[selected].angle, servos[selected].velocity);
     }
   }
-  if (M5.BtnB.isPressed() && selected < activeServos && servoPingResult[selected]) {
+  if (M5.BtnB.isPressed() && selected<activeServos && servoPingResult[selected]) {
     if (servos[selected].angle < servos[selected].max_angle) {
       ++servos[selected].angle;
       drawSingle(selected);
-      sendMoveServoCommand(selected, servos[selected].angle,
-                                          servos[selected].velocity);
+      sendMoveServoCommand(selected, servos[selected].angle, servos[selected].velocity);
     }
   }
   if (M5.BtnC.wasPressed()) {
-    int old = selected;
-    // Only select next working servo
     int next = selected;
-    for (int tries = 0; tries < activeServos; ++tries) {
-      next = (next + 1) % activeServos;
-      if (servoPingResult[next]) {
-        selected = next;
-        drawSingle(selected);
-        break;
-      }
-      // Wrap around: If all servos are dead, just reset selection
-      if (tries == activeServos - 1) {
-        selected = 0;
-        drawSingle(selected);
-      }
+    for (int t=0;t<activeServos;++t) {
+      next = (next+1) % activeServos;
+      if (servoPingResult[next]) { selected=next; drawSingle(selected); break; }
+      if (t==activeServos-1) { selected=0; drawSingle(selected); }
     }
   }
 
-  delay(33); // Prevent watchdog reset; tune based on button debounce and UI refresh needs
+  delay(33);
 }
