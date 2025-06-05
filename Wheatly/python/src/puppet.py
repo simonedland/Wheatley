@@ -134,8 +134,22 @@ class PuppetGUI(Tk):
             return {}
 
     def _save_json(self):
+        # Save as JSON with each animation (head) on a new line, but lists compact
         with open(self.anim_file, "w", encoding="utf-8") as f:
-            json.dump(self.animations, f, indent=2)
+            f.write('{' + '\n')
+            items = list(self.animations.items())
+            for idx, (k, v) in enumerate(items):
+                # Write the key
+                f.write(f'  "{k}": ')
+                # Write the value as compact JSON
+                json_str = json.dumps(v, separators=(',', ': '))
+                f.write(json_str)
+                # Add comma if not last
+                if idx < len(items) - 1:
+                    f.write(',\n')
+                else:
+                    f.write('\n')
+            f.write('}')
 
     # ─ layout ──────────────────────────────────────────────────────────
     def _layout(self):

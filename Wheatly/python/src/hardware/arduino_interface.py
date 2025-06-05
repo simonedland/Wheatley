@@ -226,20 +226,8 @@ class ServoController:
         # Update emotion animations using target_factors (value between 0 and 1),
         # and add idle_ranges for each emotion.
         self.emotion_animations = {
-            "happy": {
-                "velocities": [5] * self.servo_count,
-                "target_factors": [0.22, 0.25, 0.22, 0.25, 0.22, 0.25, 0.22],
-                "idle_ranges": [100, 10, 10, 10, 10, 10, 10],
-                "intervals": [1200, 1200, 1200, 1000, 1000, 15000, 15000],
-                "color": (255, 255, 0),        # yellow
-            },
-            "angry": {
-                "velocities": [8] * self.servo_count,
-                "target_factors": [0.60, 0.65, 0.60, 0.65, 0.60, 0.65, 0.60],
-                "idle_ranges": [5, 5, 5, 5, 5, 5, 5],
-                "intervals": [700, 700, 700, 600, 600, 900, 900],
-                "color": (255, 0, 0),          # red
-            },
+            "angry": {"velocities": [5,1,1,1,1,5,5],"target_factors": [0.0,0.125,0.875,0.489,0.486,0.5,0.5],"idle_ranges": [10,5,5,40,3,10,10],"intervals": [2000,5000,5000,5000,5000,2000,2000],"color": [255,0,0]},
+            "happy": {"velocities": [5,1,1,1,1,5,5],"target_factors": [0.0,1.0,0.475,0.489,0.729,0.617,0.625],"idle_ranges": [10,0,5,20,3,10,10],"intervals": [2000,1000,5000,5000,5000,2000,2000],"color": [255,0,0]},
             "sad": {
                 "velocities": [3] * self.servo_count,
                 "target_factors": [0.10, 0.15, 0.10, 0.15, 0.10, 0.15, 0.10],
