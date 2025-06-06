@@ -292,8 +292,10 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
 
                 tts_engine.generate_and_play_advanced(gpt_text)
 
-                if stt_enabled and last_input_type == "voice":
+                if stt_enabled:
                     stt_engine.resume_listening()
+
+                if stt_enabled and last_input_type == "voice":
                     print("[STT] Listening for follow-up without hotword for 10 seconds...")
                     loop = asyncio.get_event_loop()
                     follow_up = await loop.run_in_executor(

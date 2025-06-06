@@ -15,7 +15,7 @@ stt:
   channels: 1
   rate: 44100
   threshold: 3000
-  silence_limit: 1
+  silence_limit: 2
 
 tts:
   enabled: false
