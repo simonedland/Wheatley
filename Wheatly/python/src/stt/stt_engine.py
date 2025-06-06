@@ -34,8 +34,8 @@ class SpeechToTextEngine:
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = stt_config.get("channels", 1)
         self.RATE = stt_config.get("rate", 16000)  # 16kHz is optimal for Whisper
-        self.THRESHOLD = stt_config.get("threshold", 3000)
-        self.SILENCE_LIMIT = stt_config.get("silence_limit", 1)
+        self.THRESHOLD = stt_config.get("threshold", 1500)
+        self.SILENCE_LIMIT = stt_config.get("silence_limit", 2)
         self._audio = None
         self._stream = None
         self._porcupine = None
@@ -653,13 +653,16 @@ class SpeechToTextEngine:
         return " ".join(transcription_results)
 
     def get_live_voice_input_blocking(self, duration_seconds=30, use_chunked=True, require_hotword=True):
-        """Synchronous wrapper around ``get_live_voice_input``.
+        """Record and transcribe speech until silence is detected."""
 
-        This allows the live transcription workflow to be executed from a
-        background thread using ``run_in_executor`` without blocking the main
-        asyncio event loop.
-        """
-        return asyncio.run(self.get_live_voice_input(duration_seconds, use_chunked, require_hotword=require_hotword))
+        if require_hotword:
+            idx = self.listen_for_hotword()
+            if idx is None:
+                return ""
+        else:
+            print("[STT] Listening for speech...")
+
+        return self.record_and_transcribe()
 
     def get_voice_input(self):
         """

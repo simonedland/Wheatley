@@ -292,20 +292,38 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
 
                 tts_engine.generate_and_play_advanced(gpt_text)
 
-                if stt_enabled and last_input_type == "voice":
+                if stt_enabled:
                     stt_engine.resume_listening()
+
+                if stt_enabled and last_input_type == "voice":
                     print("[STT] Listening for follow-up without hotword for 10 seconds...")
                     loop = asyncio.get_event_loop()
-                    follow_up = await loop.run_in_executor(
+                    follow_up_future = loop.run_in_executor(
                         None,
                         lambda: stt_engine.get_live_voice_input_blocking(10, True, False)
                     )
-                    if follow_up and follow_up.strip():
-                        await queue.put(
-                            Event("user", follow_up.strip(), {"input_type": "voice"})
-                        )
+                    queue_get_task = asyncio.create_task(queue.get())
+                    done, _ = await asyncio.wait(
+                        [follow_up_future, queue_get_task],
+                        return_when=asyncio.FIRST_COMPLETED
+                    )
+                    if follow_up_future in done:
+                        follow_up = follow_up_future.result()
+                        if follow_up and follow_up.strip():
+                            await queue.put(
+                                Event("user", follow_up.strip(), {"input_type": "voice"})
+                            )
+                        queue_get_task.cancel()
+                        await asyncio.gather(queue_get_task, return_exceptions=True)
+                    else:
+                        follow_up_future.cancel()
+                        await asyncio.gather(follow_up_future, return_exceptions=True)
+                        next_event = queue_get_task.result()
+                        await queue.put(next_event)
 
                 if stt_enabled:
+                    # Reactivate hotword detection after follow-up
+                    stt_engine.resume_listening()
                     hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine))
                     print("[STT] Hotword listener resumed.")
     except (asyncio.CancelledError, KeyboardInterrupt):

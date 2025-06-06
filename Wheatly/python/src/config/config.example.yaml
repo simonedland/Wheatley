@@ -14,8 +14,8 @@ stt:
   chunk: 1024
   channels: 1
   rate: 44100
-  threshold: 3000
-  silence_limit: 1
+  threshold: 1500
+  silence_limit: 2
 
 tts:
   enabled: false
