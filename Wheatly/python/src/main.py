@@ -159,7 +159,7 @@ class Event:
     metadata: Optional[Dict[str, Any]] = None
     ts: datetime.datetime = datetime.datetime.utcnow()
 
-    def __str__(self) -> str:
+    def __str__(self):
         meta = f" {self.metadata}" if self.metadata else ""
         return f"[{self.source.upper()}] {self.payload}{meta}"
 
@@ -172,14 +172,14 @@ async def user_input_producer(q: asyncio.Queue):
         await q.put(Event("user", text.strip(), {"input_type": "text"}))
         if text.strip().lower() == "exit":
             break
-
-def print_event(event: Event) -> None:
+# Simple wrapper to print an event object
+def print_event(event: Event):
     """Helper to display an ``Event`` on stdout."""
 
     print(event)
 
 
-async def get_event(queue: asyncio.Queue) -> Event:
+async def get_event(queue: asyncio.Queue):
     """Retrieve the next event from ``queue`` and normalise voice dicts."""
     incoming = await queue.get()
     if isinstance(incoming, dict) and incoming.get("type") == "voice":
@@ -187,7 +187,8 @@ async def get_event(queue: asyncio.Queue) -> Event:
     return incoming
 
 
-def handle_non_user_event(event: Event, manager: ConversationManager) -> None:
+# Insert system messages when events come from timers or reminders
+def handle_non_user_event(event: Event, manager: ConversationManager):
     """Add system messages based on non-user events."""
     if event.source == "timer":
         timer_label = event.payload
@@ -207,7 +208,8 @@ def handle_non_user_event(event: Event, manager: ConversationManager) -> None:
         manager.add_text_to_conversation("system", str(event))
 
 
-def process_event(event: Event, manager: ConversationManager, last_input: str) -> (bool, str):
+# Update conversation history and return True if user requested to exit
+def process_event(event: Event, manager: ConversationManager, last_input: str):
     """Update conversation with the event and determine if exit was requested."""
     if event.source == "user":
         last_input = event.metadata.get("input_type", "text") if event.metadata else "text"
@@ -219,7 +221,8 @@ def process_event(event: Event, manager: ConversationManager, last_input: str) -
     return False, last_input
 
 
-def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue: asyncio.Queue) -> None:
+# Execute tools suggested by the language model
+def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue: asyncio.Queue):
     """Get LLM proposed workflow and execute the associated tools."""
     chain_retry = 0
     while chain_retry < 3:
@@ -254,7 +257,8 @@ def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue
         chain_retry += 1
 
 
-def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient) -> (str, str):
+# Ask the LLM for a textual reply and matching animation
+def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient):
     """Fetch assistant text and animation from the LLM."""
     gpt_text = gpt_client.get_text(manager.get_conversation())
     manager.add_text_to_conversation("assistant", gpt_text)
@@ -263,6 +267,7 @@ def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient
     return gpt_text, animation
 
 
+# Play the assistant's speech and optionally capture a follow-up
 async def handle_tts_and_follow_up(
     gpt_text: str,
     last_input_type: str,
@@ -272,7 +277,7 @@ async def handle_tts_and_follow_up(
     hotword_task: Optional[asyncio.Task],
     stt_enabled: bool,
     tts_enabled: bool,
-) -> Optional[asyncio.Task]:
+):
     """Play TTS output and optionally listen for a follow-up voice response."""
     if not tts_enabled:
         return hotword_task

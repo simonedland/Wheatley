@@ -21,7 +21,7 @@ from tqdm import tqdm
 # Configuration helpers
 # ---------------------------------------------------------------------------
 
-def _load_config() -> dict:
+def _load_config():
     """Load YAML config from fixed path inside the repo."""
     cfg_path = os.path.join("Wheatly", "python", "src", "config", "config.yaml")
     print(f"Loading config from {cfg_path}")
@@ -43,14 +43,14 @@ class Config:
 class LLMClient:
     """Thin wrapper around the OpenAI *Responses* API."""
 
-    def __init__(self, cfg: Config) -> None:
+    def __init__(self, cfg: Config):
         raw = _load_config()
         self.client = OpenAI(api_key=raw["secrets"]["openai_api_key"])
         self.model = cfg.model
         self.temperature = cfg.temperature
 
     # ------------------------------------------------------------------
-    def summarise(self, content: str, filename: str, *, dry_run: bool = False) -> str:
+    def summarise(self, content: str, filename: str, *, dry_run: bool = False):
         instructions = self._instructions_for(filename)
         if dry_run:
             return f"[DRY‑RUN] {filename}:\n{instructions}"
@@ -65,7 +65,7 @@ class LLMClient:
 
     # ------------------------------------------------------------------
     @staticmethod
-    def _instructions_for(filename: str) -> str:
+    def _instructions_for(filename: str):
         """Return detailed instructions tailored to file type for in-depth summaries."""
         base = os.path.basename(filename)
         if base.endswith(".ino"):
@@ -87,7 +87,7 @@ class LLMClient:
 
     # ------------------------------------------------------------------
     @staticmethod
-    def _extract_text(resp: Any) -> str:
+    def _extract_text(resp: Any):
         """Handle several possible SDK response shapes."""
         if hasattr(resp, "output_text") and isinstance(resp.output_text, str):
             return resp.output_text.strip()
@@ -113,7 +113,7 @@ class DirectoryCrawler:
         self.root = Path(root).resolve()
         self.extensions = tuple(extensions)
 
-    def crawl(self) -> List[Path]:
+    def crawl(self):
         """Return matching files, skipping any path within a .venv directory."""
         return [
             p
@@ -136,7 +136,7 @@ class Summariser:
         self.verbose = verbose
         self.cfg = cfg
 
-    def run(self, target: str | Path) -> str:
+    def run(self, target: str | Path):
         target_path = Path(target).resolve()
         files = DirectoryCrawler(target_path, self.cfg.file_types).crawl()
 
@@ -159,7 +159,7 @@ class Summariser:
         for folder, snippets in groups.items():
             (folder / "README_AI.md").write_text("# AI Summary\n\n" + "\n".join(snippets), encoding="utf-8")
 
-    def _write_root_md(self, root: Path, groups: Dict[Path, List[str]]) -> str:
+    def _write_root_md(self, root: Path, groups: Dict[Path, List[str]]):
         combined = "\n".join(item for group in groups.values() for item in group)
         overview = self.llm.summarise(combined, "global_summary", dry_run=self.dry_run)
         (root / "README_AI.md").write_text("# AI Codebase Overview\n\n" + overview, encoding="utf-8")
@@ -170,14 +170,14 @@ class Summariser:
 # CLI entry‑point
 # ---------------------------------------------------------------------------
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args():
     p = argparse.ArgumentParser(description="Generate LLM‑based code summaries.")
     p.add_argument("--path", "-p", default=".", help="Directory to analyse.")
     p.add_argument("--dry-run", action="store_true", help="Run without calling the API.")
     return p.parse_args()
 
 
-def main() -> None:
+def main():
     args = _parse_args()
     Summariser(Config(), dry_run=args.dry_run, verbose=True).run(args.path)
 

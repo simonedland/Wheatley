@@ -57,7 +57,7 @@ class TextToSpeechEngine:
             output_format=self.output_format
         )
     
-    def generate_and_play_advanced(self, text: str) -> None:
+    def generate_and_play_advanced(self, text: str):
         """Generate speech for ``text`` and play it back immediately."""
 
         audio_chunks = list(self.elevenlabs_generate_audio(text))
