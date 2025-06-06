@@ -10,20 +10,7 @@ import struct
 import pvporcupine
 import time
 import asyncio
-import websockets
-import json
-import base64
-import threading
-from queue import Queue
-import sys
-import requests
-import tempfile
-from threading import Thread, Event
-import io
-
-# Fix for websockets+asyncio on Windows
-if sys.platform.startswith('win'):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+from threading import Event
 
 class SpeechToTextEngine:
     """Capture microphone input, detect hotwords and transcribe speech."""
@@ -44,17 +31,9 @@ class SpeechToTextEngine:
         self._audio = None
         self._stream = None
         self._porcupine = None
-        self._websocket = None
-        self._audio_queue = Queue()
-        self._transcription_callback = None
-        self._is_streaming = False
-        self._recording_buffer = []
-        self._last_transcription_time = 0
-        self._transcription_interval = 2.0  # Process every 2 seconds
         self._stop_event = Event()
         self._pause_event = Event()
         self._listening = False
-        self._session_active = False
         
         # Set OpenAI API key from config
         openai_api_key = config.get("secrets", {}).get("openai_api_key")
@@ -74,7 +53,6 @@ class SpeechToTextEngine:
         if not self._pause_event.is_set():
             self._pause_event.set()
             self._stop_event.set()
-            self._is_streaming = False  # Stop the audio stream
             if self._listening:  # If the system is currently listening, update the state
                 self._listening = False
                 print("[STT] Not listening")
@@ -90,391 +68,6 @@ class SpeechToTextEngine:
         return self._pause_event.is_set()
 
 
-    async def connect_realtime_api(self, transcription_callback=None):
-        """Connect to OpenAI's Realtime API in transcription mode."""
-        self._transcription_callback = transcription_callback
-
-        # Debug helper to check websockets version
-        print(f"[DEBUG] websockets version: {getattr(websockets, '__version__', 'unknown')}")
-
-        # URL for realtime transcription sessions
-        url = "wss://api.openai.com/v1/realtime?use_case=transcription"
-
-        additional_headers = [
-            ("Authorization", f"Bearer {self.api_key}"),
-            ("OpenAI-Beta", "realtime=v1"),
-        ]
-
-        try:
-            self._websocket = await websockets.connect(url, additional_headers=additional_headers)
-
-            # Configure the transcription session
-            session_config = {
-                "type": "transcription_session.update",
-                "input_audio_format": "pcm16",
-                # `input_audio_transcription` must be a list of objects
-                # describing the transcription configuration
-                "input_audio_transcription": {
-                    "model": "whisper-1",
-                    "prompt": "",
-                    "language": ""
-                },
-                "turn_detection": {
-                    "type": "server_vad",
-                    "threshold": 0.5,
-                    "prefix_padding_ms": 300,
-                    "silence_duration_ms": 500,
-                },
-                "input_audio_noise_reduction": {"type": "near_field"},
-            }
-
-            await self._websocket.send(json.dumps(session_config))
-            print("[STT] Connected to OpenAI Realtime Transcription API")
-            return True
-
-        except Exception as e:
-            print(f"[STT] Failed to connect to Realtime API: {e}")
-            return False
-
-    async def handle_websocket_messages(self):
-        """
-        Handle incoming messages from the WebSocket
-        """
-        try:
-            async for message in self._websocket:
-                data = json.loads(message)
-                event_type = data.get("type")
-                
-                # Handle different event types
-                if event_type in ("transcription_session.created", "session.created"):
-                    print("[STT] Realtime session created")
-
-                elif event_type in ("transcription_session.updated", "session.updated"):
-                    print("[STT] Realtime session updated")
-                    
-                elif event_type == "input_audio_buffer.speech_started":
-                    print("[STT] Speech detected...")
-                    
-                elif event_type == "input_audio_buffer.speech_stopped":
-                    print("[STT] Speech ended, processing...")
-                    
-                elif event_type == "conversation.item.input_audio_transcription.delta":
-                    # Streaming partial transcript
-                    delta = data.get("delta", "")
-                    if self._transcription_callback and delta:
-                        await self._transcription_callback(delta, is_final=False)
-
-                elif event_type == "conversation.item.input_audio_transcription.completed":
-                    # Final transcription result
-                    transcript = data.get("transcript", "")
-                    if self._transcription_callback and transcript:
-                        await self._transcription_callback(transcript, is_final=True)
-                        
-                elif event_type == "conversation.item.input_audio_transcription.failed":
-                    print(f"[STT] Transcription failed: {data.get('error', {})}")
-                    
-                elif event_type == "response.created":
-                    # Immediately cancel the response since we only want transcription
-                    if self._websocket:
-                        cancel_event = {
-                            "type": "response.cancel"
-                        }
-                        await self._websocket.send(json.dumps(cancel_event))
-                    
-                elif event_type == "error":
-                    print(f"[STT] WebSocket error: {data}")
-                    
-        except websockets.exceptions.ConnectionClosed:
-            print("[STT] WebSocket connection closed")
-        except Exception as e:
-            print(f"[STT] Error handling WebSocket messages: {e}")
-
-    def start_audio_stream(self):
-        """
-        Start the audio input stream for live transcription
-        """
-        self._audio = pyaudio.PyAudio()
-        try:
-            self._stream = self._audio.open(
-                format=self.FORMAT, 
-                channels=self.CHANNELS, 
-                rate=self.RATE, 
-                input=True, 
-                frames_per_buffer=self.CHUNK, 
-                input_device_index=2,  # Try device 2 first
-                stream_callback=self._audio_callback
-            )
-        except:
-            try:
-                self._stream = self._audio.open(
-                    format=self.FORMAT, 
-                    channels=self.CHANNELS, 
-                    rate=self.RATE, 
-                    input=True, 
-                    frames_per_buffer=self.CHUNK, 
-                    input_device_index=1,  # Fallback to device 1
-                    stream_callback=self._audio_callback
-                )
-            except:
-                # Use default device
-                self._stream = self._audio.open(
-                    format=self.FORMAT, 
-                    channels=self.CHANNELS, 
-                    rate=self.RATE, 
-                    input=True, 
-                    frames_per_buffer=self.CHUNK, 
-                    stream_callback=self._audio_callback
-                )
-        
-        self._stream.start_stream()
-        self._is_streaming = True
-        self._listening = True
-        print("[STT] Listening")
-        print("[STT] Audio stream started for live transcription")
-
-    def calibrate_noise_floor(self, calibration_time=2.0):
-        """
-        Calibrate the noise floor by sampling ambient noise for a short period.
-        Sets a dynamic threshold for speech detection.
-        """
-        print("Calibrating ambient noise floor...")
-        self._audio = pyaudio.PyAudio()
-        stream = self._audio.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            frames_per_buffer=self.CHUNK
-        )
-        amplitudes = []
-        start_time = time.time()
-        while time.time() - start_time < calibration_time:
-            data = stream.read(self.CHUNK, exception_on_overflow=False)
-            data_int = np.frombuffer(data, dtype=np.int16)
-            amplitudes.append(np.max(np.abs(data_int)))
-        stream.stop_stream()
-        stream.close()
-        self._audio.terminate()
-        self._audio = None
-        noise_floor = np.median(amplitudes)
-        # Set threshold a bit above the noise floor
-        self.THRESHOLD = int(noise_floor * 2.5)
-        print(f"[Calibration] Ambient noise floor: {noise_floor:.1f}, threshold set to: {self.THRESHOLD}")
-
-    def _audio_callback(self, in_data, frame_count, time_info, status):
-        """
-        Callback for audio stream - adds audio data to queue and buffer if above noise threshold
-        """
-        if self._is_streaming and not self._pause_event.is_set():
-            # Noise gate: only queue audio if above threshold
-            data_int = np.frombuffer(in_data, dtype=np.int16)
-            amplitude = np.max(np.abs(data_int))
-            if amplitude > self.THRESHOLD:
-                self._audio_queue.put(in_data)
-                self._recording_buffer.append(in_data)
-        return (None, pyaudio.paContinue)
-
-    async def send_audio_data(self):
-        """
-        Send audio data from queue to WebSocket (for Realtime API)
-        """
-        while self._is_streaming and self._websocket:
-            try:
-                # Get audio data from queue (non-blocking)
-                if not self._audio_queue.empty():
-                    audio_data = self._audio_queue.get_nowait()
-                    
-                    # Convert to base64 for WebSocket transmission
-                    audio_b64 = base64.b64encode(audio_data).decode('utf-8')
-                    
-                    # Send audio buffer append event
-                    audio_event = {
-                        "type": "input_audio_buffer.append",
-                        "audio": audio_b64
-                    }
-                    
-                    await self._websocket.send(json.dumps(audio_event))
-                
-                # Small delay to prevent overwhelming the API
-                await asyncio.sleep(0.01)
-                
-            except Exception as e:
-                print(f"Error sending audio data: {e}")
-                break
-
-    def chunked_transcription_worker(self):
-        """
-        Worker thread for chunked Whisper transcription
-        """
-        while not self._stop_event.is_set():
-            if self._pause_event.is_set():
-                time.sleep(0.1)
-                continue
-            current_time = time.time()
-            
-            # Check if it's time to transcribe
-            if (current_time - self._last_transcription_time >= self._transcription_interval 
-                and len(self._recording_buffer) > 0):
-                
-                try:
-                    # Create a temporary audio file from the buffer
-                    audio_data = b''.join(self._recording_buffer)
-                    
-                    # Clear the buffer for next chunk
-                    self._recording_buffer = []
-                    self._last_transcription_time = current_time
-                    
-                    # Skip if audio is too short
-                    if len(audio_data) < self.CHUNK * 10:  # At least 10 chunks
-                        continue
-                    
-                    # Create temporary WAV file
-                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_file:
-                        wav_file = tmp_file.name
-                        
-                        # Write WAV file
-                        with wave.open(wav_file, 'wb') as wf:
-                            wf.setnchannels(self.CHANNELS)
-                            wf.setsampwidth(2)  # 16-bit
-                            wf.setframerate(self.RATE)
-                            wf.writeframes(audio_data)
-                    
-                    # Transcribe using Whisper
-                    with open(wav_file, "rb") as audio_file:
-                        transcription_result = openai.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file,
-                            response_format="text"
-                        )
-                    
-                    # Clean up temporary file
-                    os.unlink(wav_file)
-                    
-                    # Call the callback with the transcription
-                    if self._transcription_callback and transcription_result.strip():
-                        # Run the async callback in the event loop
-                        if asyncio.iscoroutinefunction(self._transcription_callback):
-                            # If we're in an async context, we need to schedule this
-                            try:
-                                loop = asyncio.get_event_loop()
-                                loop.create_task(self._transcription_callback(transcription_result, is_final=True))
-                            except RuntimeError:
-                                # If no event loop is running, just print
-                                print(f"[CHUNKED TRANSCRIPTION] {transcription_result}")
-                        else:
-                            self._transcription_callback(transcription_result, is_final=True)
-                    
-                except Exception as e:
-                    print(f"Error in chunked transcription: {e}")
-            
-            # Sleep briefly to avoid busy waiting
-            time.sleep(0.1)
-
-    async def start_chunked_transcription(self, transcription_callback=None):
-        """
-        Start chunked transcription using standard Whisper API
-        """
-        print("[STT] Starting chunked live transcription...")
-        self._transcription_callback = transcription_callback
-        self._stop_event.clear()
-        
-        # Start audio stream
-        self.start_audio_stream()
-        
-        # Start transcription worker thread
-        transcription_thread = Thread(target=self.chunked_transcription_worker)
-        transcription_thread.daemon = True
-        transcription_thread.start()
-        
-        try:
-            # Keep running until interrupted
-            while self._is_streaming:
-                await asyncio.sleep(1)
-        except KeyboardInterrupt:
-            print("Chunked transcription interrupted by user")
-        finally:
-            pass
-
-    async def start_live_transcription(self, transcription_callback=None, model="whisper-1", use_chunked=True):
-        """
-        Start live transcription session
-        """
-        if use_chunked:
-            # Use chunked transcription with standard Whisper API (more accurate)
-            await self.start_chunked_transcription(transcription_callback)
-        else:
-            # Use Realtime API (less accurate for pure transcription)
-            await self.start_realtime_transcription(transcription_callback)
-
-    async def start_realtime_transcription(self, transcription_callback=None):
-        """
-        Start live transcription using Realtime API
-        """
-        print("[STT] Starting realtime transcription session...")
-
-        # Connect to Realtime API
-        if not await self.connect_realtime_api(transcription_callback):
-            return False
-
-        # Start audio stream
-        self.start_audio_stream()
-
-        self._session_active = True
-        print("[STT] Realtime session active")
-        
-        # Create tasks for handling WebSocket messages and sending audio
-        message_task = asyncio.create_task(self.handle_websocket_messages())
-        audio_task = asyncio.create_task(self.send_audio_data())
-        
-        try:
-            # Run both tasks concurrently
-            await asyncio.gather(message_task, audio_task)
-        except KeyboardInterrupt:
-            print("Live transcription interrupted by user")
-        except Exception as e:
-            print(f"Error during live transcription: {e}")
-        finally:
-            await self.stop_live_transcription()
-
-        return True
-
-    async def stop_live_transcription(self):
-        """
-        Stop live transcription and cleanup resources
-        """
-        if self._session_active:
-            print("[STT] Stopping realtime transcription session...")
-        else:
-            print("[STT] Stopping live transcription...")
-        self._is_streaming = False
-        self._stop_event.set()
-        if self._listening:
-            self._listening = False
-            print("[STT] Not listening")
-
-        # Stop audio stream
-        if self._stream:
-            self._stream.stop_stream()
-            self._stream.close()
-            self._stream = None
-        
-        if self._audio:
-            self._audio.terminate()
-            self._audio = None
-        
-        # Close WebSocket
-        if self._websocket:
-            await self._websocket.close()
-            self._websocket = None
-        
-        # Clear audio queue and buffer
-        while not self._audio_queue.empty():
-            self._audio_queue.get_nowait()
-        self._recording_buffer.clear()
-
-        if self._session_active:
-            self._session_active = False
-            print("[STT] Realtime session inactive")
 
     # Legacy methods for backward compatibility
     def record_until_silent(self, max_wait_seconds=None):
@@ -648,62 +241,6 @@ class SpeechToTextEngine:
 
         return None
 
-    async def get_live_voice_input(self, duration_seconds=30, use_chunked=True, require_hotword=True):
-        """
-        Waits for hotword (unless ``require_hotword`` is False), then starts
-        live transcription for ``duration_seconds``. Returns the final
-        transcribed text.
-        """
-        if require_hotword:
-            idx = self.listen_for_hotword()
-            if idx is None:
-                return ""
-        else:
-            print(f"[STT] Listening for speech for {duration_seconds} seconds...")
-        
-        print(f"Starting live transcription for {duration_seconds} seconds...")
-        
-        # Store transcription results
-        transcription_results = []
-        
-        def transcription_handler(text, is_final):
-            if is_final and text.strip():
-                transcription_results.append(text.strip())
-                print(f"[TRANSCRIBED] {text.strip()}")
-        
-        # Create async version of the callback
-        async def async_transcription_handler(text, is_final):
-            transcription_handler(text, is_final)
-        
-        # Start live transcription
-        transcription_task = asyncio.create_task(
-            self.start_live_transcription(async_transcription_handler, use_chunked=use_chunked)
-        )
-        
-        # Run for specified duration
-        try:
-            await asyncio.wait_for(transcription_task, timeout=duration_seconds)
-        except asyncio.TimeoutError:
-            print(f"\nTranscription timeout after {duration_seconds} seconds")
-        except KeyboardInterrupt:
-            print("\nTranscription interrupted by user")
-        
-        # Stop transcription
-        await self.stop_live_transcription()
-        
-        # Return combined results
-        return " ".join(transcription_results)
-
-    def get_live_voice_input_blocking(self, duration_seconds=30, use_chunked=True, require_hotword=True):
-        """Blocking helper that wraps ``get_live_voice_input``."""
-
-        return asyncio.run(
-            self.get_live_voice_input(
-                duration_seconds=duration_seconds,
-                use_chunked=use_chunked,
-                require_hotword=require_hotword,
-            )
-        )
 
     def get_voice_input(self):
         """
@@ -720,6 +257,23 @@ class SpeechToTextEngine:
         text = self.transcribe(wav_file)
         os.remove(wav_file)
         return text
+
+    async def hotword_listener(self, queue):
+        """Background task that records speech after a hotword trigger."""
+        print("[Hotword] Background listener started.")
+        loop = asyncio.get_event_loop()
+        try:
+            while True:
+                if self.is_paused():
+                    await asyncio.sleep(0.1)
+                    continue
+                text = await loop.run_in_executor(None, self.get_voice_input)
+                if text and text.strip():
+                    await queue.put({"type": "voice", "text": text.strip()})
+        except asyncio.CancelledError:
+            print("[Hotword] Listener cancelled.")
+        except Exception as e:
+            print(f"[Hotword] Listener error: {e}")
 
     def cleanup(self):
         """
@@ -750,7 +304,7 @@ if __name__ == "__main__":
     # Basic manual test when running this module directly
     engine = SpeechToTextEngine()
     try:
-        result = engine.get_live_voice_input_blocking(5, use_chunked=True, require_hotword=False)
+        result = engine.record_and_transcribe(5)
         print(f"Transcribed: {result}")
     finally:
         engine.cleanup()

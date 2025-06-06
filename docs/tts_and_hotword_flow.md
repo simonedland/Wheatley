@@ -14,5 +14,7 @@ The use of `NamedTemporaryFile` keeps file operations minimal and avoids leaving
 2. **Detection** – Each audio frame is analysed for configured keywords. When a keyword is detected the function returns its index.
 3. **Integration** – Higher level workflows pause listening during TTS playback and resume afterwards so that hotword detection is responsive.
 
+Once a hotword is detected, the engine records speech until a short period of silence is reached and then submits the audio to OpenAI Whisper for transcription.
+
 The engine exposes `pause_listening()` and `resume_listening()` helpers which are used by `main.py` when playing back responses.
 

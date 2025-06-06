@@ -18,13 +18,9 @@ import sys
 
 # =================== Imports: Third-Party Libraries ===================
 import yaml  # For reading YAML config files
-import pyaudio  # For audio input/output
 import openai  # For OpenAI API access
-from playsound import playsound  # For playing audio files
 from colorama import init, Fore, Style  # For colored terminal output
 import pathlib
-import struct
-import pvporcupine
 
 # Try to import RPi.GPIO for Raspberry Pi GPIO control; disable if not available
 try:
@@ -40,13 +36,6 @@ from llm.llm_client import GPTClient, Functions  # LLM client and function tools
 from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
 from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
 
-# =================== Global Constants ===================
-CHUNK = 1024  # Audio chunk size
-FORMAT = pyaudio.paInt16  # Audio format
-CHANNELS = 1  # Mono audio
-RATE = 44100  # Audio sample rate
-THRESHOLD = 1000  # Audio threshold for silence detection (legacy)
-SILENCE_LIMIT = 3  # Silence limit in seconds (legacy)
 
 # Initialize colorama for colored terminal output
 init(autoreset=True)
@@ -189,30 +178,6 @@ def print_event(event: Event) -> None:
 
     print(event)
 
-async def hotword_listener(queue, stt_engine):
-    """Background task using streaming STT triggered by a hotword."""
-    print("[Hotword] Background listener started.")
-    loop = asyncio.get_event_loop()
-    try:
-        while True:
-            if stt_engine.is_paused():
-                await asyncio.sleep(0.1)
-                continue
-            # Run the live transcription workflow in a thread to avoid blocking
-            text = await loop.run_in_executor(
-                None,
-                lambda: stt_engine.get_live_voice_input_blocking(
-                    30, False, True
-                ),
-            )
-            if text and text.strip():
-                await queue.put(
-                    Event("user", text.strip(), {"input_type": "voice"})
-                )
-    except asyncio.CancelledError:
-        print("[Hotword] Listener cancelled.")
-    except Exception as e:
-        print(f"[Hotword] Listener error: {e}")
 
 async def async_conversation_loop(
     manager,
@@ -230,12 +195,16 @@ async def async_conversation_loop(
     user_task = asyncio.create_task(user_input_producer(queue))  # Text input
     hotword_task = None
     if stt_enabled:
-        hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine))  # Voice input
+        hotword_task = asyncio.create_task(stt_engine.hotword_listener(queue))  # Voice input
     last_input_type = "text"
     print("🤖 Assistant running. Type 'exit' to quit. Type or say hotword to speak.\n")
     try:
         while True:
-            event: Event = await queue.get()
+            incoming = await queue.get()
+            if isinstance(incoming, dict) and incoming.get("type") == "voice":
+                event = Event("user", incoming.get("text", ""), {"input_type": "voice"})
+            else:
+                event = incoming
             print_event(event)
             if event.source == "user":
                 if event.metadata:
@@ -331,7 +300,7 @@ async def async_conversation_loop(
                     loop = asyncio.get_event_loop()
                     follow_up_future = loop.run_in_executor(
                         None,
-                        lambda: stt_engine.get_live_voice_input_blocking(10, False, False)
+                        lambda: stt_engine.record_and_transcribe(10)
                     )
                     queue_get_task = asyncio.create_task(queue.get())
                     done, _ = await asyncio.wait(
@@ -355,7 +324,7 @@ async def async_conversation_loop(
                 if stt_enabled:
                     # Reactivate hotword detection after follow-up
                     stt_engine.resume_listening()
-                    hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine))
+                    hotword_task = asyncio.create_task(stt_engine.hotword_listener(queue))
                     print("[STT] Hotword listener resumed.")
     except (asyncio.CancelledError, KeyboardInterrupt):
         print("\n[Main] KeyboardInterrupt or CancelledError received. Exiting...")
