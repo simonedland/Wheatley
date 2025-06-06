@@ -308,6 +308,8 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                         )
 
                 if stt_enabled:
+                    # Reactivate hotword detection after follow-up
+                    stt_engine.resume_listening()
                     hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine))
                     print("[STT] Hotword listener resumed.")
     except (asyncio.CancelledError, KeyboardInterrupt):
