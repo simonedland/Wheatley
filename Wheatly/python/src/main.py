@@ -198,9 +198,12 @@ async def hotword_listener(queue, stt_engine):
             if stt_engine.is_paused():
                 await asyncio.sleep(0.1)
                 continue
-            # Run the blocking live voice input workflow in a thread
+            # Run the live transcription workflow in a thread to avoid blocking
             text = await loop.run_in_executor(
-                None, stt_engine.get_live_voice_input_blocking
+                None,
+                lambda: stt_engine.get_live_voice_input_blocking(
+                    30, False, True
+                ),
             )
             if text and text.strip():
                 await queue.put(
@@ -328,7 +331,7 @@ async def async_conversation_loop(
                     loop = asyncio.get_event_loop()
                     follow_up_future = loop.run_in_executor(
                         None,
-                        lambda: stt_engine.get_live_voice_input_blocking(10, True, False)
+                        lambda: stt_engine.get_live_voice_input_blocking(10, False, False)
                     )
                     queue_get_task = asyncio.create_task(queue.get())
                     done, _ = await asyncio.wait(

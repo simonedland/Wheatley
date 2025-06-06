@@ -54,6 +54,7 @@ class SpeechToTextEngine:
         self._stop_event = Event()
         self._pause_event = Event()
         self._listening = False
+        self._session_active = False
         
         # Set OpenAI API key from config
         openai_api_key = config.get("secrets", {}).get("openai_api_key")
@@ -90,57 +91,45 @@ class SpeechToTextEngine:
 
 
     async def connect_realtime_api(self, transcription_callback=None):
-        """
-        Connect to OpenAI Realtime API for live transcription using conversation mode
-        """
+        """Connect to OpenAI's Realtime API in transcription mode."""
         self._transcription_callback = transcription_callback
-        
-        # Debug: Print websockets version
+
+        # Debug helper to check websockets version
         print(f"[DEBUG] websockets version: {getattr(websockets, '__version__', 'unknown')}")
-        
-        # WebSocket URL for Realtime API
-        url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
-        
-        # Headers for websockets 15.x compatibility
+
+        # URL for realtime transcription sessions
+        url = "wss://api.openai.com/v1/realtime?use_case=transcription"
+
         additional_headers = [
             ("Authorization", f"Bearer {self.api_key}"),
-            ("OpenAI-Beta", "realtime=v1")
+            ("OpenAI-Beta", "realtime=v1"),
         ]
-        
+
         try:
             self._websocket = await websockets.connect(url, additional_headers=additional_headers)
-            
-            # Send session configuration - using correct Realtime API parameters
+
+            # Configure the transcription session
             session_config = {
-                "type": "session.update",
-                "session": {
-                    "modalities": ["text", "audio"],
-                    "instructions": "You are a transcription assistant. Please only transcribe what the user says without adding any responses or commentary. Just provide the exact transcription of their speech.",
-                    "voice": "alloy",
-                    "input_audio_format": "pcm16",
-                    "output_audio_format": "pcm16",
-                    "input_audio_transcription": {
-                        "model": "whisper-1"
-                    },
-                    "turn_detection": {
-                        "type": "server_vad",
-                        "threshold": 0.5,
-                        "prefix_padding_ms": 300,
-                        "silence_duration_ms": 1000
-                    },
-                    "tools": [],
-                    "tool_choice": "auto",
-                    "temperature": 0.1,  # Lower temperature for more accurate transcription
-                    "max_response_output_tokens": 1
-                }
+                "type": "transcription_session.update",
+                "input_audio_format": "pcm16",
+                "input_audio_transcription": {
+                    "model": "gpt-4o-transcribe",
+                },
+                "turn_detection": {
+                    "type": "server_vad",
+                    "threshold": 0.5,
+                    "prefix_padding_ms": 300,
+                    "silence_duration_ms": 500,
+                },
+                "input_audio_noise_reduction": {"type": "near_field"},
             }
-            
+
             await self._websocket.send(json.dumps(session_config))
-            print("Connected to OpenAI Realtime API")
+            print("[STT] Connected to OpenAI Realtime Transcription API")
             return True
-            
+
         except Exception as e:
-            print(f"Failed to connect to Realtime API: {e}")
+            print(f"[STT] Failed to connect to Realtime API: {e}")
             return False
 
     async def handle_websocket_messages(self):
@@ -153,26 +142,32 @@ class SpeechToTextEngine:
                 event_type = data.get("type")
                 
                 # Handle different event types
-                if event_type == "session.created":
-                    print("Session created successfully")
-                    
-                elif event_type == "session.updated":
-                    print("Session updated successfully")
+                if event_type in ("transcription_session.created", "session.created"):
+                    print("[STT] Realtime session created")
+
+                elif event_type in ("transcription_session.updated", "session.updated"):
+                    print("[STT] Realtime session updated")
                     
                 elif event_type == "input_audio_buffer.speech_started":
-                    print("Speech detected...")
+                    print("[STT] Speech detected...")
                     
                 elif event_type == "input_audio_buffer.speech_stopped":
-                    print("Speech ended, processing...")
+                    print("[STT] Speech ended, processing...")
                     
+                elif event_type == "conversation.item.input_audio_transcription.delta":
+                    # Streaming partial transcript
+                    delta = data.get("delta", "")
+                    if self._transcription_callback and delta:
+                        await self._transcription_callback(delta, is_final=False)
+
                 elif event_type == "conversation.item.input_audio_transcription.completed":
-                    # This is where we get the transcribed text
+                    # Final transcription result
                     transcript = data.get("transcript", "")
                     if self._transcription_callback and transcript:
                         await self._transcription_callback(transcript, is_final=True)
                         
                 elif event_type == "conversation.item.input_audio_transcription.failed":
-                    print(f"Transcription failed: {data.get('error', {})}")
+                    print(f"[STT] Transcription failed: {data.get('error', {})}")
                     
                 elif event_type == "response.created":
                     # Immediately cancel the response since we only want transcription
@@ -183,12 +178,12 @@ class SpeechToTextEngine:
                         await self._websocket.send(json.dumps(cancel_event))
                     
                 elif event_type == "error":
-                    print(f"WebSocket error: {data}")
+                    print(f"[STT] WebSocket error: {data}")
                     
         except websockets.exceptions.ConnectionClosed:
-            print("WebSocket connection closed")
+            print("[STT] WebSocket connection closed")
         except Exception as e:
-            print(f"Error handling WebSocket messages: {e}")
+            print(f"[STT] Error handling WebSocket messages: {e}")
 
     def start_audio_stream(self):
         """
@@ -231,7 +226,7 @@ class SpeechToTextEngine:
         self._is_streaming = True
         self._listening = True
         print("[STT] Listening")
-        print("Audio stream started for live transcription")
+        print("[STT] Audio stream started for live transcription")
 
     def calibrate_noise_floor(self, calibration_time=2.0):
         """
@@ -375,7 +370,7 @@ class SpeechToTextEngine:
         """
         Start chunked transcription using standard Whisper API
         """
-        print("Starting chunked live transcription...")
+        print("[STT] Starting chunked live transcription...")
         self._transcription_callback = transcription_callback
         self._stop_event.clear()
         
@@ -411,14 +406,17 @@ class SpeechToTextEngine:
         """
         Start live transcription using Realtime API
         """
-        print("Starting Realtime API transcription...")
-        
+        print("[STT] Starting realtime transcription session...")
+
         # Connect to Realtime API
         if not await self.connect_realtime_api(transcription_callback):
             return False
-        
+
         # Start audio stream
         self.start_audio_stream()
+
+        self._session_active = True
+        print("[STT] Realtime session active")
         
         # Create tasks for handling WebSocket messages and sending audio
         message_task = asyncio.create_task(self.handle_websocket_messages())
@@ -433,14 +431,17 @@ class SpeechToTextEngine:
             print(f"Error during live transcription: {e}")
         finally:
             await self.stop_live_transcription()
-        
+
         return True
 
     async def stop_live_transcription(self):
         """
         Stop live transcription and cleanup resources
         """
-        print("Stopping live transcription...")
+        if self._session_active:
+            print("[STT] Stopping realtime transcription session...")
+        else:
+            print("[STT] Stopping live transcription...")
         self._is_streaming = False
         self._stop_event.set()
         if self._listening:
@@ -466,6 +467,10 @@ class SpeechToTextEngine:
         while not self._audio_queue.empty():
             self._audio_queue.get_nowait()
         self._recording_buffer.clear()
+
+        if self._session_active:
+            self._session_active = False
+            print("[STT] Realtime session inactive")
 
     # Legacy methods for backward compatibility
     def record_until_silent(self, max_wait_seconds=None):
@@ -686,16 +691,15 @@ class SpeechToTextEngine:
         return " ".join(transcription_results)
 
     def get_live_voice_input_blocking(self, duration_seconds=30, use_chunked=True, require_hotword=True):
-        """Record and transcribe speech until silence is detected."""
+        """Blocking helper that wraps ``get_live_voice_input``."""
 
-        if require_hotword:
-            idx = self.listen_for_hotword()
-            if idx is None:
-                return ""
-        else:
-            print("[STT] Listening for speech...")
-
-        return self.record_and_transcribe(max_wait_seconds=duration_seconds)
+        return asyncio.run(
+            self.get_live_voice_input(
+                duration_seconds=duration_seconds,
+                use_chunked=use_chunked,
+                require_hotword=require_hotword,
+            )
+        )
 
     def get_voice_input(self):
         """
