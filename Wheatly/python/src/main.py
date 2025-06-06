@@ -171,13 +171,15 @@ def print_event(event: Event):
     print(event)
 
 async def hotword_listener(queue, stt_engine):
-    """Background task: waits for hotword, records and transcribes, puts as user event."""
+    """Background task using streaming STT triggered by a hotword."""
     print("[Hotword] Background listener started.")
     loop = asyncio.get_event_loop()
     try:
         while True:
-            # Run the blocking get_voice_input in a thread
-            text = await loop.run_in_executor(None, stt_engine.get_voice_input)
+            # Run the blocking live voice input workflow in a thread
+            text = await loop.run_in_executor(
+                None, stt_engine.get_live_voice_input_blocking
+            )
             if text and text.strip():
                 await queue.put(Event("user", text.strip()))
     except Exception as e:
