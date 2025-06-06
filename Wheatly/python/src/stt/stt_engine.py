@@ -467,8 +467,17 @@ class SpeechToTextEngine:
         self._recording_buffer.clear()
 
     # Legacy methods for backward compatibility
-    def record_until_silent(self):
-        """Record audio until silence is detected."""
+    def record_until_silent(self, max_wait_seconds=None):
+        """Record audio until silence is detected.
+
+        Parameters
+        ----------
+        max_wait_seconds: float or None
+            Optional timeout. If no sound is detected within this many
+            seconds the method returns ``None`` and stops listening. This
+            allows callers to fall back to hotword detection after a period
+            of silence.
+        """
         self._audio = pyaudio.PyAudio()
         try:
             self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
@@ -481,6 +490,7 @@ class SpeechToTextEngine:
         frames = []
         silent_frames = 0
         recording = False
+        start_time = time.time()
         print("Monitoring...")
 
         min_amplitude = float('inf')
@@ -492,6 +502,10 @@ class SpeechToTextEngine:
             amplitude = np.max(np.abs(data_int))
             min_amplitude = min(min_amplitude, amplitude)
             max_amplitude = max(max_amplitude, amplitude)
+            if not recording and max_wait_seconds is not None and (time.time() - start_time) > max_wait_seconds:
+                print("No sound detected, aborting...")
+                frames = []
+                break
             if amplitude > self.THRESHOLD:
                 if not recording:
                     print("Sound detected, recording...")
@@ -514,6 +528,9 @@ class SpeechToTextEngine:
         self._stream = None
         self._audio.terminate()
         self._audio = None
+        if not frames:
+            return None
+
         wav_filename = "temp_recording.wav"
         wf = wave.open(wav_filename, 'wb')
         wf.setnchannels(self.CHANNELS)
@@ -532,9 +549,11 @@ class SpeechToTextEngine:
             )
         return transcription_result.text
 
-    def record_and_transcribe(self):
+    def record_and_transcribe(self, max_wait_seconds=None):
         """Record audio and transcribe using traditional Whisper API"""
-        wav_file = self.record_until_silent()
+        wav_file = self.record_until_silent(max_wait_seconds)
+        if not wav_file:
+            return ""
         text = self.transcribe(wav_file)
         os.remove(wav_file)
         return text
@@ -662,7 +681,7 @@ class SpeechToTextEngine:
         else:
             print("[STT] Listening for speech...")
 
-        return self.record_and_transcribe()
+        return self.record_and_transcribe(max_wait_seconds=duration_seconds)
 
     def get_voice_input(self):
         """
