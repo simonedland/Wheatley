@@ -161,7 +161,7 @@ SPOTIFY_TOOLS = [
 # ── SpotifyAgent class ────────────────────────────────────────────────
 class SpotifyAgent:
     @staticmethod
-    def _load_config() -> Dict[str, Any]:
+    def _load_config():
         base_dir = os.path.dirname(os.path.dirname(__file__))
         with open(os.path.join(base_dir, "config", "config.yaml"), encoding="utf-8") as fh:
             return yaml.safe_load(fh)

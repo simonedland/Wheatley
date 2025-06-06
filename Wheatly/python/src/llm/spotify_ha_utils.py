@@ -36,7 +36,7 @@ _WRITE = (
 )
 
 
-def _load_cfg(path: str | Path | None = None) -> Dict[str, Any]:
+def _load_cfg(path: str | Path | None = None):
     base = Path(__file__).resolve().parent.parent
     cfg_path = Path(path) if path else base / "config" / "config.yaml"
     with open(cfg_path, encoding="utf-8") as fh:
@@ -73,14 +73,14 @@ class SpotifyHA:  # ────────────────────
             raise
 
     @classmethod
-    def get_default(cls) -> "SpotifyHA":
+    def get_default(cls):
         if cls._default is None:
             cls._default = cls()
         return cls._default
 
     # ── tiny helpers ──────────────────────────────────────────────────
     @staticmethod
-    def _flat(track: Dict[str, Any] | None) -> Optional[Dict[str, Any]]:
+    def _flat(track: Dict[str, Any] | None):
         if not track:
             return None
         alb = track["album"]
@@ -95,13 +95,13 @@ class SpotifyHA:  # ────────────────────
         }
 
     @staticmethod
-    def _ms_to_mmss(ms: int) -> str:
+    def _ms_to_mmss(ms: int):
         m, s = divmod(ms // 1000, 60)
         h, m = divmod(m, 60)
         return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
 
     @classmethod
-    def _fmt_track(cls, t: Dict[str, Any] | None) -> str:
+    def _fmt_track(cls, t: Dict[str, Any] | None):
         return "∅" if t is None else f"{t['name']} – {t['artists']}  ({cls._ms_to_mmss(t['duration_ms'])})"
 
     # ── playback – read ───────────────────────────────────────────────
@@ -112,7 +112,7 @@ class SpotifyHA:  # ────────────────────
         pb = self.get_current_playback()
         return self._flat(pb["item"]) if pb and pb.get("item") and simple else pb
 
-    def is_playing(self) -> bool:
+    def is_playing(self):
         pb = self.get_current_playback()
         return bool(pb and pb.get("is_playing"))
 
@@ -120,7 +120,7 @@ class SpotifyHA:  # ────────────────────
         q = self._sp.queue().get("queue", [])
         return [self._flat(t) for t in q] if simple else q
 
-    def _queue_wait_times(self) -> List[tuple[Dict[str, Any], int]]:
+    def _queue_wait_times(self):
         pb = self.get_current_playback()
         rem_ms = (
             pb["item"]["duration_ms"] - pb.get("progress_ms", 0)
@@ -230,7 +230,7 @@ class SpotifyHA:  # ────────────────────
         return result
 
     # ── queue removal (precise) ───────────────────────────────────────
-    def remove_from_queue(self, pos: int = 1) -> Optional[Dict[str, Any]]:
+    def remove_from_queue(self, pos: int = 1):
         queue = self.get_queue(simple=True)
         if not 1 <= pos <= len(queue):
             return None
@@ -292,7 +292,7 @@ class SpotifyHA:  # ────────────────────
         return [self._flat(t) for t in tracks] if simple else tracks
 
     # ── album playback ────────────────────────────────────────────────
-    def play_album_by_name(self, album_name: str, artist: str = None, device_id: str | None = None) -> str:
+    def play_album_by_name(self, album_name: str, artist: str = None, device_id: str | None = None):
         """Search for an album by name (and optional artist) and start playback of that album."""
         query = album_name
         if artist:
