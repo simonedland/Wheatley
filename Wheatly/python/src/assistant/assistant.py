@@ -1,13 +1,15 @@
+"""Conversation management utilities for the Wheatley assistant."""
+
 import os
 import textwrap
 import yaml
 from datetime import datetime
 
 class ConversationManager:
-    """
-    Manages the conversation history with a fixed memory.
-    """
+    """Maintain a bounded conversation history for the assistant."""
     def __init__(self, max_memory=5):
+        """Create a conversation buffer with ``max_memory`` user/assistant turns."""
+
         # Load system message from config
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:
@@ -26,6 +28,8 @@ class ConversationManager:
         }]
 
     def add_text_to_conversation(self, role, text):
+        """Append ``text`` from ``role`` to the conversation history."""
+
         # Refresh system message with current time and day
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:
@@ -43,9 +47,13 @@ class ConversationManager:
             self.messages.pop(1)
 
     def get_conversation(self):
+        """Return the current conversation as a list of message dicts."""
+
         return self.messages
 
     def print_memory(self):
+        """Pretty-print the conversation buffer for debugging."""
+
         debug_color = "\033[94m"      # system
         user_color = "\033[92m"       # user
         assistant_color = "\033[93m"  # assistant

@@ -1,3 +1,11 @@
+"""Main entry point for the Wheatley assistant.
+
+This module wires together the speech-to-text engine, large language
+model client, text-to-speech engine and Arduino hardware interface. It
+provides an asynchronous event loop that reacts to user input and
+controls the servos and LED animations on the robot.
+"""
+
 # =================== Imports: Standard Libraries ===================
 import os  # For file and path operations
 import logging  # For logging events and timings
@@ -65,12 +73,16 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 # Load configuration from YAML file
 def load_config():
+    """Return the YAML configuration as a dictionary."""
+
     config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
 # Print ASCII art welcome message to the terminal
 def print_welcome():
+    """Display a retro style welcome banner."""
+
     RESET = "\033[0m"
     RETRO_COLOR = "\033[95m"
     print(r"""
@@ -95,6 +107,8 @@ def print_welcome():
 # =================== Assistant Initialization ===================
 # Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
 def initialize_assistant(config):
+    """Initialise and return all major subsystems."""
+
     start_time = time.time()  # Start timing initialization
     stt_enabled = config["stt"]["enabled"]  # Speech-to-text enabled
     tts_enabled = config["tts"]["enabled"]  # Text-to-speech enabled
@@ -149,6 +163,8 @@ def initialize_assistant(config):
 # =================== Event Dataclass ===================
 @dataclass
 class Event:
+    """Simple event container used by the async event loop."""
+
     source: str        # e.g. "user", "timer", "gpio", "webhook", etc.
     payload: str       # human-readable description
     metadata: Optional[Dict[str, Any]] = None
@@ -160,6 +176,7 @@ class Event:
 
 # =================== Async Event Handling ===================
 async def user_input_producer(q: asyncio.Queue):
+    """Asynchronously read user text input and push ``Event`` objects to ``q``."""
     loop = asyncio.get_event_loop()
     while True:
         text = await loop.run_in_executor(None, input, "You: ")
@@ -167,7 +184,9 @@ async def user_input_producer(q: asyncio.Queue):
         if text.strip().lower() == "exit":
             break
 
-def print_event(event: Event):
+def print_event(event: Event) -> None:
+    """Helper to display an ``Event`` on stdout."""
+
     print(event)
 
 async def hotword_listener(queue, stt_engine):
@@ -192,7 +211,16 @@ async def hotword_listener(queue, stt_engine):
     except Exception as e:
         print(f"[Hotword] Listener error: {e}")
 
-async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
+async def async_conversation_loop(
+    manager,
+    gpt_client,
+    stt_engine,
+    tts_engine,
+    arduino_interface,
+    stt_enabled,
+    tts_enabled,
+):
+    """Main asynchronous interaction loop handling user events and tool calls."""
     import sys
     queue: asyncio.Queue = asyncio.Queue()
     # Start both input producers as background tasks and keep references
@@ -369,6 +397,8 @@ def print_async_tasks():
 
 # =================== Main Code ===================
 def main():
+    """CLI entry point for launching the assistant."""
+
     import sys
     config = load_config()
     openai.api_key = config["secrets"]["openai_api_key"]

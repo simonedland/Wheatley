@@ -1,3 +1,5 @@
+"""Prototype experiments and utility functions (legacy)."""
+
 import os
 import time
 import json
@@ -30,6 +32,8 @@ from colorama import init
 # Timer utility 
 # -----------------------------------------------------------------------------
 class Timer:
+    """Context manager for measuring elapsed time."""
+
     def __init__(self, label=""):
         self.label = label
     def __enter__(self):
@@ -50,6 +54,8 @@ THRESHOLD = 3000
 SILENCE_LIMIT = 2
 
 def record_until_silent():
+    """Record audio until silence is detected and return the file path."""
+
     print("listening...")
     audio = pyaudio.PyAudio()
     stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE,

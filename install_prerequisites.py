@@ -1,3 +1,5 @@
+"""Install packages listed in ``requirements.txt`` with progress output."""
+
 import subprocess
 import sys
 import os

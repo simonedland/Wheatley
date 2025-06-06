@@ -1,3 +1,5 @@
+"""Speech-to-text utilities including hotword detection."""
+
 import os
 import wave
 import numpy as np
@@ -27,6 +29,7 @@ class SpeechToTextEngine:
     """Capture microphone input, detect hotwords and transcribe speech."""
 
     def __init__(self):
+        """Load configuration and initialise internal state."""
         # Load STT settings from the config file
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:

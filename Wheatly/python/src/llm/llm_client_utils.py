@@ -1,5 +1,4 @@
-# llm_client_utils.py
-# Utility functions and tool definitions extracted from llm_client.py
+"""Shared utilities and tool definitions for the LLM client."""
 import os
 import yaml
 from datetime import datetime
@@ -38,19 +37,21 @@ WEATHER_CODE_DESCRIPTIONS = {
 }
 
 def _load_config():
+    """Return shared YAML configuration for LLM utilities."""
     base_dir = os.path.dirname(__file__)
-    config_path = os.path.join(base_dir, "..", "config", "config.yaml")
-    config_path = os.path.abspath(config_path)
+    config_path = os.path.abspath(os.path.join(base_dir, "..", "config", "config.yaml"))
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
     
 def get_joke():
+    """Return a random joke string from the official joke API."""
     response = requests.get("https://official-joke-api.appspot.com/random_joke")
     data = response.json()
     joke = f"Provide the following joke to the user: {data.get('setup')} - {data.get('punchline')}"
     return joke
 
 def get_quote():
+    """Fetch a motivational quote from the API Ninjas service."""
     config = _load_config()
     api_key = config["secrets"].get("api_ninjas_api_key", "")
     headers = {"X-Api-Key": api_key}
@@ -62,6 +63,7 @@ def get_quote():
     return "No quote available."
 
 def get_city_coordinates(city):
+    """Return latitude and longitude information for ``city``."""
     config = _load_config()
     api_key = config["secrets"].get("api_ninjas_api_key", "")
     headers = {"X-Api-Key": api_key}
