@@ -607,6 +607,15 @@ class SpeechToTextEngine:
         # Return combined results
         return " ".join(transcription_results)
 
+    def get_live_voice_input_blocking(self, duration_seconds=30, use_chunked=True):
+        """Synchronous wrapper around ``get_live_voice_input``.
+
+        This allows the live transcription workflow to be executed from a
+        background thread using ``run_in_executor`` without blocking the main
+        asyncio event loop.
+        """
+        return asyncio.run(self.get_live_voice_input(duration_seconds, use_chunked))
+
     def get_voice_input(self):
         """
         Waits for hotword, then records and transcribes speech.
