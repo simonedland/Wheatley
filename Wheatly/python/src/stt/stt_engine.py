@@ -24,6 +24,8 @@ if sys.platform.startswith('win'):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 class SpeechToTextEngine:
+    """Capture microphone input, detect hotwords and transcribe speech."""
+
     def __init__(self):
         # Load STT settings from the config file
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
@@ -59,10 +61,6 @@ class SpeechToTextEngine:
             self.api_key = openai_api_key
         else:
             raise ValueError("OpenAI API key not found in config")
-
-    def dry_run(self, filename):
-        # Recognize speech using Whisper model deployed in Azure (dry run)
-        return "Dry run: recognized text from Whisper model on Azure (simulated)"
 
     # ------------------------------------------------------------------
     # Listening control helpers
@@ -559,9 +557,21 @@ class SpeechToTextEngine:
         return text
 
     def listen_for_hotword(self, access_key=None, keywords=None, sensitivities=None):
-        """
-        Listens for a predefined hotword using Porcupine.
-        Returns the index of the detected keyword, or None if interrupted.
+        """Block until one of ``keywords`` is heard.
+
+        Parameters
+        ----------
+        access_key : str, optional
+            Porcupine API key. If ``None`` it is read from the config file.
+        keywords : list[str], optional
+            List of wake words to detect. Defaults to ``["computer", "jarvis"]``.
+        sensitivities : list[float], optional
+            Sensitivity per keyword (0..1).
+
+        Returns
+        -------
+        int | None
+            Index of detected keyword or ``None`` if listening was interrupted.
         """
         if access_key is None:
             # Try to load from config
@@ -589,7 +599,7 @@ class SpeechToTextEngine:
             channels=1,
             format=pyaudio.paInt16,
             input=True,
-            frames_per_buffer=self._porcupine.frame_length
+            frames_per_buffer=self._porcupine.frame_length,
         )
         self._stream = stream
         print(f"[Hotword] Listening for hotword(s): {keywords}")
@@ -606,6 +616,7 @@ class SpeechToTextEngine:
                     print(f"[Hotword] Detected: {keywords[keyword_index]}")
                     return keyword_index
                 # Status update every 10 seconds
+                # Periodic status updates so the user knows we're alive
                 if time.time() % 10 < 0.03:
                     print("[Hotword] Still listening...")
 
@@ -724,78 +735,11 @@ class SpeechToTextEngine:
                 pass
             self._porcupine = None
 
-# Example usage functions
-async def example_chunked_transcription():
-    """Example of chunked transcription (recommended for accuracy)"""
-    stt_engine = SpeechToTextEngine()
-    
-    def transcription_callback(text, is_final):
-        if is_final and text.strip():
-            print(f"[TRANSCRIBED] {text.strip()}")
-    
-    async def async_callback(text, is_final):
-        transcription_callback(text, is_final)
-    
-    try:
-        await stt_engine.start_live_transcription(async_callback, use_chunked=True)
-    except KeyboardInterrupt:
-        print("\nStopping chunked transcription...")
-    finally:
-        await stt_engine.stop_live_transcription()
-        stt_engine.cleanup()
-
-async def example_realtime_transcription():
-    """Example of Realtime API transcription (less accurate)"""
-    stt_engine = SpeechToTextEngine()
-    
-    async def transcription_callback(text, is_final):
-        if is_final and text.strip():
-            print(f"[REALTIME TRANSCRIBED] {text.strip()}")
-    
-    try:
-        await stt_engine.start_live_transcription(transcription_callback, use_chunked=False)
-    except KeyboardInterrupt:
-        print("\nStopping realtime transcription...")
-    finally:
-        await stt_engine.stop_live_transcription()
-        stt_engine.cleanup()
-
-async def example_hotword_then_live():
-    """Example of hotword detection followed by live transcription"""
-    stt_engine = SpeechToTextEngine()
-    
-    try:
-        # Use chunked transcription for better accuracy
-        result = await stt_engine.get_live_voice_input(duration_seconds=30, use_chunked=True)
-        print(f"Final transcribed text: {result}")
-    except Exception as e:
-        print(f"Error during live transcription: {e}")
-    finally:
-        stt_engine.cleanup()
-
-def example_traditional_transcription():
-    """Example using traditional record-then-transcribe approach"""
-    stt_engine = SpeechToTextEngine()
-    try:
-        text = stt_engine.get_voice_input()
-        print(f"Transcribed text: {text}")
-    except Exception as e:
-        print(f"Error during transcription: {e}")
-    finally:
-        stt_engine.cleanup()
-
 if __name__ == "__main__":
-    print("Starting Live SpeechToTextEngine test...")
-    
-    # Choose which example to run:
-    # 1. Chunked transcription (recommended for accuracy)
-    asyncio.run(example_chunked_transcription())
-    
-    # 2. Realtime API transcription (less accurate)
-    # asyncio.run(example_realtime_transcription())
-    
-    # 3. Hotword detection + live transcription
-    # asyncio.run(example_hotword_then_live())
-    
-    # 4. Traditional record-then-transcribe
-    # example_traditional_transcription()
+    # Basic manual test when running this module directly
+    engine = SpeechToTextEngine()
+    try:
+        result = engine.get_live_voice_input_blocking(5)
+        print(f"Transcribed: {result}")
+    finally:
+        engine.cleanup()
