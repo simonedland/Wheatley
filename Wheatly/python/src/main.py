@@ -163,7 +163,7 @@ async def user_input_producer(q: asyncio.Queue):
     loop = asyncio.get_event_loop()
     while True:
         text = await loop.run_in_executor(None, input, "You: ")
-        await q.put(Event("user", text.strip()))
+        await q.put(Event("user", text.strip(), {"input_type": "text"}))
         if text.strip().lower() == "exit":
             break
 
@@ -176,12 +176,19 @@ async def hotword_listener(queue, stt_engine):
     loop = asyncio.get_event_loop()
     try:
         while True:
+            if stt_engine.is_paused():
+                await asyncio.sleep(0.1)
+                continue
             # Run the blocking live voice input workflow in a thread
             text = await loop.run_in_executor(
                 None, stt_engine.get_live_voice_input_blocking
             )
             if text and text.strip():
-                await queue.put(Event("user", text.strip()))
+                await queue.put(
+                    Event("user", text.strip(), {"input_type": "voice"})
+                )
+    except asyncio.CancelledError:
+        print("[Hotword] Listener cancelled.")
     except Exception as e:
         print(f"[Hotword] Listener error: {e}")
 
@@ -193,12 +200,17 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
     hotword_task = None
     if stt_enabled:
         hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine))  # Voice input
+    last_input_type = "text"
     print("🤖 Assistant running. Type 'exit' to quit. Type or say hotword to speak.\n")
     try:
         while True:
             event: Event = await queue.get()
             print_event(event)
             if event.source == "user":
+                if event.metadata:
+                    last_input_type = event.metadata.get("input_type", "text")
+                else:
+                    last_input_type = "text"
                 manager.add_text_to_conversation("user", event.payload)
                 if event.payload.lower() == "exit":
                     # Cancel background tasks
@@ -274,12 +286,14 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                 if hotword_task:
                     hotword_task.cancel()
                     await asyncio.gather(hotword_task, return_exceptions=True)
-                    print("[STT] Hotword listener paused.")
                     hotword_task = None
+                stt_engine.pause_listening()
+                print("[STT] Hotword listener paused.")
 
                 tts_engine.generate_and_play_advanced(gpt_text)
 
-                if stt_enabled:
+                if stt_enabled and last_input_type == "voice":
+                    stt_engine.resume_listening()
                     print("[STT] Listening for follow-up without hotword for 10 seconds...")
                     loop = asyncio.get_event_loop()
                     follow_up = await loop.run_in_executor(
@@ -287,7 +301,9 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                         lambda: stt_engine.get_live_voice_input_blocking(10, True, False)
                     )
                     if follow_up and follow_up.strip():
-                        await queue.put(Event("user", follow_up.strip()))
+                        await queue.put(
+                            Event("user", follow_up.strip(), {"input_type": "voice"})
+                        )
 
                 if stt_enabled:
                     hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine))

@@ -47,6 +47,8 @@ class SpeechToTextEngine:
         self._last_transcription_time = 0
         self._transcription_interval = 2.0  # Process every 2 seconds
         self._stop_event = Event()
+        self._pause_event = Event()
+        self._listening = False
         
         # Set OpenAI API key from config
         openai_api_key = config.get("secrets", {}).get("openai_api_key")
@@ -61,6 +63,30 @@ class SpeechToTextEngine:
     def dry_run(self, filename):
         # Recognize speech using Whisper model deployed in Azure (dry run)
         return "Dry run: recognized text from Whisper model on Azure (simulated)"
+
+    # ------------------------------------------------------------------
+    # Listening control helpers
+    # ------------------------------------------------------------------
+    def pause_listening(self):
+        """Pause any ongoing listening/transcription."""
+        if not self._pause_event.is_set():
+            self._pause_event.set()
+            self._stop_event.set()
+            self._is_streaming = False
+            if self._listening:
+                self._listening = False
+                print("[STT] Not listening")
+            print("[STT] Listening paused.")
+
+    def resume_listening(self):
+        """Resume listening after being paused."""
+        if self._pause_event.is_set():
+            self._pause_event.clear()
+            print("[STT] Listening resumed.")
+
+    def is_paused(self):
+        return self._pause_event.is_set()
+
 
     async def connect_realtime_api(self, transcription_callback=None):
         """
@@ -202,6 +228,8 @@ class SpeechToTextEngine:
         
         self._stream.start_stream()
         self._is_streaming = True
+        self._listening = True
+        print("[STT] Listening")
         print("Audio stream started for live transcription")
 
     def calibrate_noise_floor(self, calibration_time=2.0):
@@ -237,7 +265,7 @@ class SpeechToTextEngine:
         """
         Callback for audio stream - adds audio data to queue and buffer if above noise threshold
         """
-        if self._is_streaming:
+        if self._is_streaming and not self._pause_event.is_set():
             # Noise gate: only queue audio if above threshold
             data_int = np.frombuffer(in_data, dtype=np.int16)
             amplitude = np.max(np.abs(data_int))
@@ -279,6 +307,9 @@ class SpeechToTextEngine:
         Worker thread for chunked Whisper transcription
         """
         while not self._stop_event.is_set():
+            if self._pause_event.is_set():
+                time.sleep(0.1)
+                continue
             current_time = time.time()
             
             # Check if it's time to transcribe
@@ -362,7 +393,7 @@ class SpeechToTextEngine:
         except KeyboardInterrupt:
             print("Chunked transcription interrupted by user")
         finally:
-            await self.stop_live_transcription()
+            pass
 
     async def start_live_transcription(self, transcription_callback=None, model="whisper-1", use_chunked=True):
         """
@@ -411,7 +442,10 @@ class SpeechToTextEngine:
         print("Stopping live transcription...")
         self._is_streaming = False
         self._stop_event.set()
-        
+        if self._listening:
+            self._listening = False
+            print("[STT] Not listening")
+
         # Stop audio stream
         if self._stream:
             self._stream.stop_stream()
@@ -540,8 +574,12 @@ class SpeechToTextEngine:
         )
         self._stream = stream
         print(f"[Hotword] Listening for hotword(s): {keywords}")
+        self._listening = True
+        print("[STT] Listening")
         try:
             while True:
+                if self._pause_event.is_set():
+                    break
                 pcm = stream.read(self._porcupine.frame_length, exception_on_overflow=False)
                 pcm_unpacked = struct.unpack_from("h" * self._porcupine.frame_length, pcm)
                 keyword_index = self._porcupine.process(pcm_unpacked)
@@ -562,6 +600,9 @@ class SpeechToTextEngine:
             self._audio = None
             self._porcupine.delete()
             self._porcupine = None
+            if self._listening:
+                self._listening = False
+                print("[STT] Not listening")
 
         return None
 
