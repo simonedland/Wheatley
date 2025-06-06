@@ -34,7 +34,7 @@ class SpeechToTextEngine:
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = stt_config.get("channels", 1)
         self.RATE = stt_config.get("rate", 16000)  # 16kHz is optimal for Whisper
-        self.THRESHOLD = stt_config.get("threshold", 3000)
+        self.THRESHOLD = stt_config.get("threshold", 1500)
         self.SILENCE_LIMIT = stt_config.get("silence_limit", 2)
         self._audio = None
         self._stream = None
