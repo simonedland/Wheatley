@@ -34,8 +34,8 @@ class SpeechToTextEngine:
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = stt_config.get("channels", 1)
         self.RATE = stt_config.get("rate", 16000)  # 16kHz is optimal for Whisper
-        self.THRESHOLD = stt_config.get("threshold", 3000)
-        self.SILENCE_LIMIT = stt_config.get("silence_limit", 1)
+        self.THRESHOLD = stt_config.get("threshold", 1000)
+        self.SILENCE_LIMIT = stt_config.get("silence_limit", 3)
         self._audio = None
         self._stream = None
         self._porcupine = None
@@ -467,8 +467,8 @@ class SpeechToTextEngine:
         self._recording_buffer.clear()
 
     # Legacy methods for backward compatibility
-    def record_until_silent(self):
-        """Record audio until silence is detected."""
+    def record_until_silent(self, start_timeout=10):
+        """Record audio until silence is detected or timeout occurs."""
         self._audio = pyaudio.PyAudio()
         try:
             self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
@@ -482,6 +482,7 @@ class SpeechToTextEngine:
         silent_frames = 0
         recording = False
         print("Monitoring...")
+        start_time = time.time()
 
         min_amplitude = float('inf')
         max_amplitude = float('-inf')
@@ -499,7 +500,11 @@ class SpeechToTextEngine:
                 frames.append(data)
                 silent_frames = 0
             else:
-                if recording:
+                if not recording:
+                    if time.time() - start_time > start_timeout:
+                        print("No speech detected, stopping...")
+                        break
+                else:
                     silent_frames += 1
                     frames.append(data)
                     if silent_frames > (self.RATE / self.CHUNK * self.SILENCE_LIMIT):
@@ -532,9 +537,9 @@ class SpeechToTextEngine:
             )
         return transcription_result.text
 
-    def record_and_transcribe(self):
+    def record_and_transcribe(self, start_timeout=10):
         """Record audio and transcribe using traditional Whisper API"""
-        wav_file = self.record_until_silent()
+        wav_file = self.record_until_silent(start_timeout=start_timeout)
         text = self.transcribe(wav_file)
         os.remove(wav_file)
         return text
@@ -652,14 +657,17 @@ class SpeechToTextEngine:
         # Return combined results
         return " ".join(transcription_results)
 
-    def get_live_voice_input_blocking(self, duration_seconds=30, use_chunked=True, require_hotword=True):
-        """Synchronous wrapper around ``get_live_voice_input``.
+    def get_live_voice_input_blocking(self, duration_seconds=30, use_chunked=True, require_hotword=True, start_timeout=10):
+        """Record and transcribe speech until silence or timeout."""
 
-        This allows the live transcription workflow to be executed from a
-        background thread using ``run_in_executor`` without blocking the main
-        asyncio event loop.
-        """
-        return asyncio.run(self.get_live_voice_input(duration_seconds, use_chunked, require_hotword=require_hotword))
+        if require_hotword:
+            idx = self.listen_for_hotword()
+            if idx is None:
+                return ""
+        else:
+            print("[STT] Listening for speech...")
+
+        return self.record_and_transcribe(start_timeout=start_timeout)
 
     def get_voice_input(self):
         """
