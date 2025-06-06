@@ -37,8 +37,8 @@ CHUNK = 1024  # Audio chunk size
 FORMAT = pyaudio.paInt16  # Audio format
 CHANNELS = 1  # Mono audio
 RATE = 44100  # Audio sample rate
-THRESHOLD = 3000  # Audio threshold for silence detection
-SILENCE_LIMIT = 1  # Silence limit in seconds
+THRESHOLD = 1000  # Audio threshold for silence detection (legacy)
+SILENCE_LIMIT = 3  # Silence limit in seconds (legacy)
 
 # Initialize colorama for colored terminal output
 init(autoreset=True)
