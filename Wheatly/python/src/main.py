@@ -199,7 +199,7 @@ def handle_non_user_event(event: Event, manager: ConversationManager) -> None:
         )
         manager.add_text_to_conversation("system", timer_msg)
     elif event.source == "reminder":
-        reminder_text = event.payload if hasattr(event, "payload") else "Reminder"
+        reminder_text = event.payload
         manager.add_text_to_conversation(
             "system", f"Reminder has triggered with the following text: {reminder_text}"
         )
