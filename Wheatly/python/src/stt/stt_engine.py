@@ -72,8 +72,8 @@ class SpeechToTextEngine:
         if not self._pause_event.is_set():
             self._pause_event.set()
             self._stop_event.set()
-            self._is_streaming = False
-            if self._listening:
+            self._is_streaming = False  # Stop the audio stream
+            if self._listening:  # If the system is currently listening, update the state
                 self._listening = False
                 print("[STT] Not listening")
             print("[STT] Listening paused.")
