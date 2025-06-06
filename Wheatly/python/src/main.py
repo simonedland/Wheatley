@@ -227,7 +227,8 @@ def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue
             workflow = gpt_client.get_workflow(manager.get_conversation())
         except Exception as e:
             logging.error(f"Error getting GPT workflow: {e}")
-            return
+            chain_retry += 1
+            continue
 
         if workflow:
             for call in workflow:
