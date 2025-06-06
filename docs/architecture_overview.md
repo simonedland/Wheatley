@@ -6,7 +6,7 @@ This document explains the main components that power the Wheatley assistant and
 
 1. **Speech to Text (STT)**
    - Implemented in `stt/stt_engine.py`.
-   - Uses Porcupine for hotword detection and captures live microphone input.
+   - Uses Porcupine for hotword detection, then records speech until silence and transcribes the result with Whisper.
 2. **Conversation Manager**
    - Located in `assistant/assistant.py`.
    - Keeps a bounded history of system and user messages for context.
