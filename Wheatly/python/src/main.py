@@ -270,28 +270,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
             print(Fore.LIGHTBLACK_EX + Style.BRIGHT + "\n»»» Ready for your input! Type below..." + Style.RESET_ALL)
             if tts_enabled:
-                # Pause hotword listener while TTS is playing
-                if hotword_task:
-                    hotword_task.cancel()
-                    await asyncio.gather(hotword_task, return_exceptions=True)
-                    print("[STT] Hotword listener paused.")
-                    hotword_task = None
-
                 tts_engine.generate_and_play_advanced(gpt_text)
-
-                if stt_enabled:
-                    print("[STT] Listening for follow-up without hotword for 10 seconds...")
-                    loop = asyncio.get_event_loop()
-                    follow_up = await loop.run_in_executor(
-                        None,
-                        lambda: stt_engine.get_live_voice_input_blocking(10, True, False)
-                    )
-                    if follow_up and follow_up.strip():
-                        await queue.put(Event("user", follow_up.strip()))
-
-                if stt_enabled:
-                    hotword_task = asyncio.create_task(hotword_listener(queue, stt_engine))
-                    print("[STT] Hotword listener resumed.")
     except (asyncio.CancelledError, KeyboardInterrupt):
         print("\n[Main] KeyboardInterrupt or CancelledError received. Exiting...")
     finally:

@@ -565,18 +565,14 @@ class SpeechToTextEngine:
 
         return None
 
-    async def get_live_voice_input(self, duration_seconds=30, use_chunked=True, require_hotword=True):
+    async def get_live_voice_input(self, duration_seconds=30, use_chunked=True):
         """
-        Waits for hotword (unless ``require_hotword`` is False), then starts
-        live transcription for ``duration_seconds``. Returns the final
-        transcribed text.
+        Waits for hotword, then starts live transcription for specified duration.
+        Returns the final transcribed text.
         """
-        if require_hotword:
-            idx = self.listen_for_hotword()
-            if idx is None:
-                return ""
-        else:
-            print(f"[STT] Listening for speech for {duration_seconds} seconds...")
+        idx = self.listen_for_hotword()
+        if idx is None:
+            return ""
         
         print(f"Starting live transcription for {duration_seconds} seconds...")
         
@@ -611,14 +607,14 @@ class SpeechToTextEngine:
         # Return combined results
         return " ".join(transcription_results)
 
-    def get_live_voice_input_blocking(self, duration_seconds=30, use_chunked=True, require_hotword=True):
+    def get_live_voice_input_blocking(self, duration_seconds=30, use_chunked=True):
         """Synchronous wrapper around ``get_live_voice_input``.
 
         This allows the live transcription workflow to be executed from a
         background thread using ``run_in_executor`` without blocking the main
         asyncio event loop.
         """
-        return asyncio.run(self.get_live_voice_input(duration_seconds, use_chunked, require_hotword=require_hotword))
+        return asyncio.run(self.get_live_voice_input(duration_seconds, use_chunked))
 
     def get_voice_input(self):
         """
