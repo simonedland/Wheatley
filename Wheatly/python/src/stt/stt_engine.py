@@ -739,7 +739,7 @@ if __name__ == "__main__":
     # Basic manual test when running this module directly
     engine = SpeechToTextEngine()
     try:
-        result = engine.get_live_voice_input_blocking(5)
+        result = engine.get_live_voice_input_blocking(5, use_chunked=True, require_hotword=False)
         print(f"Transcribed: {result}")
     finally:
         engine.cleanup()
