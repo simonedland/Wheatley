@@ -190,7 +190,7 @@ async def get_event(queue: asyncio.Queue) -> Event:
 def handle_non_user_event(event: Event, manager: ConversationManager) -> None:
     """Add system messages based on non-user events."""
     if event.source == "timer":
-        timer_label = event.payload if hasattr(event, "payload") else "Timer"
+        timer_label = event.payload
         timer_duration = event.metadata.get("duration") if event.metadata else None
         timer_msg = (
             f"TIMER labeled {timer_label} for {timer_duration} is up inform the user."
