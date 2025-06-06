@@ -114,11 +114,11 @@ class SpeechToTextEngine:
                 "input_audio_format": "pcm16",
                 # `input_audio_transcription` must be a list of objects
                 # describing the transcription configuration
-                "input_audio_transcription": [
-                    {
-                        "model": "gpt-4o-transcribe",
-                    }
-                ],
+                "input_audio_transcription": {
+                    "model": "whisper-1",
+                    "prompt": "",
+                    "language": ""
+                },
                 "turn_detection": {
                     "type": "server_vad",
                     "threshold": 0.5,
