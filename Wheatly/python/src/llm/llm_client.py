@@ -1,3 +1,5 @@
+"""LLM client wrappers and helper functions used by the assistant."""
+
 import openai
 import json
 import yaml
@@ -36,7 +38,9 @@ def _load_config():
         return yaml.safe_load(f)
 
 class TextToSpeech:
+    """Minimal wrapper around the ElevenLabs API for speech synthesis."""
     def __init__(self):
+        """Initialise the ElevenLabs client using values from ``config.yaml``."""
         config = _load_config()
         base_dir = os.path.dirname(os.path.dirname(__file__))
         # Get TTS parameters from config
@@ -98,7 +102,10 @@ class TextToSpeech:
 # This class is responsible for interacting with the OpenAI API
 
 class GPTClient:
+    """Wrapper for OpenAI chat interactions tailored for Wheatley."""
     def __init__(self, model="gpt-4o-mini"):
+        """Create client using ``model`` and configuration secrets."""
+
         config = _load_config()
         self.api_key = config["secrets"]["openai_api_key"]
         self.model = model
@@ -114,6 +121,8 @@ class GPTClient:
             self.emotion_counter = {}
 
     def get_text(self, conversation):
+        """Return the assistant's textual reply for ``conversation``."""
+
         start_time = time.time()
         completion = openai.responses.create(
             model=self.model,
@@ -132,6 +141,8 @@ class GPTClient:
         return text
 
     def reply_with_animation(self, conversation):
+        """Ask GPT to select an animation based on the conversation."""
+
         start_time = time.time()
         # Compose context about emotion counter for the LLM
         if self.emotion_counter:
@@ -185,6 +196,8 @@ class GPTClient:
         return animation
         
     def get_workflow(self, conversation):
+        """Return a list of tool calls suggested by GPT."""
+
         start_time = time.time()
         tools = build_tools()
         completion = openai.responses.create(
@@ -236,7 +249,10 @@ tts_engine = TextToSpeech()
 #tools = build_tools()
 
 class Functions:
+    """Container for tool implementations invoked by GPT."""
+
     def __init__(self):
+        """Initialise agents and read configuration."""
         self.test = GPTClient()
         config = _load_config()
         self.tts_enabled = config["tts"]["enabled"]
@@ -245,6 +261,8 @@ class Functions:
         
 
     def execute_workflow(self, workflow, event_queue=None):
+        """Run each tool in ``workflow`` and return their results."""
+
         results = []
         for item in workflow:
             func_name = item.get("name")
@@ -345,6 +363,8 @@ class Functions:
         return results
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):
+        """Retrieve weather information from the Open-Meteo API."""
+
         base_url = (
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat}&longitude={lon}"
@@ -406,6 +426,8 @@ class Functions:
             return f"Error retrieving weather: {e}"
 
     def _schedule_timer_event(self, duration, reason, event_queue):
+        """Schedule an async timer that posts an event when it expires."""
+
         async def timer_task():
             await asyncio.sleep(duration)
             from datetime import datetime
@@ -424,6 +446,8 @@ class Functions:
         asyncio.create_task(timer_task())
 
     def get_advice(self):
+      """Return a random piece of advice from the API Ninjas service."""
+
       config = _load_config()
       api_key = config["secrets"].get("api_ninjas_api_key", "")
       headers = {"X-Api-Key": api_key}
