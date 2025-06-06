@@ -315,15 +315,7 @@ async def handle_tts_and_follow_up(
     return hotword_task
 
 
-async def async_conversation_loop(
-    manager,
-    gpt_client,
-    stt_engine,
-    tts_engine,
-    arduino_interface,
-    stt_enabled,
-    tts_enabled,
-):
+async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,arduino_interface,stt_enabled,tts_enabled):
     """Main asynchronous interaction loop handling user events and tool calls."""
     import sys
 
@@ -364,16 +356,8 @@ async def async_conversation_loop(
             print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
             print(Fore.LIGHTBLACK_EX + Style.BRIGHT + "\n»»» Ready for your input! Type below..." + Style.RESET_ALL)
 
-            hotword_task = await handle_tts_and_follow_up(
-                gpt_text,
-                last_input_type,
-                tts_engine,
-                stt_engine,
-                queue,
-                hotword_task,
-                stt_enabled,
-                tts_enabled,
-            )
+            hotword_task = await handle_tts_and_follow_up(gpt_text,last_input_type,tts_engine,stt_engine,queue,hotword_task,stt_enabled,tts_enabled)
+    
     except (asyncio.CancelledError, KeyboardInterrupt):
         print("\n[Main] KeyboardInterrupt or CancelledError received. Exiting...")
     finally:
