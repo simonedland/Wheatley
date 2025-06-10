@@ -1,57 +1,56 @@
 # AI Codebase Overview
 
-### C:\GIT\Wheatly\Wheatley\ad_nauseam.py
+The provided Python scripts are part of a larger project named "Wheatly," which appears to be a voice-activated AI assistant integrated with hardware components. Here's a detailed breakdown of each script's purpose and functionality:
 
-The `ad_nauseam.py` script is part of a larger project designed to automate the summarization of Python and Arduino source files using AI. It leverages the OpenAI API to generate detailed summaries, which can be useful for documentation or understanding complex codebases.
+### `ad_nauseam.py`
+This script generates AI-based summaries for Python and Arduino source files using the OpenAI API. It excludes virtual environment directories and organizes summaries into `README_AI.md` files. Key components include configuration management, an LLM client for API interactions, a directory crawler for file discovery, and a summarization orchestrator.
 
-### Overall Purpose
+### `install_prerequisites.py`
+Automates the installation of Python packages from a `requirements.txt` file, providing a progress bar for user feedback. It constructs the file path, checks for its existence, reads package names, and installs them using `subprocess`.
 
-The script's primary function is to generate AI-based summaries for source code files (.py and .ino), excluding those within virtual environment directories. It automates the documentation process, providing insights into the structure and functionality of the code.
+### `old_inspiration.py`
+A utility script for voice interactions, hotword detection, and time measurement. It records audio, detects hotwords using Porcupine, and transcribes audio with OpenAI's Whisper model. It also includes a timer class for measuring code execution time.
 
-### Main Components
+### `M5Stack_Core2.ino`
+An Arduino sketch for controlling a 7-servo robotic head with a touch UI on the M5Stack Core-2. It communicates with an OpenRB-150 board via UART2 and manages a NeoPixel LED strip for visual feedback. It includes a demo mode and handles servo and LED commands.
 
-#### 1. Configuration
+### `OpenRB-150.ino`
+Facilitates communication between a computer and Dynamixel motors using an Arduino board. It acts as a bridge for data transfer between USB and the Dynamixel bus, handling serial communication and LED status indication.
 
-- **_load_config()**: Loads settings from a YAML file, including API keys and model parameters.
-- **Config Class**: A data class that stores configuration details like model type, temperature, and file types to process.
+### `main.py`
+The main entry point for the Wheatley assistant, integrating speech-to-text, text-to-speech, an LLM client, and an Arduino interface. It uses an asynchronous event loop to manage user interactions and hardware control, leveraging APIs for AI-driven conversations.
 
-#### 2. LLM Client
+### `puppet.py`
+A GUI application for controlling servos connected to an OpenRB-150/Core-2 system. It provides real-time feedback on servo positions and allows users to configure and move servos through a user-friendly interface, supporting preset management.
 
-- **LLMClient Class**: A wrapper around the OpenAI API, responsible for generating summaries.
-  - **summarise()**: Sends file content to the API and returns a summary. Supports a dry-run mode for testing.
-  - **_instructions_for()**: Creates specific instructions for the AI model based on file type.
-  - **_extract_text()**: Extracts text from the API response, handling different formats.
+### `test.py`
+A unit testing script for the assistant application, validating configuration loading, assistant initialization, conversation management, and interactions with language models and speech engines using the `unittest` framework.
 
-#### 3. File Crawler
+### `assistant.py`
+Manages conversation history for the Wheatley assistant, maintaining a bounded history buffer with dynamic updates to the system message. It ensures controlled memory usage and provides a structured way to manage interactions.
 
-- **DirectoryCrawler Class**: Searches for files with specified extensions, excluding `.venv` directories.
-  - **crawl()**: Returns a list of file paths to be summarized.
+### `arduino_interface.py`
+Controls Arduino-based servo hardware, managing servo animations and LED indicators based on emotions. It includes classes for interfacing with the Arduino and controlling multiple servos, supporting emotion-based animations.
 
-#### 4. Orchestrator
+### `google_agent.py`
+Integrates with Google Calendar to fetch and display events, using a language model to decide on calendar-related actions. It handles authentication and configuration loading, providing a framework for calendar management.
 
-- **Summariser Class**: Manages the summarization workflow.
-  - **run()**: Coordinates file discovery and summary generation, organizing results into markdown files.
-  - **_write_folder_md()**: Writes summaries for each directory into a `README_AI.md`.
-  - **_write_root_md()**: Compiles a global summary for the entire codebase.
+### `llm_client.py`
+A client wrapper for various APIs, enabling tasks like text-to-speech, chat interactions, and workflow execution. It integrates with Google Calendar, Spotify, and weather services, using OpenAI for decision-making.
 
-### External Dependencies
+### `llm_client_utils.py`
+Provides utility functions and tool definitions for the LLM client, facilitating tasks like fetching jokes, quotes, and city coordinates. It defines tools for dynamic use by the LLM client.
 
-- **OpenAI API**: Used for generating summaries, requiring an API key from the configuration file.
-- **PyYAML**: For reading configuration files.
-- **tqdm**: Provides a progress bar during processing.
+### `spotify_agent.py`
+Interacts with Spotify's API to manage music-related tasks, using OpenAI to interpret user requests. It provides a command-line interface for searching tracks, managing playback, and more.
 
-### Configuration Requirements
+### `spotify_ha_utils.py`
+A utility for Spotify API interaction, focusing on queue and playback management. It offers a CLI with optional pretty-printing, supporting track search, queue management, and playback control.
 
-The script requires a `config.yaml` file containing the OpenAI API key and other settings, located at a specific path.
+### `stt_engine.py`
+Provides speech-to-text conversion with hotword detection, using external APIs and hardware interfaces. It manages audio recording, transcription, and asynchronous hotword listening.
 
-### Notable Logic
+### `tts_engine.py`
+Converts text to speech using the ElevenLabs API, handling configuration, API interaction, and audio playback. It manages temporary files for audio storage and includes error handling for robustness.
 
-- **File Filtering**: Efficiently excludes files in virtual environments to focus on relevant code.
-- **Dynamic Instructions**: Tailors instructions for the AI model based on file type, ensuring relevant summaries.
-- **Error Handling**: Robust error handling in `_extract_text()` for various API response formats.
-
-### Execution
-
-The script can be executed from the command line, allowing users to specify the target directory and enable a dry-run mode. The main function initializes the `Summariser` and starts the summarization process.
-
-Overall, `ad_nauseam.py` automates the generation of code summaries, enhancing documentation and understanding of codebases through AI-driven insights.
+Overall, these scripts collectively form a sophisticated AI assistant capable of voice interaction, hardware control, and integration with external services. They leverage various APIs and libraries to provide a comprehensive user experience.
