@@ -1,20 +1,46 @@
 # TTS and Hotword Flow
 
-This document provides an overview of how Wheatley handles text‑to‑speech (TTS) and hotword detection for speech‑to‑text (STT).
+This document dives deeper into how Wheatley handles text‑to‑speech (TTS) output and hotword detection for speech‑to‑text (STT). The aim is to make the sequence of events clear and provide visual aids where possible.
 
 ## Text to Speech
-1. **Initialisation** – `TextToSpeechEngine` reads `config/config.yaml` for ElevenLabs settings. An API client is created once and reused.
-2. **Generating Speech** – `generate_and_play_advanced(text)` converts text into MP3 chunks using the ElevenLabs API. The chunks are written to a temporary file.
-3. **Playback** – The temporary MP3 file is played via `playsound`. After playback the file is deleted.
+1. **Initialisation** – `TextToSpeechEngine` loads settings from `config/config.yaml` when created. It sets up a persistent ElevenLabs client so network connections are reused.
+2. **Generating Speech** – `generate_and_play_advanced(text)` requests MP3 chunks from the ElevenLabs API. Chunks are streamed to a temporary file so large responses do not block memory.
+3. **Playback** – The temporary file is played with `playsound`. When playback completes the file is immediately deleted.
 
-The use of `NamedTemporaryFile` keeps file operations minimal and avoids leaving stray files on disk.
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant TTS
+    participant ElevenLabs
+    App->>TTS: generate_and_play_advanced(text)
+    TTS->>ElevenLabs: request audio
+    ElevenLabs-->>TTS: MP3 chunks
+    TTS->>App: play file
+    App->>TTS: cleanup
+```
+
+Using `NamedTemporaryFile` ensures no stray audio files remain on disk and keeps the implementation lightweight.
 
 ## Hotword Management
-1. **Listening Loop** – `SpeechToTextEngine.listen_for_hotword()` creates a Porcupine hotword detector and continuously reads audio frames.
-2. **Detection** – Each audio frame is analysed for configured keywords. When a keyword is detected the function returns its index.
-3. **Integration** – Higher level workflows pause listening during TTS playback and resume afterwards so that hotword detection is responsive.
+1. **Listening Loop** – `SpeechToTextEngine.listen_for_hotword()` builds a Porcupine detector and reads microphone frames until a keyword is recognised.
+2. **Detection** – Each frame is scanned for one of the configured hotwords. When a match occurs the index of the hotword is returned.
+3. **Integration** – While TTS is speaking the engine pauses listening to avoid false triggers and resumes afterwards.
+4. **Transcription** – After the hotword, speech is recorded until a short silence is detected. The audio is then submitted to OpenAI Whisper for transcription.
 
-Once a hotword is detected, the engine records speech until a short period of silence is reached and then submits the audio to OpenAI Whisper for transcription.
+### Flowchart
 
-The engine exposes `pause_listening()` and `resume_listening()` helpers which are used by `main.py` when playing back responses.
+```mermaid
+graph TD
+    A[Start Listening] --> B{Hotword?}
+    B -- no --> A
+    B -- yes --> C[Record Speech]
+    C --> D{Silence Detected?}
+    D -- no --> C
+    D -- yes --> E[Transcribe with Whisper]
+    E --> F[Return Text]
+```
+
+The engine exposes `pause_listening()` and `resume_listening()` helpers which `main.py` uses when playing TTS output. This coordination keeps hotword detection responsive without missing user commands.
 
