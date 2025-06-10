@@ -64,6 +64,7 @@ class SpeechToTextEngine:
     # ------------------------------------------------------------------
     def _update_mic_led(self, color):
         """Send ``color`` to the microphone status LED if hardware is present."""
+        print(f"[LED] Setting mic LED color to: {color}")
         if self.arduino_interface:
             r, g, b = color
             self.arduino_interface.set_mic_led_color(r, g, b)
@@ -87,7 +88,6 @@ class SpeechToTextEngine:
         if self._pause_event.is_set():
             self._pause_event.clear()
             print("[STT] Listening resumed.")
-        self._update_mic_led(HOTWORD_COLOR)
 
     def is_paused(self):
         return self._pause_event.is_set()
@@ -205,7 +205,6 @@ class SpeechToTextEngine:
         int | None
             Index of detected keyword or ``None`` if listening was interrupted.
         """
-        self._update_mic_led(HOTWORD_COLOR)
         if access_key is None:
             # Try to load from config
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
@@ -236,6 +235,7 @@ class SpeechToTextEngine:
         )
         self._stream = stream
         print(f"[Hotword] Listening for hotword(s): {keywords}")
+        self._update_mic_led(HOTWORD_COLOR)
         self._listening = True
         print("[STT] Listening")
         try:
@@ -297,7 +297,6 @@ class SpeechToTextEngine:
     async def hotword_listener(self, queue):
         """Background task that records speech after a hotword trigger."""
         print("[Hotword] Background listener started.")
-        self._update_mic_led(HOTWORD_COLOR)
         loop = asyncio.get_event_loop()
         try:
             while True:
