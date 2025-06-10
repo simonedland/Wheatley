@@ -30,7 +30,7 @@ sequenceDiagram
     participant MIC as Microphone
     participant STT as STT Engine
     participant Q as Event Queue
-    participant LOOP as async_conversation_loop
+    participant CONV as async_conversation_loop
     participant CM as ConversationManager
     participant LLM as GPTClient
     participant TTS as TTS Engine
@@ -39,17 +39,17 @@ sequenceDiagram
     U->>MIC: speak
     MIC->>STT: audio frames
     STT->>Q: Event(text)
-    LOOP->>Q: await event
-    Q-->>LOOP: Event(text)
-    LOOP->>CM: update history
-    LOOP->>LLM: current conversation
-    LLM-->>LOOP: reply & workflow
-    LOOP->>CM: store assistant text
-    LOOP->>TTS: speak reply
+    CONV->>Q: await event
+    Q-->>CONV: Event(text)
+    CONV->>CM: update history
+    CONV->>LLM: current conversation
+    LLM-->>CONV: reply & workflow
+    CONV->>CM: store assistant text
+    CONV->>TTS: speak reply
     TTS->>HW: start animation
     TTS->>U: audio
     HW-->>U: movement & LEDs
-    LOOP->>STT: optional follow-up listening
+    CONV->>STT: optional follow-up listening
 ```
 
 Events from timers or external integrations follow the exact same path. The queue acts as the glue that allows independent producers and consumers to operate without blocking each other.
