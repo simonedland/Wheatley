@@ -19,7 +19,7 @@ constexpr uint32_t LINK_BAUD = 115200;  // must match OpenRB
 
 /* ---------- NeoPixel strip ---------- */
 #define LED_PIN 21
-#define NUM_LEDS 8
+#define NUM_LEDS 16
 Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // LED index used to display microphone status
