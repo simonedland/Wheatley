@@ -2,6 +2,8 @@
 
 This document provides an exhaustive look at how the Python modules interact during a normal run of the Wheatley assistant. The goal is to map every significant message passing between scripts.
 
+For a detailed breakdown of the serial protocol used to talk to the M5Stack Core2 and the OpenRB‑150, see [hardware_command_flow.md](hardware_command_flow.md). Keeping the hardware commands separate helps this document stay focused on the software layer.
+
 ## Overview
 
 All communication is orchestrated by `main.py`, which spawns asynchronous tasks and hands off work to various subsystems. The assistant is built around a queue-based event loop. Events originate from the user, timers, or hardware callbacks and are processed in order.
