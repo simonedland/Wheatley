@@ -1,4 +1,4 @@
-# Arduino interface for communicating with Arduino hardware
+"""Interface classes for controlling the Arduino-based servo hardware."""
 
 # Index of the NeoPixel used for microphone status indication
 MIC_LED_INDEX = 17
@@ -197,7 +197,19 @@ class ArduinoInterface:
         self.send_command(command)
 
 class Servo:
-    def __init__(self, servo_id, initial_angle=0, velocity=5, min_angle=0, max_angle=180, idle_range=10, name=None, interval=2000):
+    """Representation of a single servo motor."""
+    def __init__(
+        self,
+        servo_id,
+        initial_angle=0,
+        velocity=5,
+        min_angle=0,
+        max_angle=180,
+        idle_range=10,
+        name=None,
+        interval=2000,
+    ):
+        """Store servo parameters and defaults."""
         self.servo_id = servo_id
         self.current_angle = initial_angle
         self.velocity = velocity
@@ -208,6 +220,8 @@ class Servo:
         self.interval = interval  # New: default animation interval
 
     def move_to(self, target_angle):
+        """Move servo to ``target_angle`` respecting configured limits."""
+
         # Clamp target_angle within allowed range
         clamped_angle = min(max(self.min_angle, target_angle), self.max_angle)
         command = f"MOVE_SERVO;ID={self.servo_id};TARGET={clamped_angle};VELOCITY={self.velocity}"
@@ -215,6 +229,8 @@ class Servo:
         #print(f"{self.name} (ID: {self.servo_id}): {command}")
 
 class ServoController:
+    """Manage servo configurations and emotion animations."""
+
     def __init__(self, servo_count=7):
         self.servo_count = servo_count
         # Updated servo configurations with names and sensible ranges.

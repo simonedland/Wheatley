@@ -25,3 +25,4 @@ google-auth-oauthlib
 google-api-python-client
 spotipy
 pvporcupine
+websockets>=10.0

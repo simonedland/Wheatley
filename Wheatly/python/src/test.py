@@ -1,3 +1,5 @@
+"""Basic unit tests exercising the main assistant modules."""
+
 import unittest
 import os
 import yaml

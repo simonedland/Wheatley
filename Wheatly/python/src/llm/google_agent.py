@@ -1,3 +1,5 @@
+"""Google Calendar integration helpers and LLM agent."""
+
 import os
 import yaml
 import openai
@@ -13,11 +15,13 @@ SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
     
 
 class GoogleCalendarManager:
+    """Wrapper for Google Calendar API interactions."""
     def _load_config(self):
-      base_dir = os.path.dirname(os.path.dirname(__file__))
-      config_path = os.path.join(base_dir, "config", "config.yaml")
-      with open(config_path, "r") as f:
-          return yaml.safe_load(f)
+        """Return YAML configuration dictionary."""
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        config_path = os.path.join(base_dir, "config", "config.yaml")
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
     
     def __init__(self):
         try:
@@ -180,11 +184,13 @@ GOOGLE_TOOLS = [
 ]
 
 class GoogleAgent:
+    """LLM-driven assistant for interacting with Google services."""
     def _load_config(self):
-      base_dir = os.path.dirname(os.path.dirname(__file__))
-      config_path = os.path.join(base_dir, "config", "config.yaml")
-      with open(config_path, "r") as f:
-          return yaml.safe_load(f)
+        """Load project configuration YAML."""
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        config_path = os.path.join(base_dir, "config", "config.yaml")
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
     
     def __init__(self):
         config = self._load_config()

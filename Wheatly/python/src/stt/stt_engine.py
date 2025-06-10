@@ -1,3 +1,5 @@
+"""Speech-to-text utilities including hotword detection."""
+
 import os
 import wave
 import numpy as np
@@ -7,11 +9,8 @@ import yaml
 import struct
 import pvporcupine
 import time
-
-# Default colors for NeoPixel status feedback (R, G, B)
-HOTWORD_COLOR = (0, 0, 255)      # listening for hotword
-RECORDING_COLOR = (255, 0, 0)    # recording user speech
-PROCESSING_COLOR = (255, 255, 0) # processing transcription/LLM
+import asyncio
+from threading import Event
 
 class SpeechToTextEngine:
     def __init__(self, arduino_interface=None):
@@ -23,48 +22,90 @@ class SpeechToTextEngine:
         self.CHUNK = stt_config.get("chunk", 1024)
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = stt_config.get("channels", 1)
-        self.RATE = stt_config.get("rate", 44100)
-        self.THRESHOLD = stt_config.get("threshold", 3000)
-        self.SILENCE_LIMIT = stt_config.get("silence_limit", 1)
+        self.RATE = stt_config.get("rate", 16000)  # 16kHz is optimal for Whisper
+        self.THRESHOLD = 100 #stt_config.get("threshold", 1500)
+        self.SILENCE_LIMIT = 3 #stt_config.get("silence_limit", 2)
+        self.arduino_interface = arduino_interface
         self._audio = None
         self._stream = None
         self._porcupine = None
-        self.arduino_interface = arduino_interface
+        self._stop_event = Event()
+        self._pause_event = Event()
+        self._listening = False
         # Set OpenAI API key from config
         openai_api_key = config.get("secrets", {}).get("openai_api_key")
         if not openai_api_key:
             openai_api_key = config.get("openai_api_key")
         if openai_api_key:
             openai.api_key = openai_api_key
+            self.api_key = openai_api_key
+        else:
+            raise ValueError("OpenAI API key not found in config")
 
-    def dry_run(self, filename):
-        # Recognize speech using Whisper model deployed in Azure (dry run)
-        # TODO: Replace the following with the actual call to Azure's deployed Whisper service
-        return "Dry run: recognized text from Whisper model on Azure (simulated)"
+    # ------------------------------------------------------------------
+    # Listening control helpers
+    # ------------------------------------------------------------------
+    def pause_listening(self):
+        """Pause any ongoing listening/transcription."""
+        if not self._pause_event.is_set():
+            self._pause_event.set()
+            self._stop_event.set()
+            if self._listening:  # If the system is currently listening, update the state
+                self._listening = False
+                print("[STT] Not listening")
+            print("[STT] Listening paused.")
 
-    def record_until_silent(self):
-        """Record audio until silence is detected."""
-        if self.arduino_interface:
-            self.arduino_interface.set_mic_led_color(*RECORDING_COLOR)
+    def resume_listening(self):
+        """Resume listening after being paused."""
+        if self._pause_event.is_set():
+            self._pause_event.clear()
+            print("[STT] Listening resumed.")
+
+    def is_paused(self):
+        return self._pause_event.is_set()
+
+
+
+    # Legacy methods for backward compatibility
+    def record_until_silent(self, max_wait_seconds=None):
+        """Record audio until silence is detected.
+
+        Parameters
+        ----------
+        max_wait_seconds: float or None
+            Optional timeout. If no sound is detected within this many
+            seconds the method returns ``None`` and stops listening. This
+            allows callers to fall back to hotword detection after a period
+            of silence.
+        """
         self._audio = pyaudio.PyAudio()
         try:
             self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
         except:
-            self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=1)
+            try:
+                self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=1)
+            except:
+                self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
+        
         frames = []
         silent_frames = 0
         recording = False
+        start_time = time.time()
         print("Monitoring...")
 
         min_amplitude = float('inf')
         max_amplitude = float('-inf')
 
         while True:
-            data = self._stream.read(self.CHUNK, exception_on_overflow = False)
+            data = self._stream.read(self.CHUNK, exception_on_overflow=False)
             data_int = np.frombuffer(data, dtype=np.int16)
             amplitude = np.max(np.abs(data_int))
             min_amplitude = min(min_amplitude, amplitude)
             max_amplitude = max(max_amplitude, amplitude)
+            if not recording and max_wait_seconds is not None and (time.time() - start_time) > max_wait_seconds:
+                print("No sound detected, aborting...")
+                frames = []
+                break
             if amplitude > self.THRESHOLD:
                 if not recording:
                     print("Sound detected, recording...")
@@ -87,6 +128,9 @@ class SpeechToTextEngine:
         self._stream = None
         self._audio.terminate()
         self._audio = None
+        if not frames:
+            return None
+
         wav_filename = "temp_recording.wav"
         wf = wave.open(wav_filename, 'wb')
         wf.setnchannels(self.CHANNELS)
@@ -96,8 +140,8 @@ class SpeechToTextEngine:
         wf.close()
         return wav_filename
 
-
     def transcribe(self, filename):
+        """Transcribe audio file using OpenAI Whisper"""
         with open(filename, "rb") as audio_file:
             transcription_result = openai.audio.transcriptions.create(
                 model="whisper-1",
@@ -105,16 +149,31 @@ class SpeechToTextEngine:
             )
         return transcription_result.text
 
-    def record_and_transcribe(self):
-        wav_file = self.record_until_silent()
+    def record_and_transcribe(self, max_wait_seconds=None):
+        """Record audio and transcribe using traditional Whisper API"""
+        wav_file = self.record_until_silent(max_wait_seconds)
+        if not wav_file:
+            return ""
         text = self.transcribe(wav_file)
         os.remove(wav_file)
         return text
 
     def listen_for_hotword(self, access_key=None, keywords=None, sensitivities=None):
-        """
-        Listens for a predefined hotword using Porcupine.
-        Returns the index of the detected keyword, or None if interrupted.
+        """Block until one of ``keywords`` is heard.
+
+        Parameters
+        ----------
+        access_key : str, optional
+            Porcupine API key. If ``None`` it is read from the config file.
+        keywords : list[str], optional
+            List of wake words to detect. Defaults to ``["computer", "jarvis"]``.
+        sensitivities : list[float], optional
+            Sensitivity per keyword (0..1).
+
+        Returns
+        -------
+        int | None
+            Index of detected keyword or ``None`` if listening was interrupted.
         """
         if self.arduino_interface:
             self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
@@ -131,6 +190,7 @@ class SpeechToTextEngine:
             keywords = ["computer", "jarvis"]
         if sensitivities is None:
             sensitivities = [0.5] * len(keywords)
+        
         self._porcupine = pvporcupine.create(
             access_key=access_key,
             keywords=keywords,
@@ -143,19 +203,24 @@ class SpeechToTextEngine:
             channels=1,
             format=pyaudio.paInt16,
             input=True,
-            frames_per_buffer=self._porcupine.frame_length
+            frames_per_buffer=self._porcupine.frame_length,
         )
         self._stream = stream
         print(f"[Hotword] Listening for hotword(s): {keywords}")
+        self._listening = True
+        print("[STT] Listening")
         try:
             while True:
+                if self._pause_event.is_set():
+                    break
                 pcm = stream.read(self._porcupine.frame_length, exception_on_overflow=False)
                 pcm_unpacked = struct.unpack_from("h" * self._porcupine.frame_length, pcm)
                 keyword_index = self._porcupine.process(pcm_unpacked)
                 if keyword_index >= 0:
                     print(f"[Hotword] Detected: {keywords[keyword_index]}")
                     return keyword_index
-                #once every 10 seconds, print a status update
+                # Status update every 10 seconds
+                # Periodic status updates so the user knows we're alive
                 if time.time() % 10 < 0.03:
                     print("[Hotword] Still listening...")
 
@@ -169,7 +234,12 @@ class SpeechToTextEngine:
             self._audio = None
             self._porcupine.delete()
             self._porcupine = None
+            if self._listening:
+                self._listening = False
+                print("[STT] Not listening")
+
         return None
+
 
     def get_voice_input(self):
         """
@@ -193,10 +263,28 @@ class SpeechToTextEngine:
             self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
         return text
 
+    async def hotword_listener(self, queue):
+        """Background task that records speech after a hotword trigger."""
+        print("[Hotword] Background listener started.")
+        loop = asyncio.get_event_loop()
+        try:
+            while True:
+                if self.is_paused():
+                    await asyncio.sleep(0.1)
+                    continue
+                text = await loop.run_in_executor(None, self.get_voice_input)
+                if text and text.strip():
+                    await queue.put({"type": "voice", "text": text.strip()})
+        except asyncio.CancelledError:
+            print("[Hotword] Listener cancelled.")
+        except Exception as e:
+            print(f"[Hotword] Listener error: {e}")
+
     def cleanup(self):
         """
         Cleanup any open audio streams, PyAudio instances, and Porcupine resources.
         """
+        self._stop_event.set()
         if self._stream is not None:
             try:
                 self._stream.stop_stream()
@@ -218,10 +306,10 @@ class SpeechToTextEngine:
             self._porcupine = None
 
 if __name__ == "__main__":
-    print("Starting SpeechToTextEngine test. Speak into your microphone...")
-    stt_engine = SpeechToTextEngine()
+    # Basic manual test when running this module directly
+    engine = SpeechToTextEngine()
     try:
-        result = stt_engine.record_and_transcribe()
-        print(f"Transcribed text: {result}")
-    except Exception as e:
-        print(f"Error during STT test: {e}")
+        result = engine.record_and_transcribe(5)
+        print(f"Transcribed: {result}")
+    finally:
+        engine.cleanup()

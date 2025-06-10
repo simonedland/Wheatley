@@ -1,17 +1,34 @@
+"""Simple wrapper around the ElevenLabs TTS API.
+
+This module exposes :class:`TextToSpeechEngine` which converts text to
+speech using the ElevenLabs API and plays the result back.  The class is
+configured via ``config/config.yaml`` and keeps the interface minimal so
+that it can be reused throughout the project.
+"""
+
+from __future__ import annotations
+
+import logging
 import os
+from datetime import datetime
+from tempfile import NamedTemporaryFile
+
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
-from datetime import datetime
-import logging  # Added import
 
 class TextToSpeechEngine:
     def __init__(self):
         import yaml
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
-        with open(config_path, "r") as f:
+        # Load configuration once during initialisation.  This keeps runtime
+        # overhead low when generating audio.
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml"
+        )
+        with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
-        # Get TTS parameters from config
+
+        # Extract relevant TTS parameters from config
         tts_config = config.get("tts", {})
         self.api_key = config["secrets"]["elevenlabs_api_key"]
         self.voice_id = tts_config.get("voice_id", "4Jtuv4wBvd95o1hzNloV")
@@ -24,12 +41,14 @@ class TextToSpeechEngine:
         )
         self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
-        # Disable verbose logging from elevenlabs to remove INFO prints
+        # Silence noisy logging from the underlying library
         logging.getLogger("elevenlabs").setLevel(logging.WARNING)
+
+        # API client instance reused for every request
         self.client = ElevenLabs(api_key=self.api_key)
     
-    def elevenlabs_generate_audio(self, text):
-        # Generates audio using ElevenLabs TTS with configured parameters
+    def elevenlabs_generate_audio(self, text: str):
+        """Return a generator yielding audio chunks for ``text``."""
         return self.client.text_to_speech.convert(
             text=text,
             voice_id=self.voice_id,
@@ -38,28 +57,29 @@ class TextToSpeechEngine:
             output_format=self.output_format
         )
     
-    def generate_and_play_advanced(self, text):
-        # Determine the temp directory (project root "temp" folder)
-        temp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "temp")
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
+    def generate_and_play_advanced(self, text: str):
+        """Generate speech for ``text`` and play it back immediately."""
+
         audio_chunks = list(self.elevenlabs_generate_audio(text))
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        save_file_path = f"OUT_{timestamp}.mp3"
-        total_relativ_path = os.path.join(temp_dir, save_file_path)
-        with open(total_relativ_path, 'wb') as temp_file:
+
+        # Use a temporary file so the OS cleans it up automatically
+        with NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
             for chunk in audio_chunks:
                 temp_file.write(chunk)
+            temp_file.flush()
             file_path = temp_file.name
+
         try:
             playsound(file_path)
-        except Exception as e:
-            print(f"Error playing audio file: {e}")
-        try:
-            os.remove(file_path)
-        except Exception as e:
-            print(f"Error deleting audio file: {e}")
+        except Exception as exc:  # pragma: no cover - playback depends on host
+            logging.error("Error playing audio file: %s", exc)
+        finally:
+            try:
+                os.remove(file_path)
+            except OSError as exc:  # pragma: no cover - file may already be gone
+                logging.error("Error deleting audio file: %s", exc)
 
 if __name__ == "__main__":
-    tts_engine = TextToSpeechEngine()
-    tts_engine.generate_and_play_advanced("Hello, world! This is a test of the ElevenLabs TTS functionality.")
+    # Basic sanity check when run directly
+    engine = TextToSpeechEngine()
+    engine.generate_and_play_advanced("Hello, world! This is a test.")
