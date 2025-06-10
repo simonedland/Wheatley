@@ -8,8 +8,13 @@ import struct
 import pvporcupine
 import time
 
+# Default colors for NeoPixel status feedback (R, G, B)
+HOTWORD_COLOR = (0, 0, 255)      # listening for hotword
+RECORDING_COLOR = (255, 0, 0)    # recording user speech
+PROCESSING_COLOR = (255, 255, 0) # processing transcription/LLM
+
 class SpeechToTextEngine:
-    def __init__(self):
+    def __init__(self, arduino_interface=None):
         # Load STT settings from the config file
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:
@@ -24,6 +29,7 @@ class SpeechToTextEngine:
         self._audio = None
         self._stream = None
         self._porcupine = None
+        self.arduino_interface = arduino_interface
         # Set OpenAI API key from config
         openai_api_key = config.get("secrets", {}).get("openai_api_key")
         if not openai_api_key:
@@ -38,6 +44,8 @@ class SpeechToTextEngine:
 
     def record_until_silent(self):
         """Record audio until silence is detected."""
+        if self.arduino_interface:
+            self.arduino_interface.set_mic_led_color(*RECORDING_COLOR)
         self._audio = pyaudio.PyAudio()
         try:
             self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
@@ -108,6 +116,8 @@ class SpeechToTextEngine:
         Listens for a predefined hotword using Porcupine.
         Returns the index of the detected keyword, or None if interrupted.
         """
+        if self.arduino_interface:
+            self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
         if access_key is None:
             # Try to load from config
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
@@ -172,9 +182,15 @@ class SpeechToTextEngine:
         wav_file = self.record_until_silent()
         if not wav_file:
             print("No audio detected.")
+            if self.arduino_interface:
+                self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
             return ""
+        if self.arduino_interface:
+            self.arduino_interface.set_mic_led_color(*PROCESSING_COLOR)
         text = self.transcribe(wav_file)
         os.remove(wav_file)
+        if self.arduino_interface:
+            self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
         return text
 
     def cleanup(self):

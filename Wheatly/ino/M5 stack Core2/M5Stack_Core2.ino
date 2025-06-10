@@ -22,6 +22,9 @@ constexpr uint32_t LINK_BAUD = 115200;  // must match OpenRB
 #define NUM_LEDS 8
 Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
+// LED index used to display microphone status
+constexpr int MIC_LED_INDEX = 17;
+
 /* ──────────────────────────────────────────────────────────────────────────
  *  VARIABLE & CONSTANT REFERENCE
  *  (reflects only how the sketch itself uses each symbol)
@@ -331,6 +334,25 @@ void loop()
       for (int i=0;i<NUM_LEDS;++i) leds.setPixelColor(i,col);
       leds.show();
       Serial.printf("[LED] Set R=%d G=%d B=%d\n", r,g,b);
+    }
+
+    /* --- mic status LED --- */
+    else if (cmd.startsWith("SET_MIC_LED;")) {
+      int idx = MIC_LED_INDEX;
+      int r=0,g=0,b=0;
+      int iI=cmd.indexOf("IDX="), rI=cmd.indexOf("R="), gI=cmd.indexOf("G="), bI=cmd.indexOf("B=");
+      if (iI>=0) idx = cmd.substring(iI+4, cmd.indexOf(';', iI+4)).toInt();
+      if (rI>=0) r = cmd.substring(rI+2, cmd.indexOf(';', rI+2)).toInt();
+      if (gI>=0) g = cmd.substring(gI+2, cmd.indexOf(';', gI+2)).toInt();
+      if (bI>=0) {
+        int e = cmd.indexOf(';', bI+2); if (e==-1) e=cmd.length();
+        b = cmd.substring(bI+2, e).toInt();
+      }
+      if (idx >= 0 && idx < NUM_LEDS) {
+        leds.setPixelColor(idx, leds.Color(r,g,b));
+        leds.show();
+      }
+      Serial.printf("[MIC_LED] IDX=%d R=%d G=%d B=%d\n", idx, r, g, b);
     }
 
     /* --- SET_SERVO_CONFIG --- */

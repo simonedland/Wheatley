@@ -136,11 +136,14 @@ def initialize_assistant(config):
         try:
             arduino_interface = ArduinoInterface(port=port)
             arduino_interface.connect()
+            stt_engine.arduino_interface = arduino_interface
         except Exception as e:
             print(f"Could not connect to Arduino on {port}: {e}. Running in dry run mode.")
             arduino_interface = ArduinoInterface(port=port, dry_run=True)
+            stt_engine.arduino_interface = arduino_interface
     else:
         arduino_interface = ArduinoInterface(port="dryrun", dry_run=True)
+        stt_engine.arduino_interface = arduino_interface
     elapsed = time.time() - start_time
     logging.info(f"initialize_assistant completed in {elapsed:.3f} seconds.")
     # Return all initialized components and feature flags
