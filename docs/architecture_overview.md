@@ -20,6 +20,7 @@ This document provides a detailed look at how the Wheatley assistant is structur
 5. **Hardware Interface**
    - Managed by `hardware/arduino_interface.py`.
    - Sends servo and LED commands to an Arduino-based controller for expressive animations.
+   - The exact serial commands exchanged with the M5Stack Core2 and the OpenRB‑150 are described in [hardware_command_flow.md](hardware_command_flow.md).
 
 ## Component Diagram
 
