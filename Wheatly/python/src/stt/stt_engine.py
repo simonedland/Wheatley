@@ -267,10 +267,7 @@ class SpeechToTextEngine:
                 self._listening = False
                 print("[STT] Not listening")
             # Reflect current state on the microphone LED
-            if self.is_paused():
-                self._update_mic_led(PAUSED_COLOR)
-            else:
-                self._update_mic_led(HOTWORD_COLOR)
+            self._update_mic_led(PAUSED_COLOR)
 
         return None
 
@@ -286,12 +283,10 @@ class SpeechToTextEngine:
         wav_file = self.record_until_silent()
         if not wav_file:
             print("No audio detected.")
-            self._update_mic_led(HOTWORD_COLOR)
             return ""
         self._update_mic_led(PROCESSING_COLOR)
         text = self.transcribe(wav_file)
         os.remove(wav_file)
-        self._update_mic_led(HOTWORD_COLOR)
         return text
 
     async def hotword_listener(self, queue):
