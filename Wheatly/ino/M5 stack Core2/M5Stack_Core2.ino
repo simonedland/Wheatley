@@ -15,7 +15,7 @@ constexpr uint32_t LINK_BAUD = 115200;
 
 /* ---------- NeoPixel strip ---------- */
 #define LED_PIN   27
-#define NUM_LEDS   8
+#define NUM_LEDS   16
 Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 /* ———— Global state ———— */
