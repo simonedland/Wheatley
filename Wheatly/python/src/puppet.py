@@ -30,6 +30,9 @@ DOT_COLOR   = "#ff4040"
 PX          = 6
 BAR_HEIGHT  = 28
 
+# Index of the NeoPixel used for microphone status indication
+MIC_LED_INDEX = 17
+
 COL_NAME, COL_SCALE, COL_VEL, COL_VEL_LBL, COL_IDLE,\
 COL_IDLE_LBL, COL_INTV, COL_INTV_LBL, COL_MOVE, COL_CFG = range(10)
 
@@ -300,6 +303,8 @@ class PuppetGUI(Tk):
                    ).pack(side="left", padx=(10, 6))
         ttk.Button(fr, text="Send LED", command=self._send_led
                    ).pack(side="left")
+        ttk.Button(fr, text="Send Mic LED", command=self._send_mic_led
+                   ).pack(side="left", padx=(6, 0))
 
     def _rgb(self, parent, default):
         e = ttk.Entry(parent, width=5, justify="center")
@@ -475,6 +480,16 @@ class PuppetGUI(Tk):
             return self._msg("bad LED")
         self.backend.send(
             f"SET_LED;R={max(0,min(255,r))};G={max(0,min(255,g))};"
+            f"B={max(0,min(255,b))};")
+
+    def _send_mic_led(self):
+        try:
+            r, g, b = map(int, (self.r.get(), self.g.get(), self.b.get()))
+        except ValueError:
+            return self._msg("bad LED")
+        self.backend.send(
+            f"SET_MIC_LED;IDX={MIC_LED_INDEX};"
+            f"R={max(0,min(255,r))};G={max(0,min(255,g))};"
             f"B={max(0,min(255,b))};")
 
     # utilities ---------------------------------------------------------
