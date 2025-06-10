@@ -12,6 +12,20 @@ import time
 import asyncio
 from threading import Event
 
+# ---------------------------------------------------------------------------
+# LED colour constants used to signal microphone state on the hardware.  The
+# values represent ``(R, G, B)`` tuples that are forwarded to the Arduino via
+# ``set_mic_led_color``.
+# ``HOTWORD_COLOR``  - waiting for a hotword (blue)
+# ``RECORDING_COLOR`` - actively recording speech (green)
+# ``PROCESSING_COLOR`` - after recording has stopped (orange)
+# ``PAUSED_COLOR``    - microphone paused (red)
+# ---------------------------------------------------------------------------
+HOTWORD_COLOR = (0, 0, 255)         # blue
+RECORDING_COLOR = (0, 255, 0)       # green
+PROCESSING_COLOR = (255, 165, 0)    # orange
+PAUSED_COLOR = (255, 0, 0)          # red
+
 class SpeechToTextEngine:
     def __init__(self, arduino_interface=None):
         # Load STT settings from the config file
@@ -42,6 +56,18 @@ class SpeechToTextEngine:
         else:
             raise ValueError("OpenAI API key not found in config")
 
+        # Ensure the microphone status LED reflects the initial paused state
+        self._update_mic_led(PAUSED_COLOR)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _update_mic_led(self, color):
+        """Send ``color`` to the microphone status LED if hardware is present."""
+        if self.arduino_interface:
+            r, g, b = color
+            self.arduino_interface.set_mic_led_color(r, g, b)
+
     # ------------------------------------------------------------------
     # Listening control helpers
     # ------------------------------------------------------------------
@@ -54,12 +80,14 @@ class SpeechToTextEngine:
                 self._listening = False
                 print("[STT] Not listening")
             print("[STT] Listening paused.")
+        self._update_mic_led(PAUSED_COLOR)
 
     def resume_listening(self):
         """Resume listening after being paused."""
         if self._pause_event.is_set():
             self._pause_event.clear()
             print("[STT] Listening resumed.")
+        self._update_mic_led(HOTWORD_COLOR)
 
     def is_paused(self):
         return self._pause_event.is_set()
@@ -110,6 +138,7 @@ class SpeechToTextEngine:
                 if not recording:
                     print("Sound detected, recording...")
                     recording = True
+                    self._update_mic_led(RECORDING_COLOR)
                 frames.append(data)
                 silent_frames = 0
             else:
@@ -130,6 +159,7 @@ class SpeechToTextEngine:
         self._audio = None
         if not frames:
             return None
+        self._update_mic_led(PROCESSING_COLOR)
 
         wav_filename = "temp_recording.wav"
         wf = wave.open(wav_filename, 'wb')
@@ -175,8 +205,7 @@ class SpeechToTextEngine:
         int | None
             Index of detected keyword or ``None`` if listening was interrupted.
         """
-        if self.arduino_interface:
-            self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
+        self._update_mic_led(HOTWORD_COLOR)
         if access_key is None:
             # Try to load from config
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
@@ -237,6 +266,11 @@ class SpeechToTextEngine:
             if self._listening:
                 self._listening = False
                 print("[STT] Not listening")
+            # Reflect current state on the microphone LED
+            if self.is_paused():
+                self._update_mic_led(PAUSED_COLOR)
+            else:
+                self._update_mic_led(HOTWORD_COLOR)
 
         return None
 
@@ -252,20 +286,18 @@ class SpeechToTextEngine:
         wav_file = self.record_until_silent()
         if not wav_file:
             print("No audio detected.")
-            if self.arduino_interface:
-                self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
+            self._update_mic_led(HOTWORD_COLOR)
             return ""
-        if self.arduino_interface:
-            self.arduino_interface.set_mic_led_color(*PROCESSING_COLOR)
+        self._update_mic_led(PROCESSING_COLOR)
         text = self.transcribe(wav_file)
         os.remove(wav_file)
-        if self.arduino_interface:
-            self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
+        self._update_mic_led(HOTWORD_COLOR)
         return text
 
     async def hotword_listener(self, queue):
         """Background task that records speech after a hotword trigger."""
         print("[Hotword] Background listener started.")
+        self._update_mic_led(HOTWORD_COLOR)
         loop = asyncio.get_event_loop()
         try:
             while True:
@@ -304,6 +336,7 @@ class SpeechToTextEngine:
             except Exception:
                 pass
             self._porcupine = None
+        self._update_mic_led(PAUSED_COLOR)
 
 if __name__ == "__main__":
     # Basic manual test when running this module directly
