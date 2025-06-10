@@ -60,9 +60,6 @@ constexpr int MIC_LED_INDEX = 17;
  *      calibrationReceived – Blocks UI interaction until first calibration.
  * ──────────────────────────────────────────────────────────────────────────*/
 
-// LED index used to display microphone status
-constexpr int MIC_LED_INDEX = 17;
-
 /* ———— Global state ———— */
 uint32_t lastColor = 0;
 
