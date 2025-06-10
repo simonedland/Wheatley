@@ -13,10 +13,7 @@ import asyncio
 from threading import Event
 
 class SpeechToTextEngine:
-    """Capture microphone input, detect hotwords and transcribe speech."""
-
-    def __init__(self):
-        """Load configuration and initialise internal state."""
+    def __init__(self, arduino_interface=None):
         # Load STT settings from the config file
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:
@@ -28,13 +25,13 @@ class SpeechToTextEngine:
         self.RATE = stt_config.get("rate", 16000)  # 16kHz is optimal for Whisper
         self.THRESHOLD = 100 #stt_config.get("threshold", 1500)
         self.SILENCE_LIMIT = 3 #stt_config.get("silence_limit", 2)
+        self.arduino_interface = arduino_interface
         self._audio = None
         self._stream = None
         self._porcupine = None
         self._stop_event = Event()
         self._pause_event = Event()
         self._listening = False
-        
         # Set OpenAI API key from config
         openai_api_key = config.get("secrets", {}).get("openai_api_key")
         if not openai_api_key:
@@ -178,6 +175,8 @@ class SpeechToTextEngine:
         int | None
             Index of detected keyword or ``None`` if listening was interrupted.
         """
+        if self.arduino_interface:
+            self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
         if access_key is None:
             # Try to load from config
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
@@ -253,9 +252,15 @@ class SpeechToTextEngine:
         wav_file = self.record_until_silent()
         if not wav_file:
             print("No audio detected.")
+            if self.arduino_interface:
+                self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
             return ""
+        if self.arduino_interface:
+            self.arduino_interface.set_mic_led_color(*PROCESSING_COLOR)
         text = self.transcribe(wav_file)
         os.remove(wav_file)
+        if self.arduino_interface:
+            self.arduino_interface.set_mic_led_color(*HOTWORD_COLOR)
         return text
 
     async def hotword_listener(self, queue):

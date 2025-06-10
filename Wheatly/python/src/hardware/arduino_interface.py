@@ -1,5 +1,8 @@
 """Interface classes for controlling the Arduino-based servo hardware."""
 
+# Index of the NeoPixel used for microphone status indication
+MIC_LED_INDEX = 17
+
 class ArduinoInterface:
     def __init__(self, port, baud_rate=115200, dry_run=False):
         self.port = port
@@ -120,6 +123,18 @@ class ArduinoInterface:
         else:
             print("Arduino not connected. Cannot send command.")
         return response
+
+    def set_led_color(self, r: int, g: int, b: int):
+        """Set the NeoPixel LED color on the Arduino."""
+        led_command = f"SET_LED;R={int(r)};G={int(g)};B={int(b)}\n"
+        self.send_command(led_command)
+
+    def set_mic_led_color(self, r: int, g: int, b: int, idx: int = MIC_LED_INDEX):
+        """Set only the microphone status NeoPixel to the given color."""
+        led_command = (
+            f"SET_MIC_LED;IDX={int(idx)};R={int(r)};G={int(g)};B={int(b)}\n"
+        )
+        self.send_command(led_command)
 
     def read_response(self):
         """Read a response from the Arduino."""

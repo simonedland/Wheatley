@@ -18,6 +18,51 @@ constexpr uint32_t LINK_BAUD = 115200;
 #define NUM_LEDS   16
 Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
+// LED index used to display microphone status
+constexpr int MIC_LED_INDEX = 17;
+/* ──────────────────────────────────────────────────────────────────────────
+ *  VARIABLE & CONSTANT REFERENCE
+ *  (reflects only how the sketch itself uses each symbol)
+ *  ------------------------------------------------------------------------
+ *  Communication
+ *      OpenRB(2)            – HardwareSerial bound to UART2.
+ *      RX2_PIN, TX2_PIN     – GPIOs for UART2 RX/TX.
+ *      LINK_BAUD            – Baud rate used in OpenRB.begin().
+ *
+ *  Servo bookkeeping
+ *      totalServos          – Upper bound of the scroll list.
+ *      activeServos         – Highest servo index that can be commanded
+ *                              (0‥activeServos-1).
+ *
+ *      struct ServoState
+ *          angle               Current target angle (deg).
+ *          initial_angle       Angle used as center for idle jitter.
+ *          velocity            Value forwarded in MOVE_SERVO ;VELOCITY=.
+ *          min_angle,max_angle Safety limits; overwritten by calibration.
+ *          idle_range          ±amplitude allowed during idle jitter (deg).
+ *          lastIdleUpdate      millis() timestamp of last idle move.
+ *          idleUpdateInterval  Base delay (ms) between idle moves; a random
+ *                              0‥1000 ms is added each cycle.
+ *
+ *      servos[]             – Startup defaults for each controllable servo.
+ *      SERVO_NAMES[]        – Labels printed in the UI.
+ *
+ *  UI layout
+ *      lineHeight, yOffset, visibleRows  – Geometry of the scrolling list.
+ *      GREY                – 16-bit colour for disabled rows.
+ *      selected            – Index of highlighted row.
+ *      scrollOffset        – First row index currently visible.
+ *
+ *  Runtime flags
+ *      dryRun              – Starts true; no servo commands are sent until
+ *                             a successful handshake + calibration.
+ *      servoPingResult[]   – One bool per servo; filled by calibration.
+ *      calibrationReceived – Blocks UI interaction until first calibration.
+ * ──────────────────────────────────────────────────────────────────────────*/
+
+// LED index used to display microphone status
+constexpr int MIC_LED_INDEX = 17;
+
 /* ———— Global state ———— */
 uint32_t lastColor = 0;
 
@@ -388,8 +433,111 @@ void loop(){
       millis() - handshakeStart > 10000) {
     enterDemoMode();
   }
+/* ------------------------------------------------ */
 
-  // Idle-jitter animation
+/* ---------- USB-Serial pass-through & commands ---------- */
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    if (!cmd.length()) goto after_usb;
+
+    /* --- RGB LED --- */
+    if (cmd.startsWith("SET_LED;")) {
+      int r=0,g=0,b=0;
+      int rI=cmd.indexOf("R="), gI=cmd.indexOf("G="), bI=cmd.indexOf("B=");
+      if (rI>=0) r = cmd.substring(rI+2, cmd.indexOf(';', rI+2)).toInt();
+      if (gI>=0) g = cmd.substring(gI+2, cmd.indexOf(';', gI+2)).toInt();
+      if (bI>=0) {
+        int e = cmd.indexOf(';', bI+2); if (e==-1) e=cmd.length();
+        b = cmd.substring(bI+2, e).toInt();
+      }
+      uint32_t col = leds.Color(r,g,b);
+      for (int i=0;i<NUM_LEDS;++i) leds.setPixelColor(i,col);
+      leds.show();
+      Serial.printf("[LED] Set R=%d G=%d B=%d\n", r,g,b);
+    }
+
+    /* --- mic status LED --- */
+    else if (cmd.startsWith("SET_MIC_LED;")) {
+      int idx = MIC_LED_INDEX;
+      int r=0,g=0,b=0;
+      int iI=cmd.indexOf("IDX="), rI=cmd.indexOf("R="), gI=cmd.indexOf("G="), bI=cmd.indexOf("B=");
+      if (iI>=0) idx = cmd.substring(iI+4, cmd.indexOf(';', iI+4)).toInt();
+      if (rI>=0) r = cmd.substring(rI+2, cmd.indexOf(';', rI+2)).toInt();
+      if (gI>=0) g = cmd.substring(gI+2, cmd.indexOf(';', gI+2)).toInt();
+      if (bI>=0) {
+        int e = cmd.indexOf(';', bI+2); if (e==-1) e=cmd.length();
+        b = cmd.substring(bI+2, e).toInt();
+      }
+      if (idx >= 0 && idx < NUM_LEDS) {
+        leds.setPixelColor(idx, leds.Color(r,g,b));
+        leds.show();
+      }
+      Serial.printf("[MIC_LED] IDX=%d R=%d G=%d B=%d\n", idx, r, g, b);
+    }
+
+    /* --- SET_SERVO_CONFIG --- */
+    else if (cmd.startsWith("SET_SERVO_CONFIG:")) {
+      int pos = String("SET_SERVO_CONFIG:").length();
+      while (pos < cmd.length()) {
+        int semi = cmd.indexOf(';', pos);
+        String chunk = (semi==-1) ? cmd.substring(pos)
+                                  : cmd.substring(pos, semi);
+
+        int c1=chunk.indexOf(','), c2=chunk.indexOf(',', c1+1),
+            c3=chunk.indexOf(',', c2+1), c4=chunk.indexOf(',', c3+1);
+
+        if (c4>c3 && c3>c2 && c2>c1 && c1>0) {
+          int id  = chunk.substring(0,c1).toInt();
+          int tgt = chunk.substring(c1+1,c2).toInt();
+          int vel = chunk.substring(c2+1,c3).toInt();
+          int idle = chunk.substring(c3+1,c4).toInt();
+          unsigned long ivl = chunk.substring(c4+1).toInt();
+
+          if (id>=0 && id<activeServos) {
+            ServoState& s = servos[id];
+            /* -------- NEW LOGIC --------
+               Clamp only *after* we have a calibration table.           */
+            if (calibrationReceived)
+              s.angle = constrain(tgt, s.min_angle, s.max_angle);
+            else
+              s.angle = tgt;
+
+            s.initial_angle      = s.angle;
+            s.velocity           = vel;
+            s.idle_range         = idle;
+            s.idleUpdateInterval = ivl;
+          }
+        }
+        if (semi==-1) break;
+        pos = semi + 1;
+      }
+
+      Serial.println("[OK] Servo config updated from USB");
+      for (int i=0;i<activeServos;++i) {
+        ServoState& s = servos[i];
+        Serial.printf("Servo %d: angle=%d, velocity=%d, idle_range=%d, "
+                      "idleUpdateInterval=%lu\n",
+                      i, s.angle, s.velocity,
+                      s.idle_range, s.idleUpdateInterval);
+      }
+      drawWindow();
+    }
+
+    /* --- GET_SERVO_CONFIG --- */
+    else if (cmd == "GET_SERVO_CONFIG") {
+      sendServoConfig();
+    }
+
+    /* --- anything else: forward to OpenRB --- */
+    else {
+      OpenRB.println(cmd);
+      Serial.printf("[→RB] (from USB) %s\n", cmd.c_str());
+    }
+  }
+after_usb:
+
+/* ---------- idle jitter ---------- */
   if (calibrationReceived) {
     unsigned long now = millis();
     for (int i = 0; i < activeServos; ++i) {
