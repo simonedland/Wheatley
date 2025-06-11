@@ -38,7 +38,7 @@ class SpeechToTextEngine:
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = stt_config.get("channels", 1)
         self.RATE = stt_config.get("rate", 16000)  # 16kHz is optimal for Whisper
-        self.THRESHOLD = 100 #stt_config.get("threshold", 1500)
+        self.THRESHOLD = 1500 #stt_config.get("threshold", 1500)
         self.SILENCE_LIMIT = 3 #stt_config.get("silence_limit", 2)
         self.arduino_interface = arduino_interface
         self._audio = None
@@ -227,8 +227,7 @@ class SpeechToTextEngine:
         
         self._porcupine = pvporcupine.create(
             access_key=access_key,
-            keywords=keywords,
-            sensitivities=sensitivities
+            keyword_paths=["stt/wheatly.ppn"]
         )
         pa = pyaudio.PyAudio()
         self._audio = pa

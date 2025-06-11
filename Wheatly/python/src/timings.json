@@ -1,0 +1,1802 @@
+[
+  {
+    "functionality": "load_config",
+    "startTime": "2025-06-11T17:34:18.686782",
+    "endTime": "2025-06-11T17:34:18.700537",
+    "durationMs": 13
+  },
+  {
+    "functionality": "initialize_assistant",
+    "startTime": "2025-06-11T17:34:18.700729",
+    "endTime": "2025-06-11T17:34:18.897472",
+    "durationMs": 196
+  },
+  {
+    "functionality": "print_welcome",
+    "startTime": "2025-06-11T17:34:18.897530",
+    "endTime": "2025-06-11T17:34:18.897699",
+    "durationMs": 0
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:34:18.911463",
+    "endTime": "2025-06-11T17:34:21.616143",
+    "durationMs": 2704
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:34:21.630702",
+    "endTime": "2025-06-11T17:34:22.470783",
+    "durationMs": 840
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:34:22.471868",
+    "endTime": "2025-06-11T17:34:35.668816",
+    "durationMs": 13196
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:34:47.404049",
+    "endTime": "2025-06-11T17:34:49.424982",
+    "durationMs": 2020
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:34:35.671995",
+    "endTime": "2025-06-11T17:34:49.426226",
+    "durationMs": 13754
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:34:49.426290",
+    "endTime": "2025-06-11T17:34:49.426483",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:34:49.426509",
+    "endTime": "2025-06-11T17:34:49.446457",
+    "durationMs": 19
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:34:49.446497",
+    "endTime": "2025-06-11T17:34:50.423668",
+    "durationMs": 977
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:34:50.546478",
+    "endTime": "2025-06-11T17:34:51.324822",
+    "durationMs": 778
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:34:56.799076",
+    "endTime": "2025-06-11T17:34:58.307852",
+    "durationMs": 1508
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:34:58.451449",
+    "endTime": "2025-06-11T17:34:59.233434",
+    "durationMs": 781
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:35:04.605283",
+    "endTime": "2025-06-11T17:35:06.222572",
+    "durationMs": 1617
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:35:06.222726",
+    "endTime": "2025-06-11T17:35:07.403535",
+    "durationMs": 1180
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:35:07.420104",
+    "endTime": "2025-06-11T17:35:07.958035",
+    "durationMs": 537
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:35:06.222719",
+    "endTime": "2025-06-11T17:35:07.958763",
+    "durationMs": 1736
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:35:07.959040",
+    "endTime": "2025-06-11T17:35:07.959352",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:35:07.960230",
+    "endTime": "2025-06-11T17:35:24.127316",
+    "durationMs": 16167
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:35:34.769737",
+    "endTime": "2025-06-11T17:35:36.580207",
+    "durationMs": 1810
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:35:24.128842",
+    "endTime": "2025-06-11T17:35:36.580667",
+    "durationMs": 12451
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:35:07.959722",
+    "endTime": "2025-06-11T17:35:36.581640",
+    "durationMs": 28621
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:35:36.581697",
+    "endTime": "2025-06-11T17:35:36.581708",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:35:36.581729",
+    "endTime": "2025-06-11T17:35:36.581797",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:35:36.581816",
+    "endTime": "2025-06-11T17:35:36.597784",
+    "durationMs": 15
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:35:36.597838",
+    "endTime": "2025-06-11T17:35:37.849862",
+    "durationMs": 1252
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:35:37.950041",
+    "endTime": "2025-06-11T17:35:38.739737",
+    "durationMs": 789
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:35:44.305910",
+    "endTime": "2025-06-11T17:35:46.822136",
+    "durationMs": 2516
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:35:46.822453",
+    "endTime": "2025-06-11T17:35:49.478200",
+    "durationMs": 2655
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:35:49.584330",
+    "endTime": "2025-06-11T17:35:50.636411",
+    "durationMs": 1052
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:35:46.822444",
+    "endTime": "2025-06-11T17:35:50.637122",
+    "durationMs": 3814
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:35:50.637444",
+    "endTime": "2025-06-11T17:35:50.638110",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:35:50.639397",
+    "endTime": "2025-06-11T17:36:17.183526",
+    "durationMs": 26544
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:36:25.425620",
+    "endTime": "2025-06-11T17:36:29.308131",
+    "durationMs": 3882
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:36:17.186248",
+    "endTime": "2025-06-11T17:36:29.308530",
+    "durationMs": 12122
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:35:50.638952",
+    "endTime": "2025-06-11T17:36:29.310550",
+    "durationMs": 38671
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:36:29.310605",
+    "endTime": "2025-06-11T17:36:29.310615",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:36:29.310633",
+    "endTime": "2025-06-11T17:36:29.310679",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:36:29.310694",
+    "endTime": "2025-06-11T17:36:29.326022",
+    "durationMs": 15
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:36:29.326061",
+    "endTime": "2025-06-11T17:36:32.099436",
+    "durationMs": 2773
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:36:32.099710",
+    "endTime": "2025-06-11T17:36:33.133970",
+    "durationMs": 1034
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:36:33.230961",
+    "endTime": "2025-06-11T17:36:34.519898",
+    "durationMs": 1288
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:36:32.099698",
+    "endTime": "2025-06-11T17:36:34.520690",
+    "durationMs": 2420
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:36:34.520974",
+    "endTime": "2025-06-11T17:36:34.521260",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:36:34.521858",
+    "endTime": "2025-06-11T17:36:41.652437",
+    "durationMs": 7130
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:36:51.298582",
+    "endTime": "2025-06-11T17:36:53.265619",
+    "durationMs": 1967
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:36:41.654092",
+    "endTime": "2025-06-11T17:36:53.265993",
+    "durationMs": 11611
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:36:34.521601",
+    "endTime": "2025-06-11T17:36:53.266723",
+    "durationMs": 18745
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:36:53.266762",
+    "endTime": "2025-06-11T17:36:53.266771",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:36:53.266787",
+    "endTime": "2025-06-11T17:36:53.266833",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:36:53.266846",
+    "endTime": "2025-06-11T17:36:53.280947",
+    "durationMs": 14
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:36:53.280988",
+    "endTime": "2025-06-11T17:36:55.524815",
+    "durationMs": 2243
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:36:55.524937",
+    "endTime": "2025-06-11T17:36:58.088670",
+    "durationMs": 2563
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:36:58.183486",
+    "endTime": "2025-06-11T17:36:59.747026",
+    "durationMs": 1563
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:36:55.524927",
+    "endTime": "2025-06-11T17:36:59.747781",
+    "durationMs": 4222
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:36:59.748115",
+    "endTime": "2025-06-11T17:36:59.748535",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:36:59.749801",
+    "endTime": "2025-06-11T17:37:12.073989",
+    "durationMs": 12324
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:37:12.075251",
+    "endTime": "2025-06-11T17:37:22.286505",
+    "durationMs": 10211
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:36:59.749266",
+    "endTime": "2025-06-11T17:37:22.287479",
+    "durationMs": 22538
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:37:48.741984",
+    "endTime": "2025-06-11T17:37:50.702292",
+    "durationMs": 1960
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:37:22.287533",
+    "endTime": "2025-06-11T17:37:50.703792",
+    "durationMs": 28416
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:37:50.703846",
+    "endTime": "2025-06-11T17:37:50.709529",
+    "durationMs": 5
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:37:50.709575",
+    "endTime": "2025-06-11T17:37:50.737558",
+    "durationMs": 27
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:37:50.737902",
+    "endTime": "2025-06-11T17:37:55.918859",
+    "durationMs": 5180
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:37:55.919036",
+    "endTime": "2025-06-11T17:37:57.934744",
+    "durationMs": 2015
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:37:58.009898",
+    "endTime": "2025-06-11T17:37:59.026223",
+    "durationMs": 1016
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:37:55.919029",
+    "endTime": "2025-06-11T17:37:59.026981",
+    "durationMs": 3107
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:37:59.027259",
+    "endTime": "2025-06-11T17:37:59.027540",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:37:59.028307",
+    "endTime": "2025-06-11T17:38:14.281756",
+    "durationMs": 15253
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:38:33.028992",
+    "endTime": "2025-06-11T17:38:35.467469",
+    "durationMs": 2438
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:38:14.283370",
+    "endTime": "2025-06-11T17:38:35.468228",
+    "durationMs": 21184
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:37:59.027879",
+    "endTime": "2025-06-11T17:38:35.469255",
+    "durationMs": 36441
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:38:35.469322",
+    "endTime": "2025-06-11T17:38:35.469534",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:38:35.469561",
+    "endTime": "2025-06-11T17:38:35.469750",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:38:35.469773",
+    "endTime": "2025-06-11T17:38:35.486151",
+    "durationMs": 16
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:38:35.486190",
+    "endTime": "2025-06-11T17:38:36.892113",
+    "durationMs": 1405
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:38:36.987860",
+    "endTime": "2025-06-11T17:38:37.634147",
+    "durationMs": 646
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:38:44.820489",
+    "endTime": "2025-06-11T17:38:47.757312",
+    "durationMs": 2936
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:38:47.757432",
+    "endTime": "2025-06-11T17:38:52.024115",
+    "durationMs": 4266
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:38:52.075758",
+    "endTime": "2025-06-11T17:38:52.987261",
+    "durationMs": 911
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:38:47.757427",
+    "endTime": "2025-06-11T17:38:52.988103",
+    "durationMs": 5230
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:38:52.988329",
+    "endTime": "2025-06-11T17:38:52.988611",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:38:52.989219",
+    "endTime": "2025-06-11T17:39:19.542545",
+    "durationMs": 26553
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:39:29.779819",
+    "endTime": "2025-06-11T17:39:31.202293",
+    "durationMs": 1422
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:39:19.544259",
+    "endTime": "2025-06-11T17:39:31.202755",
+    "durationMs": 11658
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:38:52.988963",
+    "endTime": "2025-06-11T17:39:31.203501",
+    "durationMs": 38214
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:39:31.203540",
+    "endTime": "2025-06-11T17:39:31.203548",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:39:31.203563",
+    "endTime": "2025-06-11T17:39:31.203609",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:39:31.203624",
+    "endTime": "2025-06-11T17:39:31.217585",
+    "durationMs": 13
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:39:31.217628",
+    "endTime": "2025-06-11T17:39:34.760673",
+    "durationMs": 3543
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:39:34.760807",
+    "endTime": "2025-06-11T17:39:37.323782",
+    "durationMs": 2562
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:39:37.388367",
+    "endTime": "2025-06-11T17:39:40.084655",
+    "durationMs": 2696
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:39:34.760801",
+    "endTime": "2025-06-11T17:39:40.085374",
+    "durationMs": 5324
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:39:40.085597",
+    "endTime": "2025-06-11T17:39:40.085870",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:39:40.086494",
+    "endTime": "2025-06-11T17:39:50.772493",
+    "durationMs": 10685
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:40:06.810197",
+    "endTime": "2025-06-11T17:40:09.369159",
+    "durationMs": 2558
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:39:50.773483",
+    "endTime": "2025-06-11T17:40:09.369762",
+    "durationMs": 18596
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:39:40.086244",
+    "endTime": "2025-06-11T17:40:09.370577",
+    "durationMs": 29284
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:40:09.370616",
+    "endTime": "2025-06-11T17:40:09.370625",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:40:09.370642",
+    "endTime": "2025-06-11T17:40:09.370826",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:40:09.370852",
+    "endTime": "2025-06-11T17:40:09.386064",
+    "durationMs": 15
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:40:09.386101",
+    "endTime": "2025-06-11T17:40:11.451595",
+    "durationMs": 2065
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:40:11.451714",
+    "endTime": "2025-06-11T17:40:17.873281",
+    "durationMs": 6421
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:40:17.922891",
+    "endTime": "2025-06-11T17:40:19.035150",
+    "durationMs": 1112
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:40:11.451709",
+    "endTime": "2025-06-11T17:40:19.035873",
+    "durationMs": 7584
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:40:19.036213",
+    "endTime": "2025-06-11T17:40:19.036640",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:40:19.037636",
+    "endTime": "2025-06-11T17:40:34.271638",
+    "durationMs": 15234
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:40:39.839140",
+    "endTime": "2025-06-11T17:40:41.180938",
+    "durationMs": 1341
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:40:34.272783",
+    "endTime": "2025-06-11T17:40:41.181334",
+    "durationMs": 6908
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:40:19.037363",
+    "endTime": "2025-06-11T17:40:41.182098",
+    "durationMs": 22144
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:40:41.182136",
+    "endTime": "2025-06-11T17:40:41.182140",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:40:41.182154",
+    "endTime": "2025-06-11T17:40:41.182192",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:40:41.182204",
+    "endTime": "2025-06-11T17:40:41.196386",
+    "durationMs": 14
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:40:41.196428",
+    "endTime": "2025-06-11T17:40:43.132365",
+    "durationMs": 1935
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:40:43.132479",
+    "endTime": "2025-06-11T17:40:45.230463",
+    "durationMs": 2097
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:40:45.278581",
+    "endTime": "2025-06-11T17:40:46.235084",
+    "durationMs": 956
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:40:43.132477",
+    "endTime": "2025-06-11T17:40:46.236551",
+    "durationMs": 3104
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:40:46.237380",
+    "endTime": "2025-06-11T17:40:46.239176",
+    "durationMs": 1
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:40:46.243731",
+    "endTime": "2025-06-11T17:40:55.413017",
+    "durationMs": 9169
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:41:04.647212",
+    "endTime": "2025-06-11T17:41:05.730836",
+    "durationMs": 1083
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:40:55.414100",
+    "endTime": "2025-06-11T17:41:05.731411",
+    "durationMs": 10317
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:40:46.242339",
+    "endTime": "2025-06-11T17:41:05.732291",
+    "durationMs": 19489
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:41:05.732333",
+    "endTime": "2025-06-11T17:41:05.732338",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:41:05.732352",
+    "endTime": "2025-06-11T17:41:05.732471",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:41:05.732486",
+    "endTime": "2025-06-11T17:41:05.746979",
+    "durationMs": 14
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:41:05.747017",
+    "endTime": "2025-06-11T17:41:07.370084",
+    "durationMs": 1623
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:41:07.370194",
+    "endTime": "2025-06-11T17:41:09.581685",
+    "durationMs": 2211
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:41:09.602782",
+    "endTime": "2025-06-11T17:41:10.557148",
+    "durationMs": 954
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:41:07.370192",
+    "endTime": "2025-06-11T17:41:10.559211",
+    "durationMs": 3189
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:41:10.559729",
+    "endTime": "2025-06-11T17:41:10.560919",
+    "durationMs": 1
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:41:10.564312",
+    "endTime": "2025-06-11T17:41:20.414432",
+    "durationMs": 9850
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:41:38.296580",
+    "endTime": "2025-06-11T17:41:39.444123",
+    "durationMs": 1147
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:41:20.415241",
+    "endTime": "2025-06-11T17:41:39.444783",
+    "durationMs": 19029
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:41:10.562683",
+    "endTime": "2025-06-11T17:41:39.445469",
+    "durationMs": 28882
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:41:39.445503",
+    "endTime": "2025-06-11T17:41:39.445507",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:41:39.445521",
+    "endTime": "2025-06-11T17:41:39.445565",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:41:39.445578",
+    "endTime": "2025-06-11T17:41:39.458899",
+    "durationMs": 13
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:41:39.458941",
+    "endTime": "2025-06-11T17:41:42.453852",
+    "durationMs": 2994
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:41:42.453963",
+    "endTime": "2025-06-11T17:41:44.234803",
+    "durationMs": 1780
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:41:44.278265",
+    "endTime": "2025-06-11T17:41:44.937133",
+    "durationMs": 658
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:41:42.453961",
+    "endTime": "2025-06-11T17:41:44.937952",
+    "durationMs": 2483
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:41:44.938215",
+    "endTime": "2025-06-11T17:41:44.938528",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:41:44.939109",
+    "endTime": "2025-06-11T17:41:55.720546",
+    "durationMs": 10781
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:42:18.339756",
+    "endTime": "2025-06-11T17:42:20.564429",
+    "durationMs": 2224
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:41:55.723322",
+    "endTime": "2025-06-11T17:42:20.565353",
+    "durationMs": 24842
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:41:44.938862",
+    "endTime": "2025-06-11T17:42:20.566060",
+    "durationMs": 35627
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:42:20.566095",
+    "endTime": "2025-06-11T17:42:20.566100",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:42:20.566114",
+    "endTime": "2025-06-11T17:42:20.566158",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:42:20.566176",
+    "endTime": "2025-06-11T17:42:20.581140",
+    "durationMs": 14
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:42:20.581180",
+    "endTime": "2025-06-11T17:42:23.584016",
+    "durationMs": 3002
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:42:23.584232",
+    "endTime": "2025-06-11T17:42:25.433334",
+    "durationMs": 1849
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:42:25.476796",
+    "endTime": "2025-06-11T17:42:26.327765",
+    "durationMs": 850
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:42:23.584228",
+    "endTime": "2025-06-11T17:42:26.328585",
+    "durationMs": 2744
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:42:26.328878",
+    "endTime": "2025-06-11T17:42:26.329289",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:42:26.330384",
+    "endTime": "2025-06-11T17:42:40.288471",
+    "durationMs": 13958
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:42:48.254237",
+    "endTime": "2025-06-11T17:42:50.626168",
+    "durationMs": 2371
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:42:40.289475",
+    "endTime": "2025-06-11T17:42:50.626472",
+    "durationMs": 10336
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:42:26.330032",
+    "endTime": "2025-06-11T17:42:50.627547",
+    "durationMs": 24297
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:42:50.627595",
+    "endTime": "2025-06-11T17:42:50.627600",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:42:50.627615",
+    "endTime": "2025-06-11T17:42:50.627688",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:42:50.627702",
+    "endTime": "2025-06-11T17:42:50.641620",
+    "durationMs": 13
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:42:50.641660",
+    "endTime": "2025-06-11T17:42:52.490142",
+    "durationMs": 1848
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:42:52.490252",
+    "endTime": "2025-06-11T17:42:54.070789",
+    "durationMs": 1580
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:42:54.113605",
+    "endTime": "2025-06-11T17:42:55.215262",
+    "durationMs": 1101
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:42:52.490250",
+    "endTime": "2025-06-11T17:42:55.216935",
+    "durationMs": 2726
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:42:55.217302",
+    "endTime": "2025-06-11T17:42:55.217853",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:42:55.219407",
+    "endTime": "2025-06-11T17:43:07.764976",
+    "durationMs": 12545
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:43:17.059809",
+    "endTime": "2025-06-11T17:43:18.196857",
+    "durationMs": 1137
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:43:07.766464",
+    "endTime": "2025-06-11T17:43:18.197454",
+    "durationMs": 10430
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:42:55.218719",
+    "endTime": "2025-06-11T17:43:18.198140",
+    "durationMs": 22979
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:43:18.198176",
+    "endTime": "2025-06-11T17:43:18.198181",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:43:18.198194",
+    "endTime": "2025-06-11T17:43:18.198237",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:43:18.198254",
+    "endTime": "2025-06-11T17:43:18.223167",
+    "durationMs": 24
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:43:18.223206",
+    "endTime": "2025-06-11T17:43:21.066521",
+    "durationMs": 2843
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:43:21.066628",
+    "endTime": "2025-06-11T17:43:22.664138",
+    "durationMs": 1597
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:43:22.699939",
+    "endTime": "2025-06-11T17:43:23.541037",
+    "durationMs": 841
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:43:21.066624",
+    "endTime": "2025-06-11T17:43:23.541736",
+    "durationMs": 2475
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:43:23.542049",
+    "endTime": "2025-06-11T17:43:23.542455",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:43:23.543564",
+    "endTime": "2025-06-11T17:43:32.213640",
+    "durationMs": 8670
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:43:43.064204",
+    "endTime": "2025-06-11T17:43:44.075393",
+    "durationMs": 1011
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:43:32.215618",
+    "endTime": "2025-06-11T17:43:44.075922",
+    "durationMs": 11860
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:43:23.543199",
+    "endTime": "2025-06-11T17:43:44.076769",
+    "durationMs": 20533
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:43:44.076812",
+    "endTime": "2025-06-11T17:43:44.076817",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:43:44.076832",
+    "endTime": "2025-06-11T17:43:44.076901",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:43:44.076917",
+    "endTime": "2025-06-11T17:43:44.090645",
+    "durationMs": 13
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:43:44.090798",
+    "endTime": "2025-06-11T17:43:46.461916",
+    "durationMs": 2371
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:43:46.462023",
+    "endTime": "2025-06-11T17:43:48.218456",
+    "durationMs": 1756
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:43:48.255489",
+    "endTime": "2025-06-11T17:43:48.842472",
+    "durationMs": 586
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:43:46.462021",
+    "endTime": "2025-06-11T17:43:48.843359",
+    "durationMs": 2381
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:43:48.843657",
+    "endTime": "2025-06-11T17:43:48.844095",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:43:48.845186",
+    "endTime": "2025-06-11T17:44:01.203686",
+    "durationMs": 12358
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:44:14.473280",
+    "endTime": "2025-06-11T17:44:15.960599",
+    "durationMs": 1487
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:44:01.204607",
+    "endTime": "2025-06-11T17:44:15.961099",
+    "durationMs": 14756
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:43:48.844826",
+    "endTime": "2025-06-11T17:44:15.961801",
+    "durationMs": 27116
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:44:15.961838",
+    "endTime": "2025-06-11T17:44:15.961843",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:44:15.961857",
+    "endTime": "2025-06-11T17:44:15.961899",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:44:15.961912",
+    "endTime": "2025-06-11T17:44:15.976978",
+    "durationMs": 15
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:44:15.977015",
+    "endTime": "2025-06-11T17:44:18.607641",
+    "durationMs": 2630
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:44:18.607747",
+    "endTime": "2025-06-11T17:44:20.155421",
+    "durationMs": 1547
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:44:20.188571",
+    "endTime": "2025-06-11T17:44:21.187828",
+    "durationMs": 999
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:44:18.607745",
+    "endTime": "2025-06-11T17:44:21.188596",
+    "durationMs": 2580
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:44:21.188814",
+    "endTime": "2025-06-11T17:44:21.189079",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:44:21.190703",
+    "endTime": "2025-06-11T17:44:31.326770",
+    "durationMs": 10136
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:44:49.332222",
+    "endTime": "2025-06-11T17:44:51.893900",
+    "durationMs": 2561
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:44:31.328629",
+    "endTime": "2025-06-11T17:44:51.894744",
+    "durationMs": 20566
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:44:21.190069",
+    "endTime": "2025-06-11T17:44:51.895469",
+    "durationMs": 30705
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:44:51.895504",
+    "endTime": "2025-06-11T17:44:51.895509",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:44:51.895523",
+    "endTime": "2025-06-11T17:44:51.895567",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:44:51.895579",
+    "endTime": "2025-06-11T17:44:51.908955",
+    "durationMs": 13
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:44:51.908993",
+    "endTime": "2025-06-11T17:44:54.106892",
+    "durationMs": 2197
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:44:54.107101",
+    "endTime": "2025-06-11T17:44:56.503080",
+    "durationMs": 2395
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:44:56.547437",
+    "endTime": "2025-06-11T17:44:57.451157",
+    "durationMs": 903
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:44:54.107099",
+    "endTime": "2025-06-11T17:44:57.451872",
+    "durationMs": 3344
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:44:57.452250",
+    "endTime": "2025-06-11T17:44:57.452659",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:44:57.453862",
+    "endTime": "2025-06-11T17:45:13.312276",
+    "durationMs": 15858
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:45:26.805644",
+    "endTime": "2025-06-11T17:45:29.270970",
+    "durationMs": 2465
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:45:13.313442",
+    "endTime": "2025-06-11T17:45:29.271641",
+    "durationMs": 15958
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:44:57.453403",
+    "endTime": "2025-06-11T17:45:29.272442",
+    "durationMs": 31819
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:45:29.272487",
+    "endTime": "2025-06-11T17:45:29.272492",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:45:29.272507",
+    "endTime": "2025-06-11T17:45:29.272582",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:45:29.272595",
+    "endTime": "2025-06-11T17:45:29.287351",
+    "durationMs": 14
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:45:29.287388",
+    "endTime": "2025-06-11T17:45:31.217301",
+    "durationMs": 1929
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:45:31.217420",
+    "endTime": "2025-06-11T17:45:33.696277",
+    "durationMs": 2478
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:45:33.739355",
+    "endTime": "2025-06-11T17:45:34.529030",
+    "durationMs": 789
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:45:31.217417",
+    "endTime": "2025-06-11T17:45:34.529733",
+    "durationMs": 3312
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:45:34.529954",
+    "endTime": "2025-06-11T17:45:34.530218",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:45:34.530810",
+    "endTime": "2025-06-11T17:45:50.666108",
+    "durationMs": 16135
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:46:07.516362",
+    "endTime": "2025-06-11T17:46:22.418881",
+    "durationMs": 14902
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:45:50.667612",
+    "endTime": "2025-06-11T17:46:22.420457",
+    "durationMs": 31752
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:45:34.530561",
+    "endTime": "2025-06-11T17:46:22.421650",
+    "durationMs": 47891
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:46:22.421715",
+    "endTime": "2025-06-11T17:46:22.421724",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:46:22.421754",
+    "endTime": "2025-06-11T17:46:22.421839",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:46:22.421875",
+    "endTime": "2025-06-11T17:46:22.453494",
+    "durationMs": 31
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:46:22.453568",
+    "endTime": "2025-06-11T17:46:25.901076",
+    "durationMs": 3447
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:46:25.901187",
+    "endTime": "2025-06-11T17:46:28.260255",
+    "durationMs": 2359
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:46:28.306064",
+    "endTime": "2025-06-11T17:46:29.211764",
+    "durationMs": 905
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:46:25.901185",
+    "endTime": "2025-06-11T17:46:29.213154",
+    "durationMs": 3311
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:46:29.213740",
+    "endTime": "2025-06-11T17:46:29.214824",
+    "durationMs": 1
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:46:29.217300",
+    "endTime": "2025-06-11T17:46:50.549852",
+    "durationMs": 21332
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:47:29.152894",
+    "endTime": "2025-06-11T17:47:31.312147",
+    "durationMs": 2159
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:46:50.552557",
+    "endTime": "2025-06-11T17:47:31.313591",
+    "durationMs": 40761
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:46:29.216731",
+    "endTime": "2025-06-11T17:47:31.314562",
+    "durationMs": 62097
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:47:31.314607",
+    "endTime": "2025-06-11T17:47:31.314612",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:47:31.314628",
+    "endTime": "2025-06-11T17:47:31.314798",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:47:31.314820",
+    "endTime": "2025-06-11T17:47:31.329408",
+    "durationMs": 14
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:47:31.329446",
+    "endTime": "2025-06-11T17:47:35.737942",
+    "durationMs": 4408
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:47:35.738157",
+    "endTime": "2025-06-11T17:47:39.018309",
+    "durationMs": 3280
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:47:39.074928",
+    "endTime": "2025-06-11T17:47:39.641811",
+    "durationMs": 566
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:47:35.738153",
+    "endTime": "2025-06-11T17:47:39.642520",
+    "durationMs": 3904
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:47:39.642844",
+    "endTime": "2025-06-11T17:47:39.643292",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:47:39.644745",
+    "endTime": "2025-06-11T17:48:25.459643",
+    "durationMs": 45814
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:48:41.432627",
+    "endTime": "2025-06-11T17:48:43.124042",
+    "durationMs": 1691
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:48:25.462934",
+    "endTime": "2025-06-11T17:48:43.124752",
+    "durationMs": 17661
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:47:39.644351",
+    "endTime": "2025-06-11T17:48:43.125511",
+    "durationMs": 63481
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:48:43.125584",
+    "endTime": "2025-06-11T17:48:43.125591",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:48:43.125612",
+    "endTime": "2025-06-11T17:48:43.125738",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:48:43.125770",
+    "endTime": "2025-06-11T17:48:43.139310",
+    "durationMs": 13
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:48:43.139348",
+    "endTime": "2025-06-11T17:48:47.505995",
+    "durationMs": 4366
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:48:47.506238",
+    "endTime": "2025-06-11T17:48:50.494200",
+    "durationMs": 2987
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:48:50.540457",
+    "endTime": "2025-06-11T17:48:51.306290",
+    "durationMs": 765
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:48:47.506234",
+    "endTime": "2025-06-11T17:48:51.307540",
+    "durationMs": 3801
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:48:51.308237",
+    "endTime": "2025-06-11T17:48:51.309201",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:48:51.312960",
+    "endTime": "2025-06-11T17:49:42.304579",
+    "durationMs": 50991
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:50:00.032301",
+    "endTime": "2025-06-11T17:50:01.418123",
+    "durationMs": 1385
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:49:42.305964",
+    "endTime": "2025-06-11T17:50:01.419383",
+    "durationMs": 19113
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:48:51.311211",
+    "endTime": "2025-06-11T17:50:01.420111",
+    "durationMs": 70108
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:50:01.420146",
+    "endTime": "2025-06-11T17:50:01.420150",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:50:01.420164",
+    "endTime": "2025-06-11T17:50:01.420207",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:50:01.420226",
+    "endTime": "2025-06-11T17:50:01.434806",
+    "durationMs": 14
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:50:01.434878",
+    "endTime": "2025-06-11T17:50:04.425151",
+    "durationMs": 2990
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:50:04.425264",
+    "endTime": "2025-06-11T17:50:07.025787",
+    "durationMs": 2600
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:50:07.077666",
+    "endTime": "2025-06-11T17:50:08.002784",
+    "durationMs": 925
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:50:04.425262",
+    "endTime": "2025-06-11T17:50:08.003505",
+    "durationMs": 3578
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:50:08.003846",
+    "endTime": "2025-06-11T17:50:08.004272",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:50:08.005353",
+    "endTime": "2025-06-11T17:50:24.672292",
+    "durationMs": 16666
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:50:57.356314",
+    "endTime": "2025-06-11T17:50:59.925052",
+    "durationMs": 2568
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:50:24.673599",
+    "endTime": "2025-06-11T17:50:59.926255",
+    "durationMs": 35252
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:50:08.005007",
+    "endTime": "2025-06-11T17:50:59.926994",
+    "durationMs": 51921
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:50:59.927029",
+    "endTime": "2025-06-11T17:50:59.927033",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:50:59.927048",
+    "endTime": "2025-06-11T17:50:59.927094",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:50:59.927107",
+    "endTime": "2025-06-11T17:50:59.940902",
+    "durationMs": 13
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:50:59.940942",
+    "endTime": "2025-06-11T17:51:02.018925",
+    "durationMs": 2077
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:51:02.019036",
+    "endTime": "2025-06-11T17:51:03.580280",
+    "durationMs": 1561
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:51:03.625525",
+    "endTime": "2025-06-11T17:51:04.684893",
+    "durationMs": 1059
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:51:02.019033",
+    "endTime": "2025-06-11T17:51:04.685592",
+    "durationMs": 2666
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:51:04.685895",
+    "endTime": "2025-06-11T17:51:04.686297",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:51:04.687380",
+    "endTime": "2025-06-11T17:51:16.255262",
+    "durationMs": 11567
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-06-11T17:51:22.174474",
+    "endTime": "2025-06-11T17:51:23.288587",
+    "durationMs": 1114
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-06-11T17:51:16.256359",
+    "endTime": "2025-06-11T17:51:23.288898",
+    "durationMs": 7032
+  },
+  {
+    "functionality": "handle_tts_and_follow_up",
+    "startTime": "2025-06-11T17:51:04.687032",
+    "endTime": "2025-06-11T17:51:23.289823",
+    "durationMs": 18602
+  },
+  {
+    "functionality": "get_event",
+    "startTime": "2025-06-11T17:51:23.289906",
+    "endTime": "2025-06-11T17:51:23.289912",
+    "durationMs": 0
+  },
+  {
+    "functionality": "output_event",
+    "startTime": "2025-06-11T17:51:23.289932",
+    "endTime": "2025-06-11T17:51:23.290312",
+    "durationMs": 0
+  },
+  {
+    "functionality": "process_event",
+    "startTime": "2025-06-11T17:51:23.290352",
+    "endTime": "2025-06-11T17:51:23.307486",
+    "durationMs": 17
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-11T17:51:23.307525",
+    "endTime": "2025-06-11T17:51:25.199280",
+    "durationMs": 1891
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-11T17:51:25.199390",
+    "endTime": "2025-06-11T17:51:27.264752",
+    "durationMs": 2065
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-11T17:51:27.315656",
+    "endTime": "2025-06-11T17:51:29.461597",
+    "durationMs": 2145
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-06-11T17:51:25.199388",
+    "endTime": "2025-06-11T17:51:29.462309",
+    "durationMs": 4262
+  },
+  {
+    "functionality": "print_async_tasks",
+    "startTime": "2025-06-11T17:51:29.462628",
+    "endTime": "2025-06-11T17:51:29.462895",
+    "durationMs": 0
+  },
+  {
+    "functionality": "tts_generate_and_play",
+    "startTime": "2025-06-11T17:51:29.463473",
+    "endTime": "2025-06-11T17:51:38.740912",
+    "durationMs": 9277
+  }
+]

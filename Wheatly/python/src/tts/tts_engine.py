@@ -54,7 +54,7 @@ class TextToSpeechEngine:
 
     def elevenlabs_generate_audio_stream(self, text: str):
         """Return a generator yielding MP3-encoded audio chunks for `text`."""
-        return self.client.text_to_speech.convert_as_stream(
+        return self.client.text_to_speech.convert(
             text=text,
             voice_id=self.voice_id,
             voice_settings=self.voice_settings,
@@ -86,22 +86,22 @@ class TextToSpeechEngine:
             output=True
         )
         # Play a very short 30Hz beep to wake up the hardware
-        beep = (
-            Sine(30)
-            .to_audio_segment(duration=20)  # 20ms tone
-            .set_frame_rate(SAMPLE_RATE)
-            .set_channels(CHANNELS)
-            .set_sample_width(2)
-        )
-        stream.write(beep.raw_data)
+        #beep = (
+        #    Sine(60)
+        #    .to_audio_segment(duration=1000)  # 20ms tone
+        #    .set_frame_rate(SAMPLE_RATE)
+        #    .set_channels(CHANNELS)
+        #    .set_sample_width(2)
+        #)
+        #stream.write(beep.raw_data)
 
         #add a second of silence to ensure the device is ready
-        silence = AudioSegment.silent(duration=1000)
-        stream.write(silence.raw_data)
+        #silence = AudioSegment.silent(duration=1000)
+        #stream.write(silence.raw_data)
 
         # 2) Buffer a small number of chunks before first playback
-        INITIAL_BUFFER_CHUNKS = 50
-        SUBSEQUENT_BUFFER_CHUNKS = 50
+        INITIAL_BUFFER_CHUNKS = 500
+        SUBSEQUENT_BUFFER_CHUNKS = 500
 
         mp3_buffer = bytearray()
         chunk_count = 0

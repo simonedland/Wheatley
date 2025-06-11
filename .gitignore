@@ -11,6 +11,8 @@ Wheatly/python/src/config/token.json
 ..venv/*
 ..venv
 
+Wheatly/python/src/stt/wheatly.ppn
+
 # Common Python ignores
 __pycache__/
 *.py[cod]
