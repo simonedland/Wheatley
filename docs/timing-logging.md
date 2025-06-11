@@ -4,7 +4,7 @@
 Record execution times of key functionalities for debugging and performance tuning.
 
 ## Usage
-- Decorate functions with `log_timing()` to automatically capture timing data.
+- Call `record_timing(name, start)` with a `time.time()` start timestamp when an operation finishes.
 - Launch the assistant with `--export-timings` to persist timings to `timings.json` on shutdown.
 
 ## Internals
@@ -14,11 +14,13 @@ Record execution times of key functionalities for debugging and performance tuni
 
 ## Examples
 ```python
-from utils.timing_logger import log_timing, export_timings
+from utils.timing_logger import record_timing, export_timings
+import time
 
-@log_timing("heavy_task")
 def heavy_task():
+    start = time.time()
     ...
+    record_timing("heavy_task", start)
 
 export_timings()  # writes timings.json
 ```

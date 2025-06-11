@@ -27,7 +27,16 @@ except ImportError:
     from spotify_agent import SpotifyAgent
 
 from llm.google_agent import GoogleAgent
-from llm.llm_client_utils import get_city_coordinates, get_quote, get_joke, WEATHER_CODE_DESCRIPTIONS, set_animation_tool, build_tools, _load_config
+from llm.llm_client_utils import (
+    get_city_coordinates,
+    get_quote,
+    get_joke,
+    WEATHER_CODE_DESCRIPTIONS,
+    set_animation_tool,
+    build_tools,
+    _load_config,
+)
+from utils.timing_logger import record_timing
 
 logging.basicConfig(level=logging.WARN)
 
@@ -128,7 +137,7 @@ class GPTClient:
             model=self.model,
             input=conversation,
         )
-        elapsed = time.time() - start_time
+        record_timing("llm_get_text", start_time)
         if not getattr(completion, "output", None):
             raise Exception("No response from GPT")
         first_msg = completion.output[0]
@@ -166,8 +175,7 @@ class GPTClient:
             tools=dynamic_set_animation_tool,
             tool_choice={"name": "set_animation", "type": "function"}
         )
-        elapsed = time.time() - start_time
-        logging.info(f"GPT animation selection took {elapsed:.3f} seconds.")
+        record_timing("llm_select_animation", start_time)
         choice = completion.output[0]
         animation = ""
         try:
@@ -206,7 +214,7 @@ class GPTClient:
             tools=tools,
             parallel_tool_calls=True
         )
-        elapsed = time.time() - start_time
+        record_timing("llm_get_workflow", start_time)
         choice = completion.output
         results = []
         if completion.output[0].type == "web_search_call":
