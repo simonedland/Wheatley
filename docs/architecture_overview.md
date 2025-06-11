@@ -1,22 +1,19 @@
 # Architecture Overview
 
 ## System Context
+```mermaid
+flowchart LR
+  subgraph "Hardware Components"
+    A[M5Stack ESP32] <--> B[OpenRB-150]
+    B -->|Dynamixel| C[Servo Motors]
+    D["Host PC (Python)"]
+    E[Application]
+    D -->|USB serial| E
+    A -->|UART| D
+  end
 
-```
-+-----------------+     serial      +---------------+
-|   M5Stack ESP32 |<-------------->|  OpenRB-150   |
-+-----------------+                +---------------+
-        ^  UART                         ^  Dynamixel
-        |                               |
-   USB serial                       Servo motors
-        |                               |
-+-------v-------+                 +-----v-------+
-|   Host PC     |                 | User Voice |
-|   (Python)    |                 +-------------+
-+---------------+
-        |
-        v
-    Application
+  F[User Voice]
+  F -->|Input via Microphone| E
 ```
 
 The host PC runs the Python application which communicates with the M5Stack Core2 over USB. The Core2 relays commands to the OpenRB-150 which drives the Dynamixel servos. User voice input is captured through a microphone attached to the host.

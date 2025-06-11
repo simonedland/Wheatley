@@ -31,7 +31,7 @@ def _load_config():
 
 @dataclass
 class Config:
-    model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o"))
+    model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4.1"))
     temperature: float = 0.3
     # Only Python and Arduino files now
     file_types: List[str] = field(default_factory=lambda: [".py", ".ino"])
@@ -135,10 +135,16 @@ class Summariser:
         self.dry_run = dry_run
         self.verbose = verbose
         self.cfg = cfg
+        if self.verbose:
+            print(f"[INFO] Summariser initialized with dry_run={self.dry_run}, verbose={self.verbose}")
 
     def run(self, target: str | Path):
         target_path = Path(target).resolve()
+        if self.verbose:
+            print(f"[INFO] Target path resolved to: {target_path}")
         files = DirectoryCrawler(target_path, self.cfg.file_types).crawl()
+        if self.verbose:
+            print(f"[INFO] Found {len(files)} files to summarise.")
 
         bar = tqdm(files, desc="Summarising", disable=not self.verbose)
         by_dir: Dict[Path, List[str]] = {}
@@ -146,24 +152,132 @@ class Summariser:
         for file in bar:
             if self.verbose:
                 bar.set_description(str(file))
+                print(f"[INFO] Summarising file: {file}")
             text = file.read_text(encoding="utf-8", errors="ignore")
             summary = self.llm.summarise(text, str(file), dry_run=self.dry_run)
             by_dir.setdefault(file.parent, []).append(f"### {file}\n{summary}\n")
+            if self.verbose:
+                print(f"[INFO] Summary for {file} complete.")
 
+        if self.verbose:
+            print("[INFO] Writing folder-level AI summaries...")
         self._write_folder_md(by_dir)
-        return self._write_root_md(target_path, by_dir)
+        if self.verbose:
+            print("[INFO] Writing root-level AI overview...")
+        overview = self._write_root_md(target_path, by_dir)
+        if self.verbose:
+            print("[INFO] Writing Mermaid graph of codebase structure for each directory...")
+        self._write_graph_md_per_directory(by_dir)
+        if self.verbose:
+            print("[INFO] Writing root-level Mermaid overview...")
+        self._write_root_mermaid_overview(target_path, files)
+        if self.verbose:
+            print("[INFO] Summarisation process complete.")
+        return overview
 
     # ------------------------------------------------------------------
     @staticmethod
     def _write_folder_md(groups: Dict[Path, List[str]]):
         for folder, snippets in groups.items():
+            print(f"[INFO] Writing README_AI.md for folder: {folder}")
             (folder / "README_AI.md").write_text("# AI Summary\n\n" + "\n".join(snippets), encoding="utf-8")
 
     def _write_root_md(self, root: Path, groups: Dict[Path, List[str]]):
+        print(f"[INFO] Generating root-level summary at: {root / 'README_AI.md'}")
         combined = "\n".join(item for group in groups.values() for item in group)
         overview = self.llm.summarise(combined, "global_summary", dry_run=self.dry_run)
         (root / "README_AI.md").write_text("# AI Codebase Overview\n\n" + overview, encoding="utf-8")
+        print(f"[INFO] Root-level summary written.")
         return overview
+
+    def _write_graph_md_per_directory(self, by_dir: Dict[Path, List[str]]):
+        """
+        For each directory, generate a Mermaid diagram of the files in that directory and write it to AI_Graph.md.
+        """
+        for folder in by_dir:
+            print(f"[INFO] Generating Mermaid diagram for directory: {folder}")
+            files = [f for f in folder.iterdir() if f.is_file() and f.suffix in self.cfg.file_types]
+            file_contexts = []
+            for file in files:
+                try:
+                    content = file.read_text(encoding="utf-8", errors="ignore")
+                except Exception:
+                    content = ""
+                file_contexts.append(
+                    f"File: {file.name}\nContent:\n{content}\n---"
+                )
+            context_str = "\n".join(file_contexts)
+
+            prompt = (
+                "Given the following files in this directory and their contents, generate a Mermaid diagram "
+                "that visualizes the structure as a graph. Each file should be a node. "
+                "If you can infer relationships between files (such as imports, class usage, or function calls), "
+                "show those as edges as well. Use the 'graph TD' format. "
+                "Only output the Mermaid code block (including the opening and closing ```mermaid lines).\n\n"
+                f"{context_str}"
+            )
+
+            mermaid_diagram = self.llm.summarise(prompt, "AI_Graph.md", dry_run=self.dry_run)
+            (folder / "AI_Graph.md").write_text(f"# AI Directory Structure\n\n{mermaid_diagram.strip()}\n", encoding="utf-8")
+            print(f"[INFO] Mermaid diagram written to: {folder / 'AI_Graph.md'}")
+
+    def _write_root_mermaid_overview(self, root: Path, files: list[Path]):
+        """
+        Generate a Mermaid diagram for the entire codebase, focusing on code-level mapping:
+        nodes represent main classes, functions, or logical components (not just files),
+        and edges show their relationships and interactions. The LLM's output is written
+        directly to AI_Graph.md in the root.
+        """
+        if self.verbose:
+            print(f"[INFO] Generating root-level Mermaid overview at: {root / 'AI_Graph.md'}")
+        file_contexts = []
+        for file in files:
+            try:
+                content = file.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                content = ""
+            file_contexts.append(
+                f"File: {file.name}\nContent:\n{content}\n---"
+            )
+        context_str = "\n".join(file_contexts)
+
+        prompt = (
+            "You are to write a Mermaid diagram that maps the codebase at the code logic level. "
+            "STRICTLY FOLLOW Mermaid syntax: "
+            "1. Begin with a YAML metadata block for diagram configuration (e.g., layout: dagre, look: classic, theme: neutral). "
+            "2. Immediately follow with the diagram type declaration (e.g., flowchart TD). "
+            "3. For each main class, function, or logical component in the codebase, create a node with its name and a concise description of its role. "
+            "4. Draw edges to represent code-level relationships and interactions (such as function calls, class usage, inheritance, or data flow). "
+            "5. Focus on mapping the logic and structure of the code, not just file-to-file interactions. "
+            "6. Output ONLY a valid Mermaid code block, including the opening and closing ```mermaid lines. "
+            "7. Do NOT include any prose, explanation, or extra text. "
+            "8. Use best practices for Mermaid syntax and configuration. "
+            "9. Avoid diagram-breaking words or symbols. "
+            "10. See https://mermaid.js.org/syntax/flowchart.html for syntax reference. "
+            "\n\n"
+            "Example:\n"
+            "```mermaid\n"
+            "---\n"
+            "config:\n"
+            "  layout: dagre\n"
+            "  look: classic\n"
+            "  theme: neutral\n"
+            "---\n"
+            "flowchart TD\n"
+            "  Summariser[Summariser: Orchestrates summarization process]\n"
+            "  LLMClient[LLMClient: Handles LLM API calls]\n"
+            "  DirectoryCrawler[DirectoryCrawler: Finds files to summarize]\n"
+            "  Summariser --> LLMClient\n"
+            "  Summariser --> DirectoryCrawler\n"
+            "```\n"
+            "\nNow, for the following files and their contents, generate the diagram:\n"
+            f"{context_str}"
+        )
+
+        mermaid_diagram = self.llm.summarise(prompt, "AI_Graph.md", dry_run=self.dry_run)
+        (root / "AI_Graph.md").write_text(f"{mermaid_diagram.strip()}\n", encoding="utf-8")
+        if self.verbose:
+            print(f"[INFO] Root-level Mermaid overview written to: {root / 'AI_Graph.md'}")
 
 
 # ---------------------------------------------------------------------------
