@@ -15,8 +15,6 @@ import datetime
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 import sys
-import argparse
-import atexit
 
 # =================== Imports: Third-Party Libraries ===================
 import yaml  # For reading YAML config files
@@ -37,7 +35,6 @@ from assistant.assistant import ConversationManager  # Manages conversation hist
 from llm.llm_client import GPTClient, Functions  # LLM client and function tools
 from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
 from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
-from utils.timing_logger import log_timing, export_timings
 
 
 # Initialize colorama for colored terminal output
@@ -64,7 +61,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 # Load configuration from YAML file
-@log_timing("load_config")
 def load_config():
     """Return the YAML configuration as a dictionary."""
 
@@ -73,7 +69,6 @@ def load_config():
         return yaml.safe_load(f)
 
 # Print ASCII art welcome message to the terminal
-@log_timing("print_welcome")
 def print_welcome():
     """Display a retro style welcome banner."""
 
@@ -100,7 +95,6 @@ def print_welcome():
 
 # =================== Assistant Initialization ===================
 # Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
-@log_timing("initialize_assistant")
 def initialize_assistant(config):
     """Initialise and return all major subsystems."""
 
@@ -173,7 +167,6 @@ class Event:
         return f"[{self.source.upper()}] {self.payload}{meta}"
 
 # =================== Async Event Handling ===================
-@log_timing("user_input_producer")
 async def user_input_producer(q: asyncio.Queue):
     """Asynchronously read user text input and push ``Event`` objects to ``q``."""
     loop = asyncio.get_event_loop()
@@ -183,14 +176,12 @@ async def user_input_producer(q: asyncio.Queue):
         if text.strip().lower() == "exit":
             break
 # Simple wrapper to print an event object
-@log_timing("print_event")
 def print_event(event: Event):
     """Helper to display an ``Event`` on stdout."""
 
     print(event)
 
 
-@log_timing("get_event")
 async def get_event(queue: asyncio.Queue):
     """Retrieve the next event from ``queue`` and normalise voice dicts."""
     incoming = await queue.get()
@@ -200,7 +191,6 @@ async def get_event(queue: asyncio.Queue):
 
 
 # Insert system messages when events come from timers or reminders
-@log_timing("handle_non_user_event")
 def handle_non_user_event(event: Event, manager: ConversationManager):
     """Add system messages based on non-user events."""
     if event.source == "timer":
@@ -222,7 +212,6 @@ def handle_non_user_event(event: Event, manager: ConversationManager):
 
 
 # Update conversation history and return True if user requested to exit
-@log_timing("process_event")
 def process_event(event: Event, manager: ConversationManager, last_input: str):
     """Update conversation with the event and determine if exit was requested."""
     if event.source == "user":
@@ -236,7 +225,6 @@ def process_event(event: Event, manager: ConversationManager, last_input: str):
 
 
 # Execute tools suggested by the language model
-@log_timing("run_tool_workflow")
 def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue: asyncio.Queue):
     """Get LLM proposed workflow and execute the associated tools."""
     chain_retry = 0
@@ -273,7 +261,6 @@ def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue
 
 
 # Ask the LLM for a textual reply and matching animation
-@log_timing("generate_assistant_reply")
 def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient):
     """Fetch assistant text and animation from the LLM."""
     gpt_text = gpt_client.get_text(manager.get_conversation())
@@ -284,7 +271,6 @@ def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient
 
 
 # Play the assistant's speech and optionally capture a follow-up
-@log_timing("handle_tts_and_follow_up")
 async def handle_tts_and_follow_up(
     gpt_text: str,
     last_input_type: str,
@@ -337,7 +323,6 @@ async def handle_tts_and_follow_up(
     return hotword_task
 
 
-@log_timing("async_conversation_loop")
 async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,arduino_interface,stt_enabled,tts_enabled):
     """Main asynchronous interaction loop handling user events and tool calls."""
     import sys
@@ -401,7 +386,6 @@ async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,ardui
         print("👋 Exiting… (forced exit)")
         sys.exit(0)
 
-@log_timing("print_async_tasks")
 def print_async_tasks():
     """Minimal async task list, one line per task, no table formatting."""
     tasks = []
@@ -424,21 +408,10 @@ def print_async_tasks():
         print(Fore.CYAN + Style.BRIGHT + "No async tasks running." + Style.RESET_ALL)
 
 # =================== Main Code ===================
-@log_timing("main")
 def main():
     """CLI entry point for launching the assistant."""
 
-    parser = argparse.ArgumentParser(description="Launch the Wheatley assistant")
-    parser.add_argument(
-        "--export-timings",
-        action="store_true",
-        help="Write timing information to timings.json on exit",
-    )
-    args = parser.parse_args()
-
-    if args.export_timings:
-        atexit.register(export_timings)
-
+    import sys
     config = load_config()
     openai.api_key = config["secrets"]["openai_api_key"]
 
