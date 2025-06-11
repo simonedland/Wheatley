@@ -37,7 +37,7 @@ from assistant.assistant import ConversationManager  # Manages conversation hist
 from llm.llm_client import GPTClient, Functions  # LLM client and function tools
 from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
 from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
-from utils.timing_logger import log_timing, export_timings
+from utils.timing_logger import record_timing, export_timings
 
 
 # Initialize colorama for colored terminal output
@@ -64,19 +64,22 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 # Load configuration from YAML file
-@log_timing("load_config")
 def load_config():
     """Return the YAML configuration as a dictionary."""
 
-    config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
-    with open(config_path, "r") as f:
-        return yaml.safe_load(f)
+    start_time = time.time()
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+    finally:
+        record_timing("load_config", start_time)
 
 # Print ASCII art welcome message to the terminal
-@log_timing("print_welcome")
 def print_welcome():
     """Display a retro style welcome banner."""
 
+    start_time = time.time()
     RESET = "\033[0m"
     RETRO_COLOR = "\033[95m"
     print(r"""
@@ -97,10 +100,10 @@ def print_welcome():
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠁⠀⠁⠀⠀⠀⠀⠀
     """)
     print(f"{RETRO_COLOR}Welcome to the AI Assistant!{RESET}")
+    record_timing("print_welcome", start_time)
 
 # =================== Assistant Initialization ===================
 # Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
-@log_timing("initialize_assistant")
 def initialize_assistant(config):
     """Initialise and return all major subsystems."""
 
@@ -155,6 +158,7 @@ def initialize_assistant(config):
         stt_engine.arduino_interface = arduino_interface
     elapsed = time.time() - start_time
     logging.info(f"initialize_assistant completed in {elapsed:.3f} seconds.")
+    record_timing("initialize_assistant", start_time)
     # Return all initialized components and feature flags
     return manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled
 
@@ -173,36 +177,38 @@ class Event:
         return f"[{self.source.upper()}] {self.payload}{meta}"
 
 # =================== Async Event Handling ===================
-@log_timing("user_input_producer")
 async def user_input_producer(q: asyncio.Queue):
     """Asynchronously read user text input and push ``Event`` objects to ``q``."""
     loop = asyncio.get_event_loop()
     while True:
+        start_time = time.time()
         text = await loop.run_in_executor(None, input, "You: ")
+        record_timing("user_input", start_time)
         await q.put(Event("user", text.strip(), {"input_type": "text"}))
         if text.strip().lower() == "exit":
             break
 # Simple wrapper to print an event object
-@log_timing("print_event")
 def print_event(event: Event):
     """Helper to display an ``Event`` on stdout."""
-
+    start_time = time.time()
     print(event)
+    record_timing("output_event", start_time)
 
 
-@log_timing("get_event")
 async def get_event(queue: asyncio.Queue):
     """Retrieve the next event from ``queue`` and normalise voice dicts."""
+    start_time = time.time()
     incoming = await queue.get()
+    record_timing("get_event", start_time)
     if isinstance(incoming, dict) and incoming.get("type") == "voice":
         return Event("user", incoming.get("text", ""), {"input_type": "voice"})
     return incoming
 
 
 # Insert system messages when events come from timers or reminders
-@log_timing("handle_non_user_event")
 def handle_non_user_event(event: Event, manager: ConversationManager):
     """Add system messages based on non-user events."""
+    start_time = time.time()
     if event.source == "timer":
         timer_label = event.payload
         timer_duration = event.metadata.get("duration") if event.metadata else None
@@ -219,26 +225,30 @@ def handle_non_user_event(event: Event, manager: ConversationManager):
         )
     else:
         manager.add_text_to_conversation("system", str(event))
+    record_timing("handle_non_user_event", start_time)
 
 
 # Update conversation history and return True if user requested to exit
-@log_timing("process_event")
 def process_event(event: Event, manager: ConversationManager, last_input: str):
     """Update conversation with the event and determine if exit was requested."""
-    if event.source == "user":
-        last_input = event.metadata.get("input_type", "text") if event.metadata else "text"
-        manager.add_text_to_conversation("user", event.payload)
-        if event.payload.lower() == "exit":
-            return True, last_input
-    else:
-        handle_non_user_event(event, manager)
-    return False, last_input
+    start_time = time.time()
+    try:
+        if event.source == "user":
+            last_input = event.metadata.get("input_type", "text") if event.metadata else "text"
+            manager.add_text_to_conversation("user", event.payload)
+            if event.payload.lower() == "exit":
+                return True, last_input
+        else:
+            handle_non_user_event(event, manager)
+        return False, last_input
+    finally:
+        record_timing("process_event", start_time)
 
 
 # Execute tools suggested by the language model
-@log_timing("run_tool_workflow")
 def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue: asyncio.Queue):
     """Get LLM proposed workflow and execute the associated tools."""
+    start_time = time.time()
     chain_retry = 0
     while chain_retry < 3:
         try:
@@ -270,21 +280,22 @@ def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue
         for _, result in fn_results:
             manager.add_text_to_conversation("system", str(result))
         chain_retry += 1
+    record_timing("run_tool_workflow", start_time)
 
 
 # Ask the LLM for a textual reply and matching animation
-@log_timing("generate_assistant_reply")
 def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient):
     """Fetch assistant text and animation from the LLM."""
+    start_time = time.time()
     gpt_text = gpt_client.get_text(manager.get_conversation())
     manager.add_text_to_conversation("assistant", gpt_text)
     manager.print_memory()
     animation = gpt_client.reply_with_animation(manager.get_conversation())
+    record_timing("generate_assistant_reply", start_time)
     return gpt_text, animation
 
 
 # Play the assistant's speech and optionally capture a follow-up
-@log_timing("handle_tts_and_follow_up")
 async def handle_tts_and_follow_up(
     gpt_text: str,
     last_input_type: str,
@@ -296,7 +307,9 @@ async def handle_tts_and_follow_up(
     tts_enabled: bool,
 ):
     """Play TTS output and optionally listen for a follow-up voice response."""
+    start_time = time.time()
     if not tts_enabled:
+        record_timing("handle_tts_and_follow_up", start_time)
         return hotword_task
 
     if hotword_task:
@@ -334,10 +347,10 @@ async def handle_tts_and_follow_up(
         hotword_task = asyncio.create_task(stt_engine.hotword_listener(queue))
         print("[STT] Hotword listener resumed.")
 
+    record_timing("handle_tts_and_follow_up", start_time)
     return hotword_task
 
 
-@log_timing("async_conversation_loop")
 async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,arduino_interface,stt_enabled,tts_enabled):
     """Main asynchronous interaction loop handling user events and tool calls."""
     import sys
@@ -352,6 +365,7 @@ async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,ardui
 
     last_input_type = "text"
     print("🤖 Assistant running. Type 'exit' to quit. Type or say hotword to speak.\n")
+    start_time = time.time()
     try:
         while True:
             event = await get_event(queue)
@@ -399,11 +413,12 @@ async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,ardui
             except Exception as e:
                 print(f"[Shutdown] Error during stt_engine cleanup: {e}")
         print("👋 Exiting… (forced exit)")
+        record_timing("async_conversation_loop", start_time)
         sys.exit(0)
 
-@log_timing("print_async_tasks")
 def print_async_tasks():
     """Minimal async task list, one line per task, no table formatting."""
+    start_time = time.time()
     tasks = []
     for t in asyncio.all_tasks():
         f = getattr(t.get_coro(), 'cr_frame', None)
@@ -422,11 +437,12 @@ def print_async_tasks():
             print(f"  {name} | {state} | {t['coro']} | {t['loc']}")
     else:
         print(Fore.CYAN + Style.BRIGHT + "No async tasks running." + Style.RESET_ALL)
+    record_timing("print_async_tasks", start_time)
 
 # =================== Main Code ===================
-@log_timing("main")
 def main():
     """CLI entry point for launching the assistant."""
+    start_time = time.time()
 
     parser = argparse.ArgumentParser(description="Launch the Wheatley assistant")
     parser.add_argument(
@@ -485,6 +501,7 @@ def main():
                 print(f"[Shutdown] Error during stt_engine cleanup: {e}")
         sys.exit(0)
     logging.info("Assistant finished.")
+    record_timing("main", start_time)
 
 if __name__ == "__main__":
     main()

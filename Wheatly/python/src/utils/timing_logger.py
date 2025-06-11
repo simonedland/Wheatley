@@ -5,61 +5,33 @@ from __future__ import annotations
 import time
 import datetime as _dt
 import json
-import asyncio
-from typing import Callable, List, Dict, Any
+from typing import List, Dict, Any
 
 # Central in-memory store for timing entries
 
 timings: List[Dict[str, Any]] = []
 
 
-def log_timing(name: str | None = None) -> Callable:
-    """Decorator that records execution time for ``func``.
+def record_timing(name: str, start: float) -> None:
+    """Record a timing entry.
 
-    Args:
-        name: Optional name used for the ``functionality`` field. Defaults
-            to the wrapped function's name.
-    Returns:
-        Callable: Wrapped function that logs timing information.
+    Parameters
+    ----------
+    name:
+        Descriptive label for the timed operation.
+    start:
+        Timestamp returned by ``time.time()`` marking the beginning of
+        the operation.
     """
-
-    def decorator(func: Callable) -> Callable:
-        func_name = name or func.__name__
-
-        if asyncio.iscoroutinefunction(func):
-            async def async_wrapper(*args, **kwargs):
-                start_time = _dt.datetime.utcnow().isoformat()
-                start = time.time()
-                try:
-                    return await func(*args, **kwargs)
-                finally:
-                    end_time = _dt.datetime.utcnow().isoformat()
-                    duration = int((time.time() - start) * 1000)
-                    timings.append({
-                        "functionality": func_name,
-                        "startTime": start_time,
-                        "endTime": end_time,
-                        "durationMs": duration,
-                    })
-            return async_wrapper
-
-        def wrapper(*args, **kwargs):
-            start_time = _dt.datetime.utcnow().isoformat()
-            start = time.time()
-            try:
-                return func(*args, **kwargs)
-            finally:
-                end_time = _dt.datetime.utcnow().isoformat()
-                duration = int((time.time() - start) * 1000)
-                timings.append({
-                    "functionality": func_name,
-                    "startTime": start_time,
-                    "endTime": end_time,
-                    "durationMs": duration,
-                })
-        return wrapper
-
-    return decorator
+    end = time.time()
+    timings.append(
+        {
+            "functionality": name,
+            "startTime": _dt.datetime.utcfromtimestamp(start).isoformat(),
+            "endTime": _dt.datetime.utcfromtimestamp(end).isoformat(),
+            "durationMs": int((end - start) * 1000),
+        }
+    )
 
 
 def export_timings(path: str = "timings.json") -> None:

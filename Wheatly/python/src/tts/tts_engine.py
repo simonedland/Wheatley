@@ -12,6 +12,8 @@ import logging
 import os
 from datetime import datetime
 from tempfile import NamedTemporaryFile
+from utils.timing_logger import record_timing
+import time
 
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
@@ -60,6 +62,7 @@ class TextToSpeechEngine:
     def generate_and_play_advanced(self, text: str):
         """Generate speech for ``text`` and play it back immediately."""
 
+        start_time = time.time()
         audio_chunks = list(self.elevenlabs_generate_audio(text))
 
         # Use a temporary file so the OS cleans it up automatically
@@ -78,6 +81,7 @@ class TextToSpeechEngine:
                 os.remove(file_path)
             except OSError as exc:  # pragma: no cover - file may already be gone
                 logging.error("Error deleting audio file: %s", exc)
+        record_timing("tts_generate_and_play", start_time)
 
 if __name__ == "__main__":
     # Basic sanity check when run directly

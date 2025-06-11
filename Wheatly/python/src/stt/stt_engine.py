@@ -11,6 +11,7 @@ import pvporcupine
 import time
 import asyncio
 from threading import Event
+from utils.timing_logger import record_timing
 
 # ---------------------------------------------------------------------------
 # LED colour constants used to signal microphone state on the hardware.  The
@@ -172,20 +173,25 @@ class SpeechToTextEngine:
 
     def transcribe(self, filename):
         """Transcribe audio file using OpenAI Whisper"""
+        start_time = time.time()
         with open(filename, "rb") as audio_file:
             transcription_result = openai.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file
             )
+        record_timing("stt_transcribe", start_time)
         return transcription_result.text
 
     def record_and_transcribe(self, max_wait_seconds=None):
         """Record audio and transcribe using traditional Whisper API"""
+        start_time = time.time()
         wav_file = self.record_until_silent(max_wait_seconds)
         if not wav_file:
+            record_timing("stt_record_and_transcribe", start_time)
             return ""
         text = self.transcribe(wav_file)
         os.remove(wav_file)
+        record_timing("stt_record_and_transcribe", start_time)
         return text
 
     def listen_for_hotword(self, access_key=None, keywords=None, sensitivities=None):
