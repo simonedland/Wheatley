@@ -41,6 +41,7 @@ Maintain a “Documented Features” section in this file. Update whenever you a
 ## Documented Features
 - [user-authentication](docs/user-authentication.md)
 - [data-exporter](docs/data-exporter.md)
+- [timing-logging](docs/timing-logging.md)
 - … add your new feature here …
 ```
 
