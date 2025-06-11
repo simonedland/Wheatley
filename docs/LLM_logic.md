@@ -11,7 +11,7 @@
 Example system prompt used when announcing tool execution:
 
 ```
-{"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says..."}
+{"role": "system", "content": "Act as Weatly from Portal 2. in 10 words summarize the function call as if you are doing what it says..."}
 ```
 
 Temperature and model are configured in `config.yaml`; default model is `gpt-4o-mini`.
