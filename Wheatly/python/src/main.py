@@ -400,6 +400,7 @@ async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,ardui
     finally:
         # --- CLEANUP SECTION ---
         print("[Shutdown] Cleaning up resources...")
+        export_timings()
         # Cancel any remaining tasks
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         for t in tasks:
@@ -413,7 +414,6 @@ async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,ardui
             except Exception as e:
                 print(f"[Shutdown] Error during stt_engine cleanup: {e}")
         print("👋 Exiting… (forced exit)")
-        record_timing("async_conversation_loop", start_time)
         sys.exit(0)
 
 def print_async_tasks():

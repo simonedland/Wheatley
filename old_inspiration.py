@@ -1,148 +1,45 @@
-"""Prototype experiments and utility functions (legacy)."""
-
-import os
-import time
-import json
-import textwrap
-from datetime import datetime, timezone
-import requests
-from playsound import playsound
-import openai
-from elevenlabs import VoiceSettings
-from elevenlabs.client import ElevenLabs
-
-# Google Calendar API imports
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-
-# Additional imports for voice recording, Arduino commands, and hotword detection
 import pyaudio
-import numpy as np
-import wave
-import serial
-import struct
-import pvporcupine
+import yaml
+from elevenlabs.client import ElevenLabs
+from pydub import AudioSegment
+import io
 
-from colorama import init
+with open("C:/GIT/Wheatly/Wheatley/Wheatly/python/src/config/config.yaml", "r", encoding="utf-8") as f:
+    config = yaml.safe_load(f)
 
-# -----------------------------------------------------------------------------
-# Timer utility 
-# -----------------------------------------------------------------------------
-class Timer:
-    """Context manager for measuring elapsed time."""
+api_key = config["secrets"]["elevenlabs_api_key"]
+elevenlabs = ElevenLabs(api_key=api_key)
 
-    def __init__(self, label=""):
-        self.label = label
-    def __enter__(self):
-        self.start = time.perf_counter()
-        return self
-    def __exit__(self, *args):
-        self.end = time.perf_counter()
-        self.elapsed = self.end - self.start
+audio_stream = elevenlabs.text_to_speech.convert_as_stream(
+    text="This is a test. 1. 2. 3. Testing, testing, 1, 2, 3. lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    model_id="eleven_multilingual_v2"
+)
 
-# -----------------------------------------------------------------------------
-# Voice Recording Functions 
-# -----------------------------------------------------------------------------
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
+SAMPLE_RATE = 22050
 CHANNELS = 1
-RATE = 44100
-THRESHOLD = 3000
-SILENCE_LIMIT = 2
+FORMAT = pyaudio.paInt16
 
-def record_until_silent():
-    """Record audio until silence is detected and return the file path."""
+p = pyaudio.PyAudio()
+stream = p.open(format=FORMAT, channels=CHANNELS, rate=SAMPLE_RATE, frames_per_buffer=1024, output=True)
 
-    print("listening...")
-    audio = pyaudio.PyAudio()
-    stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE,
-                        input=True, frames_per_buffer=CHUNK, input_device_index=1)
-    frames = []
-    silent_frames = 0
-    recording = False
-    start_time = time.time()
-    silent = True
-    while True:
-        data = stream.read(CHUNK, exception_on_overflow=False)
-        data_int = np.frombuffer(data, dtype=np.int16)
-        amplitude = np.max(np.abs(data_int))
-        if amplitude > THRESHOLD:
-            if not recording:
-                recording = True
-            frames.append(data)
-            silent_frames = 0
-            if silent:
-                print("Recording...")
-            silent = False
-        else:
-            if time.time() - start_time > 10 and silent:
-                return ""
-            if recording:
-                silent_frames += 1
-                frames.append(data)
-                if silent_frames > (RATE / CHUNK * SILENCE_LIMIT):
-                    break
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
-    wav_filename = "temp_recording.wav"
-    wf = wave.open(wav_filename, 'wb')
-    wf.setnchannels(CHANNELS)
-    wf.setsampwidth(audio.get_sample_size(FORMAT))
-    wf.setframerate(RATE)
-    wf.writeframes(b"".join(frames))
-    wf.close()
-    return wav_filename
+mp3_buffer = bytearray()
+BUFFER_SIZE = 30
 
-def get_voice_input():
-    wav_file = record_until_silent()
-    if not wav_file:
-        print("No audio detected.")
-        return ""
-    with open(wav_file, "rb") as f:
-        transcription = openai.Audio.transcribe("whisper-1", f)
-        text = transcription["text"]
-    os.remove(wav_file)
-    return text
+for idx, chunk in enumerate(audio_stream):
+    if isinstance(chunk, bytes):
+        mp3_buffer.extend(chunk)
+        if (idx + 1) % BUFFER_SIZE == 0:
+            audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
+            pcm_data = audio.set_frame_rate(SAMPLE_RATE).set_channels(CHANNELS).set_sample_width(2).raw_data
+            stream.write(pcm_data)
+            mp3_buffer = bytearray()
 
-# -----------------------------------------------------------------------------
-# Hotword Detection using Porcupine 
-# -----------------------------------------------------------------------------
-def listen_for_hotword():
-    """
-    Listens for a predefined hotword using Porcupine.
-    Once detected, the function returns to allow further processing.
-    """
-    access_key = pvporcupine_api_key
-    print(access_key)
-    porcupine = pvporcupine.create(
-        access_key=access_key,
-        keywords=["computer", "jarvis"], sensitivities=[0.5, 0.5]
-    )
-    pa = pyaudio.PyAudio()
-    stream = pa.open(
-        rate=porcupine.sample_rate,
-        channels=1,
-        format=pyaudio.paInt16,
-        input=True,
-        frames_per_buffer=porcupine.frame_length
-    )
-    print("Listening for hotword...")
-    try:
-        while True:
-            pcm = stream.read(porcupine.frame_length, exception_on_overflow=False)
-            pcm_unpacked = struct.unpack_from("h" * porcupine.frame_length, pcm)
-            keyword_index = porcupine.process(pcm_unpacked)
-            if keyword_index >= 0:
-                print("Hotword Detected!")
-                break
-    except KeyboardInterrupt:
-        print("Keyword detection interrupted.")
-    finally:
-        stream.stop_stream()
-        stream.close()
-        pa.terminate()
-        porcupine.delete()
+if mp3_buffer:
+    audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
+    pcm_data = audio.set_frame_rate(SAMPLE_RATE).set_channels(CHANNELS).set_sample_width(2).raw_data
+    stream.write(pcm_data)
+
+stream.stop_stream()
+stream.close()
+p.terminate()

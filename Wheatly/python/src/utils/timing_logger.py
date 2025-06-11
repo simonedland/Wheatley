@@ -37,6 +37,8 @@ def record_timing(name: str, start: float) -> None:
 def export_timings(path: str = "timings.json") -> None:
     """Write accumulated timings to ``path`` in JSON format."""
 
+    print(f"Exporting timings to {path}...")
+
     with open(path, "w", encoding="utf-8") as f:
         json.dump(timings, f, indent=2)
 

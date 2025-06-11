@@ -24,6 +24,14 @@
    - Confirm that the virtual environment activates without errors and tests execute successfully.
 
 ## Roadmap
+### TTS
+- [ ] end to end streaming
+  - [ ] STT streaming input transcription
+  [reference](https://platform.openai.com/docs/guides/speech-to-text?lang=curl#streaming-transcriptions)
+  - [ ] Stream LLM response to TTS
+  [reference](https://platform.openai.com/docs/api-reference/responses-streaming)
+  - [ ] Stream TTS response to speaker
+  [reference](https://elevenlabs.io/docs/api-reference/streaming)
 
 ### LLM
 
