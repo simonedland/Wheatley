@@ -42,7 +42,7 @@ Maintain a “Documented Features” section in this file. Update whenever you a
 - [user-authentication](docs/user-authentication.md)
 - [data-exporter](docs/data-exporter.md)
 - [timing-logging](docs/timing-logging.md)
-- … add your new feature here …
+- [speaker-warmup](docs/speaker-warmup.md)
 ```
 
 ---
