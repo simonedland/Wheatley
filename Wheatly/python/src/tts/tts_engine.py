@@ -18,6 +18,7 @@ from utils.timing_logger import record_timing
 import pyaudio
 from pydub import AudioSegment
 from pydub.generators import Sine
+import threading
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 
@@ -52,6 +53,27 @@ class TextToSpeechEngine:
         # Reuse one API client for all requests
         self.client = ElevenLabs(api_key=self.api_key)
 
+        # Initialize persistent audio stream and keep-alive thread
+        self.SAMPLE_RATE = 22050
+        self.CHANNELS = 1
+        self.FORMAT = pyaudio.paInt16
+
+        self.p = pyaudio.PyAudio()
+        self.stream = self.p.open(
+            format=self.FORMAT,
+            channels=self.CHANNELS,
+            rate=self.SAMPLE_RATE,
+            frames_per_buffer=1024,
+            output=True,
+        )
+        self._keep_alive = True
+        self._playing = threading.Event()
+        self._keep_thread = threading.Thread(
+            target=self._keep_audio_device_alive,
+            daemon=True,
+        )
+        self._keep_thread.start()
+
     def elevenlabs_generate_audio_stream(self, text: str):
         """Return a generator yielding MP3-encoded audio chunks for `text`."""
         return self.client.text_to_speech.convert(
@@ -63,43 +85,16 @@ class TextToSpeechEngine:
         )
 
     def generate_and_play_advanced(self, text: str):
-        """
-        Generate speech for `text` and play it back immediately using streaming.
-        Starts playback almost instantly by pre-warming the audio device
-        with a tiny beep and using a small initial buffer.
+        """Generate speech for ``text`` and play it using the persistent stream.
+
+        The audio device remains open thanks to a background keep-alive thread,
+        so playback begins immediately when this method writes to the stream.
         """
         start_time = time.time()
+        self._playing.set()
         audio_stream = self.elevenlabs_generate_audio_stream(text)
 
-        # Playback parameters
-        SAMPLE_RATE = 22050
-        CHANNELS = 1
-        FORMAT = pyaudio.paInt16
-
-        # 1) Open & warm up the audio device
-        p = pyaudio.PyAudio()
-        stream = p.open(
-            format=FORMAT,
-            channels=CHANNELS,
-            rate=SAMPLE_RATE,
-            frames_per_buffer=1024,
-            output=True
-        )
-        # Play a very short 30Hz beep to wake up the hardware
-        #beep = (
-        #    Sine(60)
-        #    .to_audio_segment(duration=1000)  # 20ms tone
-        #    .set_frame_rate(SAMPLE_RATE)
-        #    .set_channels(CHANNELS)
-        #    .set_sample_width(2)
-        #)
-        #stream.write(beep.raw_data)
-
-        #add a second of silence to ensure the device is ready
-        #silence = AudioSegment.silent(duration=1000)
-        #stream.write(silence.raw_data)
-
-        # 2) Buffer a small number of chunks before first playback
+        # Buffering parameters
         INITIAL_BUFFER_CHUNKS = 500
         SUBSEQUENT_BUFFER_CHUNKS = 500
 
@@ -124,12 +119,12 @@ class TextToSpeechEngine:
                 audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
                 pcm_data = (
                     audio
-                    .set_frame_rate(SAMPLE_RATE)
-                    .set_channels(CHANNELS)
+                    .set_frame_rate(self.SAMPLE_RATE)
+                    .set_channels(self.CHANNELS)
                     .set_sample_width(2)
                     .raw_data
                 )
-                stream.write(pcm_data)
+                self.stream.write(pcm_data)
                 mp3_buffer = bytearray()
 
         # Flush any remaining audio
@@ -137,19 +132,48 @@ class TextToSpeechEngine:
             audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
             pcm_data = (
                 audio
-                .set_frame_rate(SAMPLE_RATE)
-                .set_channels(CHANNELS)
+                .set_frame_rate(self.SAMPLE_RATE)
+                .set_channels(self.CHANNELS)
                 .set_sample_width(2)
                 .raw_data
             )
-            stream.write(pcm_data)
+            self.stream.write(pcm_data)
 
-        # Clean up
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
+        self._playing.clear()
 
         record_timing("tts_generate_and_play", start_time)
+
+    def _keep_audio_device_alive(self) -> None:
+        """Continuously play near-silent audio so the speakers stay active."""
+        tone = (
+            Sine(60)
+            .to_audio_segment(duration=100)
+            .apply_gain(-50)
+            .set_frame_rate(self.SAMPLE_RATE)
+            .set_channels(self.CHANNELS)
+            .set_sample_width(2)
+        )
+        while self._keep_alive:
+            if not self._playing.is_set():
+                self.stream.write(tone.raw_data)
+            time.sleep(0.5)
+
+    def close(self) -> None:
+        """Stop background playback and release audio resources."""
+        self._keep_alive = False
+        if hasattr(self, "_keep_thread") and self._keep_thread.is_alive():
+            self._keep_thread.join(timeout=1)
+        if hasattr(self, "stream"):
+            self.stream.stop_stream()
+            self.stream.close()
+        if hasattr(self, "p"):
+            self.p.terminate()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
