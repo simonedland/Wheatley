@@ -225,10 +225,17 @@ class SpeechToTextEngine:
         if sensitivities is None:
             sensitivities = [0.5] * len(keywords)
         
-        self._porcupine = pvporcupine.create(
-            access_key=access_key,
-            keyword_paths=["stt/wheatly.ppn"]
-        )
+        try:
+            self._porcupine = pvporcupine.create(
+                access_key=access_key,
+                keyword_paths=["stt/wheatly.ppn"]
+            )
+        except:
+            self._porcupine = pvporcupine.create(
+                access_key=access_key,
+                keywords=keywords,
+                sensitivities=sensitivities
+            )
         pa = pyaudio.PyAudio()
         self._audio = pa
         stream = pa.open(
