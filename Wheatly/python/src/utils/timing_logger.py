@@ -5,11 +5,28 @@ from __future__ import annotations
 import time
 import datetime as _dt
 import json
+import os
 from typing import List, Dict, Any
 
 # Central in-memory store for timing entries
 
 timings: List[Dict[str, Any]] = []
+
+
+def clear_timings(path: str = "timings.json") -> None:
+    """Reset stored timings and remove the timing file if present.
+
+    Parameters
+    ----------
+    path:
+        Location of the timings JSON file to delete.
+    """
+    timings.clear()
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except OSError as e:
+            print(f"Failed to remove {path}: {e}")
 
 
 def record_timing(name: str, start: float) -> None:

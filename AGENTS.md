@@ -43,6 +43,7 @@ Maintain a “Documented Features” section in this file. Update whenever you a
 - [data-exporter](docs/data-exporter.md)
 - [timing-logging](docs/timing-logging.md)
 - [speaker-warmup](docs/speaker-warmup.md)
+- [present-timeline](docs/present-timeline.md)
 ```
 
 ---

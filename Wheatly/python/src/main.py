@@ -37,7 +37,7 @@ from assistant.assistant import ConversationManager  # Manages conversation hist
 from llm.llm_client import GPTClient, Functions  # LLM client and function tools
 from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
 from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
-from utils.timing_logger import record_timing, export_timings
+from utils.timing_logger import record_timing, export_timings, clear_timings
 
 
 # Initialize colorama for colored terminal output
@@ -451,6 +451,9 @@ def main():
         help="Write timing information to timings.json on exit",
     )
     args = parser.parse_args()
+
+    # Start each run with a clean timing log
+    clear_timings()
 
     if args.export_timings:
         atexit.register(export_timings)
