@@ -488,7 +488,7 @@ class PuppetGUI(Tk):
         except ValueError:
             return self._msg("bad LED")
         self.backend.send(
-            f"SET_MIC_LED;IDX={MIC_LED_INDEX};"
+            f"SET_MIC_LED;"
             f"R={max(0,min(255,r))};G={max(0,min(255,g))};"
             f"B={max(0,min(255,b))};")
 

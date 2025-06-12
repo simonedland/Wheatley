@@ -1,6 +1,6 @@
 /****************************************************************************** 
  *  Core-2 touch UI for 7-servo head  ·  talks to OpenRB-150 on UART2
- *  rev 2025-06-11  –  full code with LED logging & blue blink in demo-mode
+ *  rev 2025-06-13  –  SET_LED skips MIC_LED; SET_MIC_LED only affects MIC_LED
  ******************************************************************************/
 
 #include <M5Unified.h>
@@ -14,12 +14,13 @@ constexpr int TX2_PIN      = 14;
 constexpr uint32_t LINK_BAUD = 115200;
 
 /* ---------- NeoPixel strip ---------- */
-#define LED_PIN   27
-#define NUM_LEDS   16
+#define LED_PIN    27
+#define NUM_LEDS   17
 Adafruit_NeoPixel leds(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // LED index used to display microphone status
-constexpr int MIC_LED_INDEX = 17;
+constexpr int MIC_LED_INDEX = 16;
+
 /* ──────────────────────────────────────────────────────────────────────────
  *  VARIABLE & CONSTANT REFERENCE
  *  (reflects only how the sketch itself uses each symbol)
@@ -93,18 +94,19 @@ int selected     = 0;
 int scrollOffset = 0;
 
 /* Runtime flags */
-bool handshakeReceived   = false;
-bool demoMode            = false;
+bool handshakeReceived     = false;
+bool demoMode              = false;
 unsigned long handshakeStart = 0;
-bool dryRun              = true;
+bool dryRun                = true;
 bool servoPingResult[activeServos] = {false};
-bool calibrationReceived = false;
+bool calibrationReceived   = false;
 
 /* ———— Forward declarations ———— */
 void drawWindow();
 void drawLine(int i,int y);
 void drawSingle(int i);
 void processLedCommand(const String &cmd);
+void processMicLedCommand(const String &cmd);
 void handleCalibrationData(const String &line);
 void sendServoConfig();
 void handleUsbCommands();
@@ -116,17 +118,16 @@ void enterDemoMode();
 /*                             LED & Blink Helpers                       */
 /* ===================================================================== */
 
-/// Paint the strip, remember the color, log each LED.
 void setAll(uint32_t col) {
   lastColor = col;
   Serial.printf("[LED] setAll → 0x%06X\n", col);
   for (int i = 0; i < NUM_LEDS; ++i) {
+    if (i == MIC_LED_INDEX) continue;
     leds.setPixelColor(i, col);
   }
   leds.show();
 }
 
-/// Simple red/black blink used on HELLO handshake.
 void blinkScreen(int times) {
   uint32_t prev = lastColor;
   for (int i = 0; i < times; ++i) {
@@ -139,7 +140,6 @@ void blinkScreen(int times) {
   drawWindow();
 }
 
-/// Blink an arbitrary color `times` times.
 void blinkColor(uint32_t col, int times, int onMs=250, int offMs=250) {
   uint32_t prev = lastColor;
   for (int i = 0; i < times; ++i) {
@@ -153,7 +153,7 @@ void blinkColor(uint32_t col, int times, int onMs=250, int offMs=250) {
 }
 
 /* ===================================================================== */
-/*                           LED Command Parser                          */
+/*                          LED Command Parsers                          */
 /* ===================================================================== */
 
 void processLedCommand(const String &cmd) {
@@ -176,6 +176,37 @@ void processLedCommand(const String &cmd) {
   uint32_t col = leds.Color(r, g, b);
   Serial.printf("[LED] parsed → R=%d G=%d B=%d → 0x%06X\n", r, g, b, col);
   setAll(col);
+}
+
+/// Handle only the mic-status LED
+void processMicLedCommand(const String &cmd) {
+  if (!cmd.startsWith("SET_MIC_LED;")) return;
+
+  int idx = MIC_LED_INDEX;
+  int r = 0, g = 0, b = 0;
+  auto parse = [&](const String &key, int &v) {
+    int ix = cmd.indexOf(key + "=");
+    if (ix >= 0) {
+      int e = cmd.indexOf(';', ix);
+      v = cmd.substring(ix + key.length() + 1,
+                        e < 0 ? cmd.length() : e).toInt();
+      v = constrain(v, 0, 255);
+    }
+  };
+
+  parse("IDX", idx);
+  parse("R",   r);
+  parse("G",   g);
+  parse("B",   b);
+
+  if (idx == MIC_LED_INDEX) {
+    leds.setPixelColor(idx, leds.Color(r, g, b));
+    leds.show();
+    Serial.printf("[MIC_LED] IDX=%d R=%d G=%d B=%d\n", idx, r, g, b);
+  } else {
+    Serial.printf("[MIC_LED] Ignored IDX=%d (only %d allowed)\n",
+                  idx, MIC_LED_INDEX);
+  }
 }
 
 /* ===================================================================== */
@@ -301,8 +332,10 @@ void handleUsbCommands() {
     cmd.trim();
     if (cmd.isEmpty()) continue;
 
-    // LED commands first
+    // Handle RGB strip (all but MIC_LED_INDEX)
     processLedCommand(cmd);
+    // Handle mic-status LED only
+    processMicLedCommand(cmd);
 
     // Servo config from USB
     if (cmd.startsWith("SET_SERVO_CONFIG:")) {
@@ -310,10 +343,8 @@ void handleUsbCommands() {
       while (pos < cmd.length()) {
         int semi = cmd.indexOf(';', pos);
         String chunk = (semi<0)?cmd.substring(pos):cmd.substring(pos,semi);
-        int c1=chunk.indexOf(','),
-            c2=chunk.indexOf(',',c1+1),
-            c3=chunk.indexOf(',',c2+1),
-            c4=chunk.indexOf(',',c3+1);
+        int c1=chunk.indexOf(','), c2=chunk.indexOf(',', c1+1),
+            c3=chunk.indexOf(',', c2+1), c4=chunk.indexOf(',', c3+1);
         if(c4>c3&&c3>c2&&c2>c1&&c1>0){
           int id   = chunk.substring(0,c1).toInt();
           int tgt  = chunk.substring(c1+1,c2).toInt();
@@ -346,7 +377,7 @@ void handleUsbCommands() {
       continue;
     }
 
-    // Forward any other commands to OpenRB
+    // Forward all others
     OpenRB.println(cmd);
     Serial.printf("[→RB] (USB fwd) %s\n", cmd.c_str());
   }
@@ -380,7 +411,7 @@ void handleLink() {
       continue;
     }
 
-    // Anything else from RB
+    // Anything else
     Serial.printf("[RB>] %s\n", msg.c_str());
   }
 }
@@ -400,7 +431,7 @@ void setup(){
   setAll(0);
   delay(100);
 
-  // Startup LED test
+  // Startup LED test (skips MIC_LED_INDEX)
   Serial.println("[LED] Testing strip…");
   setAll(leds.Color(255,0,0)); delay(500);
   setAll(leds.Color(0,255,0)); delay(500);
@@ -425,122 +456,19 @@ void loop(){
   handleLink();
   handleUsbCommands();
 
-  // If no handshake, enter demo mode
+  // Demo mode if no handshake
   if (!handshakeReceived && !demoMode &&
       millis() - handshakeStart > 10000) {
     enterDemoMode();
   }
-/* ------------------------------------------------ */
 
-/* ---------- USB-Serial pass-through & commands ---------- */
-  if (Serial.available()) {
-    String cmd = Serial.readStringUntil('\n');
-    cmd.trim();
-    if (!cmd.length()) goto after_usb;
-
-    /* --- RGB LED --- */
-    if (cmd.startsWith("SET_LED;")) {
-      int r=0,g=0,b=0;
-      int rI=cmd.indexOf("R="), gI=cmd.indexOf("G="), bI=cmd.indexOf("B=");
-      if (rI>=0) r = cmd.substring(rI+2, cmd.indexOf(';', rI+2)).toInt();
-      if (gI>=0) g = cmd.substring(gI+2, cmd.indexOf(';', gI+2)).toInt();
-      if (bI>=0) {
-        int e = cmd.indexOf(';', bI+2); if (e==-1) e=cmd.length();
-        b = cmd.substring(bI+2, e).toInt();
-      }
-      uint32_t col = leds.Color(r,g,b);
-      for (int i=0;i<NUM_LEDS;++i) leds.setPixelColor(i,col);
-      leds.show();
-      Serial.printf("[LED] Set R=%d G=%d B=%d\n", r,g,b);
-    }
-
-    /* --- mic status LED --- */
-    else if (cmd.startsWith("SET_MIC_LED;")) {
-      int idx = MIC_LED_INDEX;
-      int r=0,g=0,b=0;
-      int iI=cmd.indexOf("IDX="), rI=cmd.indexOf("R="), gI=cmd.indexOf("G="), bI=cmd.indexOf("B=");
-      if (iI>=0) idx = cmd.substring(iI+4, cmd.indexOf(';', iI+4)).toInt();
-      if (rI>=0) r = cmd.substring(rI+2, cmd.indexOf(';', rI+2)).toInt();
-      if (gI>=0) g = cmd.substring(gI+2, cmd.indexOf(';', gI+2)).toInt();
-      if (bI>=0) {
-        int e = cmd.indexOf(';', bI+2); if (e==-1) e=cmd.length();
-        b = cmd.substring(bI+2, e).toInt();
-      }
-      if (idx >= 0 && idx < NUM_LEDS) {
-        leds.setPixelColor(idx, leds.Color(r,g,b));
-        leds.show();
-      }
-      Serial.printf("[MIC_LED] IDX=%d R=%d G=%d B=%d\n", idx, r, g, b);
-    }
-
-    /* --- SET_SERVO_CONFIG --- */
-    else if (cmd.startsWith("SET_SERVO_CONFIG:")) {
-      int pos = String("SET_SERVO_CONFIG:").length();
-      while (pos < cmd.length()) {
-        int semi = cmd.indexOf(';', pos);
-        String chunk = (semi==-1) ? cmd.substring(pos)
-                                  : cmd.substring(pos, semi);
-
-        int c1=chunk.indexOf(','), c2=chunk.indexOf(',', c1+1),
-            c3=chunk.indexOf(',', c2+1), c4=chunk.indexOf(',', c3+1);
-
-        if (c4>c3 && c3>c2 && c2>c1 && c1>0) {
-          int id  = chunk.substring(0,c1).toInt();
-          int tgt = chunk.substring(c1+1,c2).toInt();
-          int vel = chunk.substring(c2+1,c3).toInt();
-          int idle = chunk.substring(c3+1,c4).toInt();
-          unsigned long ivl = chunk.substring(c4+1).toInt();
-
-          if (id>=0 && id<activeServos) {
-            ServoState& s = servos[id];
-            /* -------- NEW LOGIC --------
-               Clamp only *after* we have a calibration table.           */
-            if (calibrationReceived)
-              s.angle = constrain(tgt, s.min_angle, s.max_angle);
-            else
-              s.angle = tgt;
-
-            s.initial_angle      = s.angle;
-            s.velocity           = vel;
-            s.idle_range         = idle;
-            s.idleUpdateInterval = ivl;
-          }
-        }
-        if (semi==-1) break;
-        pos = semi + 1;
-      }
-
-      Serial.println("[OK] Servo config updated from USB");
-      for (int i=0;i<activeServos;++i) {
-        ServoState& s = servos[i];
-        Serial.printf("Servo %d: angle=%d, velocity=%d, idle_range=%d, "
-                      "idleUpdateInterval=%lu\n",
-                      i, s.angle, s.velocity,
-                      s.idle_range, s.idleUpdateInterval);
-      }
-      drawWindow();
-    }
-
-    /* --- GET_SERVO_CONFIG --- */
-    else if (cmd == "GET_SERVO_CONFIG") {
-      sendServoConfig();
-    }
-
-    /* --- anything else: forward to OpenRB --- */
-    else {
-      OpenRB.println(cmd);
-      Serial.printf("[→RB] (from USB) %s\n", cmd.c_str());
-    }
-  }
-after_usb:
-
-/* ---------- idle jitter ---------- */
+  // idle jitter
   if (calibrationReceived) {
     unsigned long now = millis();
     for (int i = 0; i < activeServos; ++i) {
       if (!servoPingResult[i]) continue;
       auto &s = servos[i];
-      if (s.idle_range>0 &&
+      if (s.idle_range > 0 &&
           now - s.lastIdleUpdate >
             s.idleUpdateInterval + random(0,1000)) {
         int minI = max(s.min_angle, s.initial_angle - s.idle_range);
@@ -562,9 +490,9 @@ after_usb:
     }
   }
 
-  // Button A: decrement selected servo
+  // Button A: decrement selected
   if (M5.BtnA.isPressed() && selected<activeServos && servoPingResult[selected]) {
-    if (servos[selected].angle>servos[selected].min_angle) {
+    if (servos[selected].angle > servos[selected].min_angle) {
       --servos[selected].angle;
       drawSingle(selected);
       sendMoveServoCommand(selected, servos[selected].angle,
@@ -572,9 +500,9 @@ after_usb:
     }
   }
 
-  // Button B: increment selected servo
+  // Button B: increment selected
   if (M5.BtnB.isPressed() && selected<activeServos && servoPingResult[selected]) {
-    if (servos[selected].angle<servos[selected].max_angle) {
+    if (servos[selected].angle < servos[selected].max_angle) {
       ++servos[selected].angle;
       drawSingle(selected);
       sendMoveServoCommand(selected, servos[selected].angle,
@@ -586,7 +514,7 @@ after_usb:
   if (M5.BtnC.wasPressed()) {
     int next = selected;
     for (int t = 0; t < activeServos; ++t) {
-      next = (next+1)%activeServos;
+      next = (next+1) % activeServos;
       if (servoPingResult[next]) {
         selected = next;
         drawSingle(selected);
