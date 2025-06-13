@@ -267,17 +267,7 @@ def build_tools():
                 "additionalProperties": False
             }
         },
-        {
-            "type": "function",
-            "name": "read_long_term_memory",
-            "description": "Retrieve the JSON contents of Wheatley's long term memory store.",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-                "additionalProperties": False
-            }
-        }
+        # Tool for persisting long term memory. Memory retrieval happens automatically.
     ]
     #print(tools)
     return tools

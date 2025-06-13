@@ -269,9 +269,9 @@ def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue
                         manager.add_text_to_conversation("system", f"Info: {context_text}")
             workflow = [item for item in workflow if item.get("name") != "web_search_call_result"]
 
-        # Always fetch memory before running tools
+        # Always fetch memory before running tools and update memory message
         mem_result = Functions().read_long_term_memory()
-        manager.add_text_to_conversation("system", str(mem_result))
+        manager.update_memory(str(mem_result))
 
         if not workflow:
             return
