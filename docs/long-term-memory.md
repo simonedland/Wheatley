@@ -6,13 +6,12 @@ Provide persistent storage so Wheatley can recall facts between sessions.
 ## Usage
 - The LLM invokes the `write_long_term_memory` tool with a JSON object under the `data` field.
 - Stored entries accumulate in `long_term_memory.json`.
-- `read_long_term_memory` returns the list of stored objects.
 - Memory access is silent; Wheatley no longer speaks when storing or retrieving data.
-- The assistant fetches long-term memory at the start of every tool workflow.
+- The assistant maintains a single memory message right after the system prompt and updates it every interaction.
 
 ## Internals
 - `utils.long_term_memory` defines `append_memory` and `read_memory`.
-- `Functions` exposes `write_long_term_memory` and `read_long_term_memory` to the LLM.
+- `Functions` exposes `write_long_term_memory` to the LLM.
 - Tool definitions live in `llm_client_utils.build_tools()`.
 
 ## Examples
