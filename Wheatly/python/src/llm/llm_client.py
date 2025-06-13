@@ -466,8 +466,8 @@ class Functions:
 
     def write_long_term_memory(self, data: dict) -> str:
         """Persist ``data`` to the long term memory JSON file."""
-        from utils.long_term_memory import append_memory
-        append_memory(data, path=self.memory_path)
+        from utils.long_term_memory import overwrite_memory
+        overwrite_memory(data, path=self.memory_path)
         return "memory written"
 
     def read_long_term_memory(self) -> dict:

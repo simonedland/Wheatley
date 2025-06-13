@@ -76,6 +76,25 @@ def append_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
         print(f"Failed to write memory to {path}: {e}")
 
 
+def overwrite_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
+    """Replace the entire memory with ``entry``.
+
+    Parameters
+    ----------
+    entry:
+        Single dictionary to store as the only memory item.
+    path:
+        File where the long term memory is stored.
+    """
+    data = [_compress_entry(entry)]
+    data = _optimize_memory(data)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Failed to write memory to {path}: {e}")
+
+
 
 def edit_memory(index: int, entry: Dict[str, Any], path: str = MEMORY_FILE) -> bool:
     """Replace or append a memory entry.
