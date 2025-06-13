@@ -124,16 +124,20 @@ class ArduinoInterface:
             print("Arduino not connected. Cannot send command.")
         return response
 
-    def set_led_color(self, r: int, g: int, b: int):
-        """Set the NeoPixel LED color on the Arduino."""
-        led_command = f"SET_LED;R={int(r)};G={int(g)};B={int(b)}\n"
+    def set_led_color(self, r, g, b):
+        """Set the NeoPixel LED color on the Arduino, scaling brightness by dividing by 5."""
+        r = int(int(r) / 5)
+        g = int(int(g) / 5)
+        b = int(int(b) / 5)
+        led_command = f"SET_LED;R={r};G={g};B={b}\n"
         self.send_command(led_command)
 
-    def set_mic_led_color(self, r: int, g: int, b: int, idx: int = MIC_LED_INDEX):
-        """Set only the microphone status NeoPixel to the given color."""
-        led_command = (
-            f"SET_MIC_LED;IDX={int(idx)};R={int(r)};G={int(g)};B={int(b)}\n"
-        )
+    def set_mic_led_color(self, r, g, b):
+        """Set only the microphone status NeoPixel to the given color, scaling brightness by dividing by 5."""
+        r = int(int(r) / 5)
+        g = int(int(g) / 5)
+        b = int(int(b) / 5)
+        led_command = f"SET_MIC_LED;R={r};G={g};B={b}\n"
         self.send_command(led_command)
 
     def read_response(self):
@@ -418,5 +422,12 @@ class ServoController:
         return params
 
     def get_led_color(self, emotion):
-        return self.emotion_animations.get(emotion, {}).get("color", (255, 255, 255))
+        color = self.emotion_animations.get(emotion, {}).get("color", (255, 255, 255))
+        # Scale each channel down by dividing by 5 (e.g., 255 -> 51, 128 -> 25, etc.)
+        if isinstance(color, (list, tuple)) and len(color) == 3:
+            r = int(int(color[0]) / 5)
+            g = int(int(color[1]) / 5)
+            b = int(int(color[2]) / 5)
+            return (r, g, b)
+        return (51, 51, 51)
 

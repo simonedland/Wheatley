@@ -29,12 +29,12 @@
   - [ ] STT streaming input transcription
   [reference](https://platform.openai.com/docs/guides/speech-to-text?lang=curl#streaming-transcriptions)
   - [ ] Stream LLM response to TTS
+  TTS does not support streaming innput there is therefore no value in streaming the LLM response to TTS.
   [reference](https://platform.openai.com/docs/api-reference/responses-streaming)
   - [ ] Stream TTS response to speaker
   [reference](https://elevenlabs.io/docs/api-reference/streaming)
 
 ### LLM
-
 - [ ] Add long term memory (LTM) to the LLM.
 - [ ] make a memmory store with conigurable storage prioroties, and storage timestamps.
     - [ ] make a memmory "time out" for the LLM, so it can forget things after a certain time.
