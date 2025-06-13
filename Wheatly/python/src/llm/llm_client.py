@@ -370,6 +370,12 @@ class Functions:
                 data = item.get("arguments", {}).get("data", {})
                 response = self.write_long_term_memory(data)
                 results.append((func_name, response))
+            elif func_name == "edit_long_term_memory":
+                args = item.get("arguments", {})
+                index = args.get("index")
+                data = args.get("data", {})
+                response = self.edit_long_term_memory(index, data)
+                results.append((func_name, response))
 
             tool_elapsed = time.time() - tool_start
             logging.info(f"Tool '{func_name}' execution took {tool_elapsed:.3f} seconds.")
@@ -468,6 +474,12 @@ class Functions:
         """Return the contents of the long term memory file."""
         from utils.long_term_memory import read_memory
         return {"memory": read_memory(path=self.memory_path)}
+
+    def edit_long_term_memory(self, index: int, data: dict) -> str:
+        """Update the memory entry at ``index`` with ``data``."""
+        from utils.long_term_memory import edit_memory
+        success = edit_memory(index, data, path=self.memory_path)
+        return "memory updated" if success else "memory index out of range"
 
     def get_advice(self):
       """Return a random piece of advice from the API Ninjas service."""

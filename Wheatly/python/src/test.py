@@ -125,14 +125,19 @@ class TestConversationManagerFunctionality(ColorfulTestCase):
 
 class TestLongTermMemory(ColorfulTestCase):
     def test_memory_read_write(self):
-        from utils.long_term_memory import append_memory, read_memory
+        from utils.long_term_memory import append_memory, read_memory, edit_memory
         tmp_file = "temp_memory.json"
         if os.path.exists(tmp_file):
             os.remove(tmp_file)
         append_memory({"foo": "bar"}, path=tmp_file)
+        long_text = "x" * 300
+        append_memory({"note": long_text}, path=tmp_file)
         data = read_memory(path=tmp_file)
         self.assertIsInstance(data, list)
-        self.assertEqual(data[-1]["foo"], "bar")
+        self.assertEqual(data[-1]["note"], long_text[:197] + "...")
+        edit_memory(0, {"foo": "baz" * 100}, path=tmp_file)
+        data = read_memory(path=tmp_file)
+        self.assertEqual(data[0]["foo"], ("baz" * 100)[:197] + "...")
         os.remove(tmp_file)
 
 if __name__ == '__main__':
