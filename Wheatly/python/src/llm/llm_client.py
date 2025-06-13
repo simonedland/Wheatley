@@ -266,6 +266,7 @@ class Functions:
         self.tts_enabled = config["tts"]["enabled"]
         self.google_agent = GoogleAgent()
         self.spotify_agent = SpotifyAgent()
+        self.memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json")
         
 
     def execute_workflow(self, workflow, event_queue=None):
@@ -363,8 +364,15 @@ class Functions:
               response_str = f"Google callendar summary:\n{response}"
               response_str += f"\n\nWeather Summary for Oslo:\n{weather_summary}"
               response_str += f"\n\nQuote of the Day: {get_quote()}"
-              
+
               results.append((func_name, response_str))
+            elif func_name == "write_long_term_memory":
+                data = item.get("arguments", {}).get("data", {})
+                response = self.write_long_term_memory(data)
+                results.append((func_name, response))
+            elif func_name == "read_long_term_memory":
+                response = self.read_long_term_memory()
+                results.append((func_name, response))
 
             tool_elapsed = time.time() - tool_start
             logging.info(f"Tool '{func_name}' execution took {tool_elapsed:.3f} seconds.")
@@ -452,6 +460,17 @@ class Functions:
             )
             await event_queue.put(timer_event)
         asyncio.create_task(timer_task())
+
+    def write_long_term_memory(self, data: dict) -> str:
+        """Persist ``data`` to the long term memory JSON file."""
+        from utils.long_term_memory import append_memory
+        append_memory(data, path=self.memory_path)
+        return "memory written"
+
+    def read_long_term_memory(self) -> dict:
+        """Return the contents of the long term memory file."""
+        from utils.long_term_memory import read_memory
+        return {"memory": read_memory(path=self.memory_path)}
 
     def get_advice(self):
       """Return a random piece of advice from the API Ninjas service."""

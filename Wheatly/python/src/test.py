@@ -123,5 +123,17 @@ class TestConversationManagerFunctionality(ColorfulTestCase):
         self.assertIn("Hello", conv[-2]["content"], "User message should be in conversation")
         self.assertIn("Hi!", conv[-1]["content"], "Assistant message should be in conversation")
 
+class TestLongTermMemory(ColorfulTestCase):
+    def test_memory_read_write(self):
+        from utils.long_term_memory import append_memory, read_memory
+        tmp_file = "temp_memory.json"
+        if os.path.exists(tmp_file):
+            os.remove(tmp_file)
+        append_memory({"foo": "bar"}, path=tmp_file)
+        data = read_memory(path=tmp_file)
+        self.assertIsInstance(data, list)
+        self.assertEqual(data[-1]["foo"], "bar")
+        os.remove(tmp_file)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

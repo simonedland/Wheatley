@@ -253,6 +253,30 @@ def build_tools():
                 "required": [],
                 "additionalProperties": False
             }
+        },
+        {
+            "type": "function",
+            "name": "write_long_term_memory",
+            "description": "Persist JSON data to Wheatley's long term memory store.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "data": {"type": "object"}
+                },
+                "required": ["data"],
+                "additionalProperties": False
+            }
+        },
+        {
+            "type": "function",
+            "name": "read_long_term_memory",
+            "description": "Retrieve the JSON contents of Wheatley's long term memory store.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False
+            }
         }
     ]
     #print(tools)

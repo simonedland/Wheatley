@@ -44,6 +44,7 @@ Maintain a “Documented Features” section in this file. Update whenever you a
 - [timing-logging](docs/timing-logging.md)
 - [speaker-warmup](docs/speaker-warmup.md)
 - [present-timeline](docs/present-timeline.md)
+- [long-term-memory](docs/long-term-memory.md)
 ```
 
 ---
