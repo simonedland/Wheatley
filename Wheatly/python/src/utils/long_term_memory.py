@@ -78,31 +78,39 @@ def append_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
 
 
 def edit_memory(index: int, entry: Dict[str, Any], path: str = MEMORY_FILE) -> bool:
-    """Replace a memory entry at ``index`` with ``entry``.
+    """Replace or append a memory entry.
+
+    If ``index`` refers to an existing item it is replaced with ``entry``.
+    Otherwise ``entry`` is appended to the end of the memory list.  This
+    behaviour avoids errors when the model attempts to edit a non-existent
+    index.
 
     Parameters
     ----------
     index:
         Zero-based list position of the entry to replace.
     entry:
-        New dictionary to store at the given index.
+        New dictionary to store at the given index or to append.
     path:
         File where the long term memory is stored.
 
     Returns
     -------
     bool
-        ``True`` if the entry was replaced, ``False`` if ``index`` was invalid.
+        ``True`` if the entry was written successfully, ``False`` on error.
     """
+
     data = read_memory(path)
     if 0 <= index < len(data):
         data[index] = _compress_entry(entry)
-        data = _optimize_memory(data)
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-            return True
-        except Exception as e:
-            print(f"Failed to write memory to {path}: {e}")
-    return False
+    else:
+        data.append(_compress_entry(entry))
+    data = _optimize_memory(data)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Failed to write memory to {path}: {e}")
+        return False
 
