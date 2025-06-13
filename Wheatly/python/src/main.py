@@ -118,6 +118,9 @@ def initialize_assistant(config):
     # Initialize core components
     manager = ConversationManager(max_memory=max_memory)
     gpt_client = GPTClient(model=gpt_model)
+    # Fetch long term memory once at startup
+    initial_memory = Functions().read_long_term_memory()
+    manager.update_memory(f"LONG TERM MEMORY:\n{initial_memory}")
     stt_engine = SpeechToTextEngine()
     tts_engine = TextToSpeechEngine()
     import sys
@@ -271,7 +274,7 @@ def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue
 
         # Always fetch memory before running tools and update memory message
         mem_result = Functions().read_long_term_memory()
-        manager.update_memory(str(mem_result))
+        manager.update_memory(f"LONG TERM MEMORY:\n{mem_result}")
 
         if not workflow:
             return

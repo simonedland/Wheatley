@@ -267,6 +267,20 @@ def build_tools():
                 "additionalProperties": False
             }
         },
+        {
+            "type": "function",
+            "name": "edit_long_term_memory",
+            "description": "Replace a memory entry by index with new JSON data.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "index": {"type": "integer"},
+                    "data": {"type": "object"}
+                },
+                "required": ["index", "data"],
+                "additionalProperties": False
+            }
+        },
         # Tool for persisting long term memory. Memory retrieval happens automatically.
     ]
     #print(tools)

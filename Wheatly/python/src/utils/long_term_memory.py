@@ -30,6 +30,32 @@ def read_memory(path: str = MEMORY_FILE) -> List[Dict[str, Any]]:
     return []
 
 
+def _compress_entry(entry: Dict[str, Any], max_len: int = 200) -> Dict[str, Any]:
+    """Return a copy of ``entry`` with long string values shortened.
+
+    Parameters
+    ----------
+    entry:
+        Memory dictionary to compress.
+    max_len:
+        Maximum length for string values before truncation.
+    """
+    result = {}
+    for key, value in entry.items():
+        if isinstance(value, str) and len(value) > max_len:
+            result[key] = value[: max_len - 3] + "..."
+        else:
+            result[key] = value
+    return result
+
+
+def _optimize_memory(data: List[Dict[str, Any]], max_entries: int = 100) -> List[Dict[str, Any]]:
+    """Return ``data`` trimmed to ``max_entries`` most recent items."""
+    if len(data) > max_entries:
+        data = data[-max_entries:]
+    return data
+
+
 def append_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
     """Append ``entry`` to the memory file located at ``path``.
 
@@ -41,10 +67,42 @@ def append_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
         File to write the memory entry to.
     """
     data = read_memory(path)
-    data.append(entry)
+    data.append(_compress_entry(entry))
+    data = _optimize_memory(data)
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
     except Exception as e:
         print(f"Failed to write memory to {path}: {e}")
+
+
+
+def edit_memory(index: int, entry: Dict[str, Any], path: str = MEMORY_FILE) -> bool:
+    """Replace a memory entry at ``index`` with ``entry``.
+
+    Parameters
+    ----------
+    index:
+        Zero-based list position of the entry to replace.
+    entry:
+        New dictionary to store at the given index.
+    path:
+        File where the long term memory is stored.
+
+    Returns
+    -------
+    bool
+        ``True`` if the entry was replaced, ``False`` if ``index`` was invalid.
+    """
+    data = read_memory(path)
+    if 0 <= index < len(data):
+        data[index] = _compress_entry(entry)
+        data = _optimize_memory(data)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Failed to write memory to {path}: {e}")
+    return False
 
