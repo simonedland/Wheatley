@@ -266,7 +266,7 @@ class Functions:
         self.tts_enabled = config["tts"]["enabled"]
         self.google_agent = GoogleAgent()
         self.spotify_agent = SpotifyAgent()
-        self.memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json")
+        self.memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.txt")
         
 
     def execute_workflow(self, workflow, event_queue=None):
@@ -277,7 +277,7 @@ class Functions:
             func_name = item.get("name")
             logging.info(f"\n--- Tool Execution: {func_name} ---")
             tool_start = time.time()
-            if self.tts_enabled and func_name != "write_long_term_memory":
+            if self.tts_enabled and func_name != "add_long_term_memory":
                 conversation = [
                     {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
                     {"role": "user", "content": f"Executing function: {func_name} with arguments: {item.get('arguments')}"}
@@ -366,15 +366,11 @@ class Functions:
               response_str += f"\n\nQuote of the Day: {get_quote()}"
 
               results.append((func_name, response_str))
-            elif func_name == "write_long_term_memory":
-                data = item.get("arguments", {}).get("data", {})
-                response = self.write_long_term_memory(data)
-                results.append((func_name, response))
-            elif func_name == "edit_long_term_memory":
+            elif func_name == "add_long_term_memory":
                 args = item.get("arguments", {})
                 index = args.get("index")
-                data = args.get("data", {})
-                response = self.edit_long_term_memory(index, data)
+                text = args.get("text", "")
+                response = self.add_long_term_memory(index, text)
                 results.append((func_name, response))
 
             tool_elapsed = time.time() - tool_start
@@ -464,21 +460,15 @@ class Functions:
             await event_queue.put(timer_event)
         asyncio.create_task(timer_task())
 
-    def write_long_term_memory(self, data: dict) -> str:
-        """Persist ``data`` to the long term memory JSON file."""
-        from utils.long_term_memory import append_memory
-        append_memory(data, path=self.memory_path)
-        return "memory written"
-
     def read_long_term_memory(self) -> dict:
         """Return the contents of the long term memory file."""
         from utils.long_term_memory import read_memory
         return {"memory": read_memory(path=self.memory_path)}
 
-    def edit_long_term_memory(self, index: int, data: dict) -> str:
-        """Update the memory entry at ``index`` with ``data``."""
+    def add_long_term_memory(self, index: int, text: str) -> str:
+        """Replace or append a memory entry with ``text``."""
         from utils.long_term_memory import edit_memory
-        success = edit_memory(index, data, path=self.memory_path)
+        success = edit_memory(index, text, path=self.memory_path)
         return "memory updated" if success else "memory index out of range"
 
     def get_advice(self):

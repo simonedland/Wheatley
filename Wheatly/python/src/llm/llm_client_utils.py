@@ -256,28 +256,15 @@ def build_tools():
         },
         {
             "type": "function",
-            "name": "write_long_term_memory",
-            "description": "Persist JSON data to Wheatley's long term memory store.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "data": {"type": "object"}
-                },
-                "required": ["data"],
-                "additionalProperties": False
-            }
-        },
-        {
-            "type": "function",
-            "name": "edit_long_term_memory",
-            "description": "Replace a memory entry by index with new JSON data.",
+            "name": "add_long_term_memory",
+            "description": "Replace or append a memory entry by index with text.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "index": {"type": "integer"},
-                    "data": {"type": "object"}
+                    "text": {"type": "string"}
                 },
-                "required": ["index", "data"],
+                "required": ["index", "text"],
                 "additionalProperties": False
             }
         },
