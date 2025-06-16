@@ -476,6 +476,9 @@ class PuppetGUI(Tk):
     def _send_led(self):
         try:
             r, g, b = map(int, (self.r.get(), self.g.get(), self.b.get()))
+            r = int(r // 5)
+            g = int(g // 5)
+            b = int(b // 5)
         except ValueError:
             return self._msg("bad LED")
         self.backend.send(
@@ -485,6 +488,9 @@ class PuppetGUI(Tk):
     def _send_mic_led(self):
         try:
             r, g, b = map(int, (self.r.get(), self.g.get(), self.b.get()))
+            r = int(r // 5)
+            g = int(g // 5)
+            b = int(b // 5)
         except ValueError:
             return self._msg("bad LED")
         self.backend.send(
