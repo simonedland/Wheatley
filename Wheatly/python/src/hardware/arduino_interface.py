@@ -261,135 +261,27 @@ class ServoController:
         # Update emotion animations using target_factors (value between 0 and 1),
         # and add idle_ranges for each emotion.
         self.emotion_animations = {
-            "angry": {"velocities": [5,1,1,1,1,5,5],"target_factors": [0.0,0.125,0.875,0.489,0.486,0.5,0.5],"idle_ranges": [10,5,5,40,3,10,10],"intervals": [2000,5000,5000,5000,5000,2000,2000],"color": [255,0,0]},
-            "happy": {"velocities": [5,1,1,1,1,5,5],"target_factors": [0.0,1.0,0.475,0.489,0.729,0.617,0.625],"idle_ranges": [10,0,5,20,3,10,10],"intervals": [2000,1000,5000,5000,5000,2000,2000],"color": [255,0,0]},
-            "sad": {
-                "velocities": [3] * self.servo_count,
-                "target_factors": [0.10, 0.15, 0.10, 0.15, 0.10, 0.15, 0.10],
-                "idle_ranges": [15, 15, 15, 15, 15, 15, 15],
-                "intervals": [2500, 2500, 2500, 2000, 2000, 3000, 3000],
-                "color": (0, 0, 255),          # blue
-            },
-            "neutral": {
-                "velocities": [4] * self.servo_count,
-                "target_factors": [0.5] * self.servo_count,
-                "idle_ranges": [8, 8, 8, 8, 8, 8, 8],
-                "intervals": [2000, 2000, 2000, 2000, 2000, 2000, 2000],
-                "color": (255, 255, 255),      # white
-            },
-            "excited": {
-                "velocities": [9] * self.servo_count,
-                "target_factors": [0.70] * self.servo_count,
-                "idle_ranges": [3, 3, 3, 3, 3, 3, 3],
-                "intervals": [500, 500, 500, 400, 400, 600, 600],
-                "color": (255, 128, 0),        # orange
-            },
-            "confused": {
-                "velocities": [6, 5, 6, 5, 6, 5, 6],
-                "target_factors": [0.45, 0.55, 0.45, 0.55, 0.45, 0.55, 0.45],
-                "idle_ranges": [20, 15, 20, 15, 20, 15, 20],
-                "intervals": [1800, 1700, 1800, 1700, 1800, 1700, 1800],
-                "color": (128, 0, 255),        # purple
-            },
-            "surprised": {
-                "velocities": [10, 9, 10, 9, 10, 9, 10],
-                "target_factors": [0.85, 0.80, 0.85, 0.80, 0.85, 0.80, 0.85],
-                "idle_ranges": [2, 2, 2, 2, 2, 2, 2],
-                "intervals": [300, 300, 300, 250, 250, 350, 350],
-                "color": (0, 255, 255),        # cyan
-            },
-            "curious": {
-                "velocities": [7, 6, 7, 6, 7, 6, 7],
-                "target_factors": [0.60, 0.55, 0.60, 0.55, 0.60, 0.55, 0.60],
-                "idle_ranges": [12, 10, 12, 10, 12, 10, 12],
-                "intervals": [1200, 1100, 1200, 1100, 1200, 1100, 1200],
-                "color": (0, 255, 128),        # teal
-            },
-            "bored": {
-                "velocities": [2] * self.servo_count,
-                "target_factors": [0.35, 0.30, 0.35, 0.30, 0.35, 0.30, 0.35],
-                "idle_ranges": [30, 30, 30, 30, 30, 30, 30],
-                "intervals": [4000, 4000, 4000, 3500, 3500, 5000, 5000],
-                "color": (128, 128, 128),      # gray
-            },
-            "fearful": {
-                "velocities": [10, 8, 10, 8, 10, 8, 10],
-                "target_factors": [0.15, 0.80, 0.15, 0.80, 0.15, 0.80, 0.15],
-                "idle_ranges": [5, 5, 5, 5, 5, 5, 5],
-                "intervals": [400, 400, 400, 350, 350, 500, 500],
-                "color": (255, 0, 255),        # magenta
-            },
-            "hopeful": {
-                "velocities": [6, 5, 6, 5, 6, 5, 6],
-                "target_factors": [0.65, 0.60, 0.65, 0.60, 0.65, 0.60, 0.65],
-                "idle_ranges": [10, 10, 10, 10, 10, 10, 10],
-                "intervals": [1500, 1500, 1500, 1400, 1400, 1600, 1600],
-                "color": (0, 255, 0),          # green
-            },
-            "embarrassed": {
-                "velocities": [4, 7, 4, 7, 4, 7, 4],
-                "target_factors": [0.40, 0.20, 0.40, 0.20, 0.40, 0.20, 0.40],
-                "idle_ranges": [18, 8, 18, 8, 18, 8, 18],
-                "intervals": [2200, 1000, 2200, 1000, 2200, 1000, 2200],
-                "color": (255, 192, 203),      # pink
-            },
-            "frustrated": {
-                "velocities": [9, 8, 9, 8, 9, 8, 9],
-                "target_factors": [0.75, 0.20, 0.75, 0.20, 0.75, 0.20, 0.75],
-                "idle_ranges": [6, 6, 6, 6, 6, 6, 6],
-                "intervals": [800, 800, 800, 700, 700, 900, 900],
-                "color": (255, 69, 0),         # orange-red
-            },
-            "proud": {
-                "velocities": [7, 6, 7, 6, 7, 6, 7],
-                "target_factors": [0.80, 0.75, 0.80, 0.75, 0.80, 0.75, 0.80],
-                "idle_ranges": [8, 8, 8, 8, 8, 8, 8],
-                "intervals": [1300, 1300, 1300, 1200, 1200, 1400, 1400],
-                "color": (255, 215, 0),        # gold
-            },
-            "nostalgic": {
-                "velocities": [3, 4, 3, 4, 3, 4, 3],
-                "target_factors": [0.30, 0.60, 0.30, 0.60, 0.30, 0.60, 0.30],
-                "idle_ranges": [20, 15, 20, 15, 20, 15, 20],
-                "intervals": [3000, 2500, 3000, 2500, 3000, 2500, 3000],
-                "color": (255, 182, 193),      # light pink
-            },
-            "relieved": {
-                "velocities": [5, 4, 5, 4, 5, 4, 5],
-                "target_factors": [0.55, 0.60, 0.55, 0.60, 0.55, 0.60, 0.55],
-                "idle_ranges": [12, 12, 12, 12, 12, 12, 12],
-                "intervals": [1700, 1700, 1700, 1600, 1600, 1800, 1800],
-                "color": (173, 216, 230),      # light blue
-            },
-            "grateful": {
-                "velocities": [6, 5, 6, 5, 6, 5, 6],
-                "target_factors": [0.60, 0.65, 0.60, 0.65, 0.60, 0.65, 0.60],
-                "idle_ranges": [10, 10, 10, 10, 10, 10, 10],
-                "intervals": [1400, 1400, 1400, 1300, 1300, 1500, 1500],
-                "color": (0, 255, 127),        # spring green
-            },
-            "shy": {
-                "velocities": [3, 5, 3, 5, 3, 5, 3],
-                "target_factors": [0.25, 0.20, 0.25, 0.20, 0.25, 0.20, 0.25],
-                "idle_ranges": [25, 8, 25, 8, 25, 8, 25],
-                "intervals": [2600, 1000, 2600, 1000, 2600, 1000, 2600],
-                "color": (238, 130, 238),      # violet
-            },
-            "disappointed": {
-                "velocities": [2, 3, 2, 3, 2, 3, 2],
-                "target_factors": [0.15, 0.10, 0.15, 0.10, 0.15, 0.10, 0.15],
-                "idle_ranges": [20, 20, 20, 20, 20, 20, 20],
-                "intervals": [3500, 3500, 3500, 3000, 3000, 4000, 4000],
-                "color": (105, 105, 105),      # dim gray
-            },
-            "jealous": {
-                "velocities": [7, 6, 7, 6, 7, 6, 7],
-                "target_factors": [0.40, 0.80, 0.40, 0.80, 0.40, 0.80, 0.40],
-                "idle_ranges": [10, 5, 10, 5, 10, 5, 10],
-                "intervals": [1200, 800, 1200, 800, 1200, 800, 1200],
-                "color": (0, 128, 0),          # dark green
-            }
-        }
+  "angry": {"velocities": [5,5,5,5,5,5,5],"target_factors": [0.185,0.075,0.925,0.489,0.486,0.5,0.0],"idle_ranges": [100,2,2,40,3,10,10],"intervals": [2000,5000,5000,5000,5000,2000,2000],"color": [255,0,0]},
+  "happy": {"velocities": [10,1,1,10,1,5,5],"target_factors": [0.865,0.15,0.0,0.489,0.043,1.0,0.0],"idle_ranges": [100,5,1,40,3,10,10],"intervals": [2000,1000,5000,3000,5000,2000,2000],"color": [0,255,0]},
+  "sad": {"velocities": [1,1,1,1,1,1,1],"target_factors": [0.927,0.4,0.65,0.5,0.0,0.0,0.0],"idle_ranges": [50,10,10,50,10,10,10],"intervals": [5000,5000,5000,5000,10400,10500,10600],"color": [0,0,255]},
+  "neutral": {"velocities": [2,1,1,3,3,5,5],"target_factors": [0.501,0.75,0.225,0.489,0.457,1.0,0.0],"idle_ranges": [400,5,5,30,30,10,10],"intervals": [20000,5000,5000,3000,5000,2000,2000],"color": [255,255,255]},
+  "excited": {"velocities": [20,1,1,10,1,1,1],"target_factors": [0.471,0.475,0.075,0.5,0.0,0.0,0.0],"idle_ranges": [200,5,3,50,10,10,10],"intervals": [5000,1000,1000,500,10400,10500,10600],"color": [255,128,64]},
+  "confused": {"velocities": [20,1,1,10,1,1,1],"target_factors": [0.471,0.175,0.5,0.5,0.0,0.0,0.0],"idle_ranges": [200,5,5,50,10,10,10],"intervals": [5000,1000,1000,500,10400,10500,10600],"color": [128,255,255]},
+  "surprised": {"velocities": [20,5,5,10,10,1,1],"target_factors": [1.0,1.0,0.0,0.489,0.486,0.0,0.0],"idle_ranges": [50,1,1,10,10,10,10],"intervals": [500,1000,1000,500,500,10500,10600],"color": [255,255,0]},
+  "curious": {"velocities": [10,1,1,5,1,1,1],"target_factors": [0.865,0.375,0.25,0.5,0.0,0.0,0.0],"idle_ranges": [100,5,5,50,10,10,10],"intervals": [5000,1000,1000,2000,10400,10500,10600],"color": [255,128,0]},
+  "bored": {"velocities": [5,1,1,1,1,1,1],"target_factors": [0.865,1.0,1.0,0.5,0.0,0.0,0.0],"idle_ranges": [100,5,5,20,10,10,10],"intervals": [5000,1000,1000,2000,10400,10500,10600],"color": [128,0,255]},
+  "fearful": {"velocities": [10,3,3,10,10,1,1],"target_factors": [0.854,1.0,0.0,0.5,0.486,0.0,0.0],"idle_ranges": [100,2,2,40,30,10,10],"intervals": [1000,1000,1000,1000,1000,10500,10600],"color": [255,0,0]},
+  "hopeful": {"velocities": [20,1,1,10,1,1,1],"target_factors": [0.47,0.475,0.075,0.5,0.0,0.0,0.0],"idle_ranges": [200,5,3,50,10,10,10],"intervals": [5000,1000,1000,500,10400,10500,10600],"color": [128,128,255]},
+  "embarrassed": {"velocities": [5,1,1,5,1,1,1],"target_factors": [0.491,1.0,0.0,0.5,0.0,0.0,0.0],"idle_ranges": [300,5,3,50,10,10,10],"intervals": [5000,1000,1000,1000,10400,10500,10600],"color": [255,0,255]},
+  "frustrated": {"velocities": [5,1,1,5,1,1,1],"target_factors": [0.032,0.25,0.75,0.5,0.5,0.0,0.0],"idle_ranges": [10,5,3,10,10,10,10],"intervals": [5000,1000,1000,1000,1000,1000,1000],"color": [255,0,0]},
+  "proud": {"velocities": [10,1,1,10,1,5,5],"target_factors": [0.865,0.15,0.0,0.489,0.043,1.0,0.0],"idle_ranges": [100,5,1,40,3,10,10],"intervals": [2000,1000,5000,3000,5000,2000,2000],"color": [255,255,0]},
+  "nostalgic": {"velocities": [10,1,1,5,1,1,1],"target_factors": [0.865,0.375,0.25,0.5,0.0,0.0,0.0],"idle_ranges": [100,5,5,50,10,10,10],"intervals": [5000,1000,1000,2000,10400,10500,10600],"color": [0,0,64]},
+  "relieved": {"velocities": [10,1,1,10,1,5,5],"target_factors": [0.865,0.15,0.0,0.489,0.043,1.0,0.0],"idle_ranges": [100,5,1,40,3,10,10],"intervals": [2000,1000,5000,3000,5000,2000,2000],"color": [0,0,160]},
+  "grateful": {"velocities": [10,1,1,10,1,5,5],"target_factors": [0.865,0.15,0.0,0.489,0.043,1.0,0.0],"idle_ranges": [100,5,1,40,3,10,10],"intervals": [2000,1000,5000,3000,5000,2000,2000],"color": [0,255,255]},
+  "shy": {"velocities": [5,1,1,5,1,1,1],"target_factors": [0.49,1.0,0.0,0.5,0.0,0.0,0.0],"idle_ranges": [300,5,3,50,10,10,10],"intervals": [5000,1000,1000,1000,10400,10500,10600],"color": [255,0,255]},
+  "disappointed": {"velocities": [2,1,1,1,1,1,1],"target_factors": [0.45,1.0,0.8,0.5,0.529,0.0,0.0],"idle_ranges": [100,5,5,20,10,10,10],"intervals": [5000,1000,1000,2000,1000,1000,1000],"color": [255,255,0]},
+  "jealous": {"velocities": [2,10,10,5,5,5,5],"target_factors": [0.16,0.325,0.625,0.489,0.486,0.5,0.0],"idle_ranges": [100,2,2,40,3,10,10],"intervals": [2000,5000,5000,5000,5000,2000,2000],"color": [128,0,255]}
+}
 
     def print_servo_status(self):
         """Print the status of each servo in a formatted table with improved alignment."""

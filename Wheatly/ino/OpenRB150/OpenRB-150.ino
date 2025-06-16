@@ -206,6 +206,7 @@ void setup()
     Serial2.println("HELLO");                     // Announce ourselves
     unsigned long sliceEnd = millis() + 300;      // Short listen window
     while (millis() < sliceEnd) {
+      Serial2.println("HELLO");
       if (Serial2.available() && Serial2.find("ESP32")) {
         dryRun = false;
         DEBUG_SERIAL.println(F("[INFO] Core-2 detected"));

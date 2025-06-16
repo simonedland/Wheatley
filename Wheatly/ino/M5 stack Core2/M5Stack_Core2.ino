@@ -97,6 +97,7 @@ int scrollOffset = 0;
 bool handshakeReceived     = false;
 bool demoMode              = false;
 unsigned long handshakeStart = 0;
+unsigned long lastHandshakeAttempt = 0; // Track last handshake attempt
 bool dryRun                = true;
 bool servoPingResult[activeServos] = {false};
 bool calibrationReceived   = false;
@@ -398,10 +399,14 @@ void handleLink() {
 
     // HELLO handshake
     if (msg.startsWith("HELLO")) {
-      handshakeReceived = true;
-      OpenRB.println("ESP32");
-      Serial.printf("[<RB] %s\n", msg.c_str());
-      blinkScreen(3);
+      if (!handshakeReceived) {
+        handshakeReceived = true;
+        Serial.printf("[<RB] %s\n", msg.c_str());
+        blinkScreen(3);
+      }
+      OpenRB.println("ESP32"); // Always reply to HELLO
+      // Stop handshake retries
+      lastHandshakeAttempt = millis();
       continue;
     }
 
@@ -445,6 +450,7 @@ void setup(){
   // Kick off HELLO handshake
   OpenRB.println("ESP32");
   handshakeStart = millis();
+  lastHandshakeAttempt = handshakeStart;
 }
 
 /* ===================================================================== */
@@ -456,10 +462,18 @@ void loop(){
   handleLink();
   handleUsbCommands();
 
-  // Demo mode if no handshake
-  if (!handshakeReceived && !demoMode &&
-      millis() - handshakeStart > 10000) {
-    enterDemoMode();
+  // Periodically resend handshake if not received
+  if (!handshakeReceived && !demoMode) {
+    unsigned long now = millis();
+    if (now - lastHandshakeAttempt > 1000) { // resend every 1s
+      OpenRB.println("ESP32");
+      lastHandshakeAttempt = now;
+      Serial.println("[HANDSHAKE] Retrying ESP32 handshake...");
+    }
+    // Demo mode if no handshake after 10s
+    if (now - handshakeStart > 10000) {
+      enterDemoMode();
+    }
   }
 
   // idle jitter
