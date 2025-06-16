@@ -35,7 +35,7 @@
   [reference](https://elevenlabs.io/docs/api-reference/streaming)
 
 ### LLM
-- [ ] Add long term memory (LTM) to the LLM.
+- [X] Add long term memory (LTM) to the LLM.
 - [ ] make a memmory store with conigurable storage prioroties, and storage timestamps.
     - [ ] make a memmory "time out" for the LLM, so it can forget things after a certain time.
 

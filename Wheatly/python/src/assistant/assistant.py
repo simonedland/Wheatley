@@ -22,10 +22,13 @@ class ConversationManager:
         system_message = system_message.replace("<current_day>", current_day)
 
         self.max_memory = max_memory
-        self.messages = [{
-            "role": "system",
-            "content": system_message
-        }]
+        self.messages = [
+            {
+                "role": "system",
+                "content": system_message,
+            },
+            {"role": "system", "content": ""},  # placeholder for long term memory
+        ]
 
     def add_text_to_conversation(self, role, text):
         """Append ``text`` from ``role`` to the conversation history."""
@@ -42,9 +45,17 @@ class ConversationManager:
         self.messages[0]["content"] = system_message
 
         self.messages.append({"role": role, "content": text})
-        # Keep only the latest max_memory messages (excluding system)
-        while len(self.messages) > self.max_memory + 1:
-            self.messages.pop(1)
+        # Keep only the latest max_memory user/assistant turns
+        while len(self.messages) > self.max_memory + 2:
+            self.messages.pop(2)
+
+    def update_memory(self, memory_text: str) -> None:
+        """Set or replace the long term memory message."""
+
+        if len(self.messages) < 2:
+            self.messages.insert(1, {"role": "system", "content": memory_text})
+        else:
+            self.messages[1]["content"] = memory_text
 
     def get_conversation(self):
         """Return the current conversation as a list of message dicts."""

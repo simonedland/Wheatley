@@ -123,5 +123,26 @@ class TestConversationManagerFunctionality(ColorfulTestCase):
         self.assertIn("Hello", conv[-2]["content"], "User message should be in conversation")
         self.assertIn("Hi!", conv[-1]["content"], "Assistant message should be in conversation")
 
+class TestLongTermMemory(ColorfulTestCase):
+    def test_memory_read_write(self):
+        from utils.long_term_memory import overwrite_memory, read_memory, edit_memory
+        tmp_file = "temp_memory.json"
+        if os.path.exists(tmp_file):
+            os.remove(tmp_file)
+        overwrite_memory({"foo": "bar"}, path=tmp_file)
+        long_text = "x" * 300
+        edit_memory(5, {"note": long_text}, path=tmp_file)
+        data = read_memory(path=tmp_file)
+        self.assertIsInstance(data, list)
+        self.assertEqual(data[-1]["note"], long_text[:197] + "...")
+        edit_memory(0, {"foo": "baz" * 100}, path=tmp_file)
+        data = read_memory(path=tmp_file)
+        self.assertEqual(data[0]["foo"], ("baz" * 100)[:197] + "...")
+        overwrite_memory({"final": "yes"}, path=tmp_file)
+        data = read_memory(path=tmp_file)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["final"], "yes")
+        os.remove(tmp_file)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

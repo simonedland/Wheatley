@@ -39,11 +39,16 @@ For each new feature or module, create a separate `*.md` under `docs/`:
 Maintain a “Documented Features” section in this file. Update whenever you add/remove a `docs/*.md`:
 ```markdown
 ## Documented Features
-- [user-authentication](docs/user-authentication.md)
-- [data-exporter](docs/data-exporter.md)
-- [timing-logging](docs/timing-logging.md)
-- [speaker-warmup](docs/speaker-warmup.md)
+- [architecture_overview](docs/architecture_overview.md)
+- [Code_logic](docs/Code_logic.md)
+- [hardware_command_flow](docs/hardware_command_flow.md)
+- [LLM_logic](docs/LLM_logic.md)
+- [long-term-memory](docs/long-term-memory.md)
 - [present-timeline](docs/present-timeline.md)
+- [speaker-warmup](docs/speaker-warmup.md)
+- [timing-logging](docs/timing-logging.md)
+- [tts_and_hotword_flow](docs/tts_and_hotword_flow.md)
+- [Wiering_diagram](docs/Wiering_diagram.md)
 ```
 
 ---
