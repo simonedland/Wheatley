@@ -24,12 +24,13 @@ from elevenlabs import VoiceSettings
 
 
 class TextToSpeechEngine:
-    def __init__(self):
-        # Load configuration once during initialization to keep TTS calls fast
+    def _load_config(self) -> None:
+        """Load voice settings from configuration file."""
+
         config_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "config",
-            "config.yaml"
+            "config.yaml",
         )
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
@@ -42,10 +43,15 @@ class TextToSpeechEngine:
             similarity_boost=tts_config.get("similarity_boost", 0.1),
             style=tts_config.get("style", 0.0),
             use_speaker_boost=tts_config.get("use_speaker_boost", True),
-            speed=tts_config.get("speed", 0.8)
+            speed=tts_config.get("speed", 0.8),
         )
         self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
+
+    def __init__(self):
+        """Initialise the TTS engine and load configuration."""
+
+        self._load_config()
 
         # Silence noisy logging from the ElevenLabs library
         logging.getLogger("elevenlabs").setLevel(logging.WARNING)
@@ -74,8 +80,17 @@ class TextToSpeechEngine:
         )
         self._keep_thread.start()
 
+    def reload_config(self) -> None:
+        """Reload TTS settings from ``config.yaml`` at runtime."""
+
+        self._load_config()
+
     def elevenlabs_generate_audio_stream(self, text: str):
         """Return a generator yielding MP3-encoded audio chunks for `text`."""
+        print (f"Generating speech for: {text}")
+        print (f"Using voice ID: {self.voice_id}")
+        print (f"Using model ID: {self.model_id}")
+        print (f"Using output format: {self.output_format}")
         return self.client.text_to_speech.convert(
             text=text,
             voice_id=self.voice_id,
@@ -91,6 +106,7 @@ class TextToSpeechEngine:
         so playback begins immediately when this method writes to the stream.
         """
         start_time = time.time()
+        self.reload_config()
         self._playing.set()
         audio_stream = self.elevenlabs_generate_audio_stream(text)
 
