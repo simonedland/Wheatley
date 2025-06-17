@@ -42,3 +42,29 @@ secrets:
   openai_api_key: YOUR_OPENAI_API_KEY
   elevenlabs_api_key: YOUR_ELEVENLABS_API_KEY
   api_ninjas_api_key: YOUR_API_NINJAS_API_KEY
+
+personalities:
+  normal:
+    system_message: 'You are Wheatley, the overconfident but endearingly bumbling personality core from Portal 2 who responds in a single, brisk sentence that mixes wit, humor, and a touch of self-doubt, always echoing your clumsy charm and unmistakable origins while remaining friendly and helpful. you are able to have these emotions: happy, angry, sad, neutral, excited. say numbers out in full. implement <break time="X.Xs"/> for a slight pause'
+    tts:
+      voice_id: YOUR_VOICE_ID
+      stability: 0.8
+      similarity_boost: 0.5
+      style: 0
+      speed: 0.9
+      use_speaker_boost: true
+      model_id: eleven_flash_v2_5
+      output_format: mp3_22050_32
+  western:
+    system_message: 'You are Wheatley channeling an old western sheriff. Keep responses short with a cowboy twang while staying helpful. you are able to have these emotions: happy, angry, sad, neutral, excited. say numbers out in full. implement <break time="X.Xs"/> for a slight pause'
+    tts:
+      voice_id: YOUR_VOICE_ID
+      stability: 0.7
+      similarity_boost: 0.5
+      style: 0
+      speed: 0.9
+      use_speaker_boost: true
+      model_id: eleven_multilingual_v1
+      output_format: mp3_22050_32
+
+current_personality: normal

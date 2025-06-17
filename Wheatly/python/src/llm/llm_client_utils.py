@@ -256,6 +256,23 @@ def build_tools():
         },
         {
             "type": "function",
+            "name": "set_personality",
+            "description": "Switch Wheatley's personality and voice. Valid modes are 'normal' and 'western'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": ["normal", "western", "skitsofrenic"],
+                        "description": "Desired personality mode"
+                    }
+                },
+                "required": ["mode"],
+                "additionalProperties": False
+            }
+        },
+        {
+            "type": "function",
             "name": "write_long_term_memory",
             "description": "Persist JSON data to Wheatley's long term memory store.",
             "parameters": {
