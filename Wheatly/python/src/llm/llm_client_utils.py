@@ -263,7 +263,7 @@ def build_tools():
                 "properties": {
                     "mode": {
                         "type": "string",
-                        "enum": ["normal", "western"],
+                        "enum": ["normal", "western", "skitsofrenic"],
                         "description": "Desired personality mode"
                     }
                 },

@@ -40,19 +40,18 @@ from utils.timing_logger import record_timing
 
 logging.basicConfig(level=logging.WARN)
 
-def _load_config():
-    base_dir = os.path.dirname(os.path.dirname(__file__))
-    config_path = os.path.join(base_dir, "config", "config.yaml")
-    with open(config_path, "r") as f:
-        return yaml.safe_load(f)
-
 class TextToSpeech:
-    """Minimal wrapper around the ElevenLabs API for speech synthesis."""
-    def __init__(self):
-        """Initialise the ElevenLabs client using values from ``config.yaml``."""
-        config = _load_config()
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-        # Get TTS parameters from config
+    def _load_config(self) -> None:
+        """Load voice settings from configuration file."""
+
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "config",
+            "config.yaml",
+        )
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+
         tts_config = config.get("tts", {})
         self.api_key = config["secrets"]["elevenlabs_api_key"]
         self.voice_id = tts_config.get("voice_id", "4Jtuv4wBvd95o1hzNloV")
@@ -61,10 +60,16 @@ class TextToSpeech:
             similarity_boost=tts_config.get("similarity_boost", 0.1),
             style=tts_config.get("style", 0.0),
             use_speaker_boost=tts_config.get("use_speaker_boost", True),
-            speed=tts_config.get("speed", 0.8)
+            speed=tts_config.get("speed", 0.8),
         )
         self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
+
+
+    """Minimal wrapper around the ElevenLabs API for speech synthesis."""
+    def __init__(self):
+        """Initialise the ElevenLabs client using values from ``config.yaml``."""
+        self._load_config()
         # Disable verbose logging from elevenlabs to remove INFO prints
         logging.getLogger("elevenlabs").setLevel(logging.WARNING)
         self.client = ElevenLabs(api_key=self.api_key)
@@ -83,7 +88,12 @@ class TextToSpeech:
         logging.info(f"TTS audio generation took {elapsed:.3f} seconds.")
         return audio
     
+    def reload_config(self) -> None:
+        """Reload TTS settings from ``config.yaml`` at runtime."""
+        self._load_config()
+    
     def generate_and_play_advanced(self, text):
+        self.reload_config()
         base_dir = os.path.dirname(os.path.dirname(__file__))
         temp_dir = os.path.join(base_dir, "temp")
         if not os.path.exists(temp_dir):
