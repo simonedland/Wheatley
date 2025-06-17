@@ -49,6 +49,7 @@ Maintain a “Documented Features” section in this file. Update whenever you a
 - [timing-logging](docs/timing-logging.md)
 - [tts_and_hotword_flow](docs/tts_and_hotword_flow.md)
 - [Wiering_diagram](docs/Wiering_diagram.md)
+- [personality-switcher](docs/personality-switcher.md)
 ```
 
 ---

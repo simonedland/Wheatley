@@ -366,6 +366,10 @@ class Functions:
               response_str += f"\n\nQuote of the Day: {get_quote()}"
 
               results.append((func_name, response_str))
+            elif func_name == "set_personality":
+                mode = item.get("arguments", {}).get("mode")
+                response = self.set_personality(mode)
+                results.append((func_name, response))
             elif func_name == "write_long_term_memory":
                 data = item.get("arguments", {}).get("data", {})
                 response = self.write_long_term_memory(data)
@@ -543,6 +547,33 @@ class Functions:
             if event_queue:
                 await event_queue.put(reminder_event)
         asyncio.create_task(reminder_task())
+
+    def set_personality(self, mode: str) -> str:
+        """Switch the assistant personality and update TTS settings."""
+
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        config_path = os.path.join(base_dir, "config", "config.yaml")
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+
+        personalities = config.get("personalities", {})
+        persona = personalities.get(mode)
+        if not persona:
+            return f"Personality {mode} not found"
+
+        config["assistant"]["system_message"] = persona.get(
+            "system_message",
+            config.get("assistant", {}).get("system_message", ""),
+        )
+        if "tts" not in config:
+            config["tts"] = {}
+        config["tts"].update(persona.get("tts", {}))
+        config["current_personality"] = mode
+
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(config, f)
+
+        return f"Personality switched to {mode}"
 
 
 if __name__ == "__main__":
