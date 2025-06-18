@@ -32,12 +32,12 @@ except ImportError:
     print("RPi.GPIO module not found; GPIO functionality will be disabled.")
 
 # =================== Imports: Local Modules ===================
-from hardware.arduino_interface import ArduinoInterface  # Arduino hardware interface
-from assistant.assistant import ConversationManager  # Manages conversation history
-from llm.llm_client import GPTClient, Functions  # LLM client and function tools
-from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
-from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
-from utils.timing_logger import record_timing, export_timings, clear_timings
+from .hardware.arduino_interface import ArduinoInterface  # Arduino hardware interface
+from .assistant.assistant import ConversationManager  # Manages conversation history
+from .llm.llm_client import GPTClient, Functions  # LLM client and function tools
+from .tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
+from .stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
+from .utils.timing_logger import record_timing, export_timings, clear_timings
 
 
 # Initialize colorama for colored terminal output

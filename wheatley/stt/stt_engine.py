@@ -11,7 +11,7 @@ import pvporcupine
 import time
 import asyncio
 from threading import Event
-from utils.timing_logger import record_timing
+from ..utils.timing_logger import record_timing
 
 # ---------------------------------------------------------------------------
 # LED colour constants used to signal microphone state on the hardware.  The
