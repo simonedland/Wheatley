@@ -1,6 +1,6 @@
 # AI Summary
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\stt\stt_engine.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\stt\stt_engine.py
 Here's a detailed summary and analysis of the provided Python script:
 
 ---

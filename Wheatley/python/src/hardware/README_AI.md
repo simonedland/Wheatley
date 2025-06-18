@@ -1,6 +1,6 @@
 # AI Summary
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\hardware\arduino_interface.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\hardware\arduino_interface.py
 Certainly! Here is a detailed summary and analysis of the provided Python script:
 
 ---
