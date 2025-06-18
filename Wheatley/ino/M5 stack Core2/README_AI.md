@@ -1,6 +1,6 @@
 # AI Summary
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\ino\M5 stack Core2\M5Stack_Core2.ino
+### C:\GIT\Wheatley\Wheatley\Wheatley\ino\M5 stack Core2\M5Stack_Core2.ino
 Certainly! Here’s a **plain English summary** of the provided Arduino sketch, covering its **purpose, structure, hardware use, key logic, and dependencies**.
 
 ---

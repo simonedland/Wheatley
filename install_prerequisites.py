@@ -6,8 +6,8 @@ import os
 import time
 
 def install_requirements():
-    # Path to the requirements file inside the Weatly project folder
-    req_file = os.path.join(os.path.dirname(__file__), "Wheatly", "python", "requirements.txt")
+    # Path to the requirements file inside the Wheatley project folder
+    req_file = os.path.join(os.path.dirname(__file__), "Wheatley", "python", "requirements.txt")
     if not os.path.exists(req_file):
         print(f"Requirements file not found: {req_file}")
         sys.exit(1)

@@ -1,6 +1,6 @@
 # AI Summary
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\tts\tts_engine.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\tts\tts_engine.py
 Certainly! Here is a detailed summary and analysis of the provided Python script:
 
 ---

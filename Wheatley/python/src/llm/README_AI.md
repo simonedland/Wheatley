@@ -1,6 +1,6 @@
 # AI Summary
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\llm\google_agent.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\llm\google_agent.py
 Here’s a detailed summary and analysis of the provided Python script:
 
 ---
@@ -158,7 +158,7 @@ Acts as an LLM-driven assistant that interprets user requests, decides which Goo
 
 This script is a modular, extensible foundation for building an LLM-powered Google Calendar assistant. It cleanly separates concerns between API integration and LLM-driven orchestration, uses configuration files for secrets and settings, and is designed for easy extension to more Google Workspace automation tasks. The core implemented logic focuses on secure, configurable access to calendar data and LLM-based tool selection, with clear placeholders for future feature expansion.
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\llm\llm_client.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\llm\llm_client.py
 Certainly! Here’s a detailed summary and analysis of the provided Python script:
 
 ---
@@ -292,7 +292,7 @@ The script is designed to be modular and extensible, facilitating the orchestrat
 
 This script is a sophisticated integration layer for a conversational assistant, enabling it to interact with LLMs, synthesize speech, orchestrate workflows across multiple APIs, and provide a rich, interactive user experience. Its design emphasizes modularity, extensibility, and a high degree of configurability, making it suitable as the core logic for an advanced AI assistant.
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\llm\llm_client_utils.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\llm\llm_client_utils.py
 Here is a detailed summary and analysis of the provided Python script:
 
 ---
@@ -454,7 +454,7 @@ These are **structured definitions** (as dictionaries) of functions/tools that t
 
 This script is a **utility and tool definition module** for an LLM-based assistant, providing configuration management, API integrations, and a structured interface for function-calling. It is designed for extensibility, modularity, and safe configuration handling, and is intended to be imported and used by higher-level components of the LLM client system. The code is heavily reliant on external configuration and APIs, and is structured to support a wide range of assistant actions through well-defined tool schemas.
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\llm\spotify_agent.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\llm\spotify_agent.py
 Here is a detailed summary and analysis of the provided `spotify_agent.py` script:
 
 ---
@@ -598,7 +598,7 @@ The script implements a **Spotify Agent** that can interpret natural language us
 **In summary:**  
 This script is a modular, LLM-driven agent for controlling Spotify through natural language, using a set of well-defined tools and a dispatch mechanism to map LLM-selected actions to actual Spotify API calls, with a focus on user-friendly interaction and extensibility.
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\llm\spotify_ha_utils.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\llm\spotify_ha_utils.py
 Here is a detailed summary and analysis of the provided Python script `spotify_ha_utils.py` (v5.3):
 
 ---

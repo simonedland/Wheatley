@@ -2,9 +2,9 @@
 
 1. Create your configuration:
    - Copy the example file from:
-     `\Weatly\python\src\config\config.example.yaml`
+    `\Wheatley\python\src\config\config.example.yaml`
      to
-     `\Weatly\python\src\config\config.yaml`
+    `\Wheatley\python\src\config\config.yaml`
    - Edit `config.yaml` to adjust settings as needed.
 2. Run the system check script:
    > .\system check.ps1  

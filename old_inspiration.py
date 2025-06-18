@@ -4,7 +4,7 @@ from elevenlabs.client import ElevenLabs
 from pydub import AudioSegment
 import io
 
-with open("C:/GIT/Wheatly/Wheatley/Wheatly/python/src/config/config.yaml", "r", encoding="utf-8") as f:
+with open("C:/GIT/Wheatley/Wheatley/Wheatley/python/src/config/config.yaml", "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 api_key = config["secrets"]["elevenlabs_api_key"]
