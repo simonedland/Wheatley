@@ -36,7 +36,7 @@ from .llm_client_utils import (
     build_tools,
     _load_config,
 )
-from ..utils.timing_logger import record_timing
+from utils.timing_logger import record_timing
 
 logging.basicConfig(level=logging.WARN)
 
@@ -480,18 +480,18 @@ class Functions:
 
     def write_long_term_memory(self, data: dict) -> str:
         """Persist ``data`` to the long term memory JSON file."""
-        from ..utils.long_term_memory import overwrite_memory
+        from utils.long_term_memory import overwrite_memory
         overwrite_memory(data, path=self.memory_path)
         return "memory written"
 
     def read_long_term_memory(self) -> dict:
         """Return the contents of the long term memory file."""
-        from ..utils.long_term_memory import read_memory
+        from utils.long_term_memory import read_memory
         return {"memory": read_memory(path=self.memory_path)}
 
     def edit_long_term_memory(self, index: int, data: dict) -> str:
         """Update the memory entry at ``index`` with ``data``."""
-        from ..utils.long_term_memory import edit_memory
+        from utils.long_term_memory import edit_memory
         success = edit_memory(index, data, path=self.memory_path)
         return "memory updated" if success else "memory index out of range"
 

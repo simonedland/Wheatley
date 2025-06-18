@@ -14,7 +14,7 @@ import time
 import io
 import yaml
 
-from ..utils.timing_logger import record_timing
+from utils.timing_logger import record_timing
 import pyaudio
 from pydub import AudioSegment
 from pydub.generators import Sine
