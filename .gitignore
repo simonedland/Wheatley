@@ -1,30 +1,25 @@
-# Ignore configuration file with secrets
-Wheatly/python/src/config/config.yaml
-Wheatly/python/src/config/token.json
-
-# Ignore secrets and config files
-Wheatly/python/src/config/config.yaml
-Wheatly/python/src/config/token.json
-
-..venv/
-.cache
-..venv/*
-..venv
-
-Wheatly/python/src/stt/wheatly.ppn
-
-# Common Python ignores
+# =====================
+# Python & Virtual Envs
+# =====================
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
 .Python
+.env
+.venv
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# =====================
+# Distribution / Packaging
+# =====================
 build/
-develop-eggs/
 dist/
 downloads/
-eggs/
+.eggs/
 .eggs/
 lib/
 lib64/
@@ -38,30 +33,52 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Pytest cache
-.cache/
-
-# Type checking
+# =====================
+# Pytest, Coverage, Type Checking
+# =====================
+.cache
+cache
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-# IDE directories
-.idea/
-.vscode/
-
-# Coverage reports and testing
 htmlcov/
 .tox/
 
-# Logs and local outputs
+# =====================
+# IDEs & Editors
+# =====================
+.idea/
+.vscode/
+*.sublime*
+
+# =====================
+# Logs & Outputs
+# =====================
 *.log
+
+# =====================
+# OS Files
+# =====================
+.DS_Store
+Thumbs.db
+
+# =====================
+# Project-specific: Secrets & Configs
+# =====================
+Wheatly/python/src/config/config.yaml
+Wheatly/python/src/config/token.json
+Wheatly/python/src/stt/wheatly.ppn
+
+# =====================
+# Miscellaneous
+# =====================
+# Node/npm (if any JS tooling is used)
+node_modules/
+
+# Backup files
+*~
+*.bak
+*.tmp
+
+# =====================
+# End of .gitignore
