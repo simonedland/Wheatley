@@ -289,7 +289,7 @@ class Functions:
             tool_start = time.time()
             if self.tts_enabled and func_name != "write_long_term_memory":
                 conversation = [
-                    {"role": "system", "content": "Act as Weatly from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
+                    {"role": "system", "content": "Act as Wheatley from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
                     {"role": "user", "content": f"Executing function: {func_name} with arguments: {item.get('arguments')}"}
                 ]
                 text = self.test.get_text(conversation)

@@ -1,6 +1,6 @@
 # AI Summary
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\main.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\main.py
 Certainly! Here’s a detailed summary and analysis of the provided Python script, focusing on its **purpose, structure, main components, interactions, dependencies, configuration, and notable logic**.
 
 ---
@@ -168,7 +168,7 @@ The assistant can be run on systems with or without hardware (Arduino, Raspberry
 
 This script is a robust, modular, and extensible main controller for a conversational AI robot, integrating voice, LLM, and hardware control in a unified asynchronous framework. It is highly configurable, supports both text and voice interaction, and is designed for both development (dry-run) and deployment on hardware platforms.
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\puppet.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\puppet.py
 Certainly! Here is a detailed summary and analysis of the provided Python script, **servo_puppet.py**.
 
 ---
@@ -364,7 +364,7 @@ Entry point for the script. Parses command-line arguments, sets up the serial ba
 
 This script is a robust, user-friendly GUI tool for tuning, testing, and operating the servos and LEDs of an OpenRB-150/Core-2 robot via serial commands. It combines real-time feedback, configuration management, and preset storage in a single interface, with careful attention to usability and safety (e.g., GUI locking, live feedback). It is modular, with clear separation between the GUI and serial backend, and is extensible for further robotics applications.
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\python\src\test.py
+### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\test.py
 Certainly! Here is a detailed summary and analysis of the provided Python script:
 
 ---

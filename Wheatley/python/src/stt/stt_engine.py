@@ -228,7 +228,7 @@ class SpeechToTextEngine:
         try:
             self._porcupine = pvporcupine.create(
                 access_key=access_key,
-                keyword_paths=["stt/wheatly.ppn"]
+                keyword_paths=["stt/wheatley.ppn"]
             )
         except:
             self._porcupine = pvporcupine.create(

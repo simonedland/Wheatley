@@ -1,6 +1,6 @@
 # AI Summary
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\ino\OpenRB150\default.ino
+### C:\GIT\Wheatley\Wheatley\Wheatley\ino\OpenRB150\default.ino
 Certainly! Here’s a detailed summary and explanation of the provided Arduino sketch in plain English.
 
 ---
@@ -132,7 +132,7 @@ This Arduino sketch acts as a **bidirectional serial bridge** between a computer
 
 This sketch is a **serial bridge** for DYNAMIXEL servos, relaying data between a PC and the servo bus, with visual feedback via the built-in LED. It uses the Dynamixel2Arduino library for protocol handling and is designed for debugging or direct control scenarios. The code is modular, with clear separation of initialization, main loop, data transfer, and status indication. No complex algorithms are used; the logic is straightforward and robust for its intended purpose.
 
-### C:\GIT\Wheatly\Wheatley\Wheatly\ino\OpenRB150\OpenRB-150.ino
+### C:\GIT\Wheatley\Wheatley\Wheatley\ino\OpenRB150\OpenRB-150.ino
 Certainly! Here’s a detailed summary of the provided Arduino sketch, written in plain English:
 
 ---
