@@ -21,7 +21,7 @@ Write-Host "Installing prerequisites..."
 python install_prerequisites.py
 
 # Check that the config file exists
-$configPath = "Wheatley/python/src/config/config.yaml"
+$configPath = "wheatley/config/config.yaml"
 if (Test-Path $configPath) {
     Write-Host "Configuration file found: $configPath"
 } else {
@@ -31,4 +31,4 @@ if (Test-Path $configPath) {
 
 # Run test.py to execute tests
 Write-Host "Running tests..."
-python Wheatley/python/src/test.py
+python -m wheatley.test

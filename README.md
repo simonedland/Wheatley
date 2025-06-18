@@ -2,9 +2,9 @@
 
 1. Create your configuration:
    - Copy the example file from:
-    `\Wheatley\python\src\config\config.example.yaml`
+    `\wheatley\config\config.example.yaml`
      to
-    `\Wheatley\python\src\config\config.yaml`
+    `\wheatley\config\config.yaml`
    - Edit `config.yaml` to adjust settings as needed.
 2. Run the system check script:
    > .\system check.ps1  
@@ -17,11 +17,14 @@
 3. Initialize the environment:
    - Once the configuration file is set and prerequisites installed, the environment is ready.
    - To manually activate the environment, run:
-     > .\\.venv\Scripts\Activate.ps1
+    > .\\.venv\Scripts\Activate.ps1
    - To deactivate the environment when needed, simply type:
      > deactivate
    - To reinitialize, delete the `.venv` folder and re-run the system check script.
    - Confirm that the virtual environment activates without errors and tests execute successfully.
+
+4. Run the assistant from the project root:
+   > python -m wheatley
 
 ## Roadmap
 ### TTS

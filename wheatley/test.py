@@ -6,14 +6,14 @@ import yaml
 import io
 import sys
 
-import main  # Use main.py functions
+from wheatley import main  # Use main.py functions
 
-from assistant.assistant import ConversationManager
-from llm.llm_client import GPTClient
-from tts.tts_engine import TextToSpeechEngine
-from stt.stt_engine import SpeechToTextEngine
-from hardware.arduino_interface import ArduinoInterface
-from llm.llm_client import Functions
+from wheatley.assistant.assistant import ConversationManager
+from wheatley.llm.llm_client import GPTClient
+from wheatley.tts.tts_engine import TextToSpeechEngine
+from wheatley.stt.stt_engine import SpeechToTextEngine
+from wheatley.hardware.arduino_interface import ArduinoInterface
+from wheatley.llm.llm_client import Functions
 
 # NEW: Custom base test case for colored output
 class ColorfulTestCase(unittest.TestCase):
@@ -86,7 +86,7 @@ class TestConversationLoop(ColorfulTestCase):
 
 class TestLLMFunctionality(ColorfulTestCase):
     def test_get_text(self):
-        from llm.llm_client import GPTClient
+        from wheatley.llm.llm_client import GPTClient
         client = GPTClient()
         conversation = [{"role": "user", "content": "Greet me"}]
         try:
@@ -98,7 +98,7 @@ class TestLLMFunctionality(ColorfulTestCase):
 
 class TestTTSFunctionality(ColorfulTestCase):
     def test_generate_and_play(self):
-        from tts.tts_engine import TextToSpeechEngine
+        from wheatley.tts.tts_engine import TextToSpeechEngine
         engine = TextToSpeechEngine()
         # Call the function with a sample text; it should create, play, and delete a temporary audio file.
         try:
@@ -113,7 +113,7 @@ class TestTTSFunctionality(ColorfulTestCase):
 
 class TestConversationManagerFunctionality(ColorfulTestCase):
     def test_add_and_get_conversation(self):
-        from assistant.assistant import ConversationManager
+        from wheatley.assistant.assistant import ConversationManager
         manager = ConversationManager(max_memory=3)
         initial = manager.get_conversation()
         self.assertTrue(len(initial) >= 1, "Conversation should contain at least the system message")
@@ -125,7 +125,7 @@ class TestConversationManagerFunctionality(ColorfulTestCase):
 
 class TestLongTermMemory(ColorfulTestCase):
     def test_memory_read_write(self):
-        from utils.long_term_memory import overwrite_memory, read_memory, edit_memory
+        from wheatley.utils.long_term_memory import overwrite_memory, read_memory, edit_memory
         tmp_file = "temp_memory.json"
         if os.path.exists(tmp_file):
             os.remove(tmp_file)

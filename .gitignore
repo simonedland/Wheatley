@@ -65,9 +65,9 @@ Thumbs.db
 # =====================
 # Project-specific: Secrets & Configs
 # =====================
-Wheatley/python/src/config/config.yaml
-Wheatley/python/src/config/token.json
-Wheatley/python/src/stt/wheatley.ppn
+wheatley/config/config.yaml
+wheatley/config/token.json
+wheatley/stt/wheatley.ppn
 
 # =====================
 # Miscellaneous

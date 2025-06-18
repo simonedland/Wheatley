@@ -22,9 +22,9 @@ import openai
 import yaml
 
 try:
-    from spotify_ha_utils import SpotifyHA
+    from .spotify_ha_utils import SpotifyHA
 except ImportError:
-    from llm.spotify_ha_utils import SpotifyHA
+    from spotify_ha_utils import SpotifyHA
 
 # ── tools visible to the LLM ──────────────────────────────────────────
 SPOTIFY_TOOLS = [

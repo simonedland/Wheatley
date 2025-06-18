@@ -17,17 +17,17 @@ import tempfile
 
 #from local file google_agent import GoogleCalendarManager
 try:
-  from llm.google_agent import GoogleCalendarManager
+  from .google_agent import GoogleCalendarManager
 except ImportError:
   from google_agent import GoogleCalendarManager
 
 try:
-    from llm.spotify_agent import SpotifyAgent
+    from .spotify_agent import SpotifyAgent
 except ImportError:
     from spotify_agent import SpotifyAgent
 
-from llm.google_agent import GoogleAgent
-from llm.llm_client_utils import (
+from .google_agent import GoogleAgent
+from .llm_client_utils import (
     get_city_coordinates,
     get_quote,
     get_joke,
