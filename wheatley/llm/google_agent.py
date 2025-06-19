@@ -6,8 +6,6 @@ import openai
 import json
 from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -37,9 +35,6 @@ class GoogleCalendarManager:
         try:
             cfg = self._load_config()
             secs = cfg["secrets"]
-            client_id = secs["google_client_id"]
-            client_secret = secs["google_client_secret"]
-            project_id = secs["project_id"]
 
             creds = None
             base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -52,22 +47,6 @@ class GoogleCalendarManager:
             #    if creds and creds.expired and creds.refresh_token:
             #        try:
             #            creds.refresh(Request())
-            #        except Exception as e:
-            #            print(f"⚠️ Failed to refresh token: {e}")
-            #            creds = None
-            #        client_config = {
-            #            "installed": {
-            #                "client_id": client_id,
-            #                "project_id": project_id,
-            #                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            #                "token_uri": "https://oauth2.googleapis.com/token",
-            #                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            #                "client_secret": client_secret,
-            #                "redirect_uris": ["http://localhost"]
-            #            }
-            #        }
-            #        flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-            #        creds = flow.run_local_server(port=0)
 
             if creds is not None:
                 with open(token_path, "w") as f:

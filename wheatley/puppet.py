@@ -30,9 +30,6 @@ DOT_COLOR   = "#ff4040"
 PX          = 6
 BAR_HEIGHT  = 28
 
-# Index of the NeoPixel used for microphone status indication
-MIC_LED_INDEX = 17
-
 COL_NAME, COL_SCALE, COL_VEL, COL_VEL_LBL, COL_IDLE,\
 COL_IDLE_LBL, COL_INTV, COL_INTV_LBL, COL_MOVE, COL_CFG = range(10)
 

@@ -56,25 +56,6 @@ def _optimize_memory(data: List[Dict[str, Any]], max_entries: int = 100) -> List
     return data
 
 
-def append_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
-    """Append ``entry`` to the memory file located at ``path``.
-
-    Parameters
-    ----------
-    entry:
-        Arbitrary JSON-serialisable dictionary to store.
-    path:
-        File to write the memory entry to.
-    """
-    data = read_memory(path)
-    data.append(_compress_entry(entry))
-    data = _optimize_memory(data)
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-    except Exception as e:
-        print(f"Failed to write memory to {path}: {e}")
-
 
 def overwrite_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
     """Replace the entire memory with ``entry``.
