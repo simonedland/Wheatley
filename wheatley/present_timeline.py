@@ -143,9 +143,15 @@ class TimelineGUI(tk.Tk):
         widths     = [s / 86400 for s in secs]          # sec → days
         y_pos      = range(len(labels))
 
+        # Assign a unique color to each functionality
+        unique_labels = list(sorted(set(labels)))
+        color_map = plt.get_cmap('tab20')
+        label_to_color = {lbl: color_map(i % 20) for i, lbl in enumerate(unique_labels)}
+        bar_colors = [label_to_color[lbl] for lbl in labels]
+
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.barh(y_pos, widths, left=starts_num,
-                height=0.5, color="skyblue", edgecolor="black")
+                height=0.5, color=bar_colors, edgecolor="black")
 
         ax.set_yticks(list(y_pos))
         ax.set_yticklabels(labels)
@@ -159,6 +165,10 @@ class TimelineGUI(tk.Tk):
         ax.set_xlim(min(starts_num), max(s + w for s, w in zip(starts_num, widths)))
         ax.set_ylim(-1, len(labels))   # nice starting bounds
         fig.autofmt_xdate()
+
+        # Add a legend for color mapping
+        handles = [plt.Line2D([0], [0], color=label_to_color[lbl], lw=4) for lbl in unique_labels]
+        ax.legend(handles, unique_labels, title="Functionality", bbox_to_anchor=(1.05, 1), loc='upper left')
 
         # embed in Tk
         canvas  = FigureCanvasTkAgg(fig, master=self.tab_timeline)
