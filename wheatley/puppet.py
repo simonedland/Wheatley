@@ -10,7 +10,7 @@ rev 12.3 · 2025-06-06
 • All previous features (idle band, presets, LED, limit-lock) unchanged.
 """
 
-import argparse, json, os, queue, re, sys, threading, time
+import argparse, json, queue, re, sys, threading, time
 import tkinter as tk
 from functools import partial
 from tkinter import (
@@ -29,9 +29,6 @@ BAR_COLOR   = "#00c851"
 DOT_COLOR   = "#ff4040"
 PX          = 6
 BAR_HEIGHT  = 28
-
-# Index of the NeoPixel used for microphone status indication
-MIC_LED_INDEX = 17
 
 COL_NAME, COL_SCALE, COL_VEL, COL_VEL_LBL, COL_IDLE,\
 COL_IDLE_LBL, COL_INTV, COL_INTV_LBL, COL_MOVE, COL_CFG = range(10)
