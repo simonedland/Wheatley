@@ -93,6 +93,7 @@ class TextToSpeech:
         self._load_config()
     
     def generate_and_play_advanced(self, text):
+        generate_start = time.time()
         self.reload_config()
         base_dir = os.path.dirname(os.path.dirname(__file__))
         temp_dir = os.path.join(base_dir, "temp")
@@ -104,6 +105,7 @@ class TextToSpeech:
             for chunk in audio_chunks:
                 temp_file.write(chunk)
             file_path = temp_file.name
+        record_timing("tts_generate", generate_start)
         play_start = time.time()
         try:
             playsound(file_path)
@@ -114,6 +116,7 @@ class TextToSpeech:
                 os.remove(file_path)
             except Exception as e:
                 logging.error(f"Error deleting audio file: {e}")
+        record_timing("tts_play", play_start)
         play_elapsed = time.time() - play_start
         logging.info(f"TTS audio playback took {play_elapsed:.3f} seconds.")
 
@@ -218,12 +221,19 @@ class GPTClient:
 
         start_time = time.time()
         tools = build_tools()
+        #remove the first system message from conversation and replace with a new one
+        temp_conversation = conversation.copy()
+        temp_conversation[0] = {
+            "role": "system",
+            "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE."
+        }
         completion = openai.responses.create(
             model=self.model,
-            input=conversation,
+            input=temp_conversation,
             tools=tools,
             parallel_tool_calls=True
         )
+        print(f"Completion: {completion.output}")
         record_timing("llm_get_workflow", start_time)
         choice = completion.output
         results = []

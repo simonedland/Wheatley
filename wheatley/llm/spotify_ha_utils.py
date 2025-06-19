@@ -159,9 +159,6 @@ class SpotifyHA:  # ────────────────────
     def skip_next(self, device_id: str | None = None):
         self._sp.next_track(device_id=self._with_device(device_id))
 
-    def skip_previous(self, device_id: str | None = None):
-        self._sp.previous_track(device_id=self._with_device(device_id))
-
     def toggle_play_pause(self, device_id: str | None = None):
         (self.pause if self.is_playing() else self.play)(device_id)
 
@@ -207,9 +204,6 @@ class SpotifyHA:  # ────────────────────
                     return
                 time.sleep(delay)
             raise RuntimeError("Track did not appear in queue.")
-
-    def play_track(self, uri: str, *, device_id: str | None = None):
-        self.start_playback(device_id=device_id, uris=[uri])
 
     def search_and_queue_track(
         self,
@@ -276,14 +270,6 @@ class SpotifyHA:  # ────────────────────
         track = random.choice(tracks) if pick_random else tracks[0]
         if add:
             self.add_to_queue(track["uri"], device_id=device_id, verify=True)
-        return self._flat(track) if simple else track
-
-    # ── playlists & history ────────────────────────────────────────────
-    def save_current_track_to_playlist(self, playlist_id: str, *, simple: bool = True):
-        track = self.get_current_track(simple=False)
-        if not track:
-            return None
-        self._sp.playlist_add_items(playlist_id, [track["uri"]])
         return self._flat(track) if simple else track
 
     def get_recently_played(self, *, limit: int = 20, simple: bool = True):
