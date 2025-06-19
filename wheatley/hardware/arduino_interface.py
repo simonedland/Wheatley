@@ -1,8 +1,5 @@
 """Interface classes for controlling the Arduino-based servo hardware."""
 
-# Index of the NeoPixel used for microphone status indication
-MIC_LED_INDEX = 17
-
 class ArduinoInterface:
     def __init__(self, port, baud_rate=115200, dry_run=False):
         self.port = port
@@ -75,7 +72,6 @@ class ArduinoInterface:
 
     def update_servo_config_from_string(self, config_str):
         """Parse and update servo configs from calibration string."""
-        # Format: id,min,max,ping;id,min,max,ping;...
         chunks = config_str.strip().split(';')
         for chunk in chunks:
             if not chunk: continue
@@ -86,22 +82,12 @@ class ArduinoInterface:
                 idx = int(parts[0])
                 mn = float(parts[1])
                 mx = float(parts[2])
-                ping = int(parts[3])
                 if 0 <= idx < len(self.servo_controller.servos):
                     servo = self.servo_controller.servos[idx]
                     servo.min_angle = mn
                     servo.max_angle = mx
-                    # Optionally, you can store ping status if needed
             except Exception as e:
                 print(f"[ERROR] Failed to parse servo config chunk '{chunk}': {e}")
-
-    def disconnect(self):
-        """Close the connection to the Arduino."""
-        if self.dry_run:
-            print(f"[DRY RUN] Would disconnect from Arduino on port {self.port}.")
-            return
-        if self.serial_connection and self.serial_connection.is_open:
-            self.serial_connection.close()
 
     def send_command(self, command):
         """Send a command to the Arduino."""
@@ -123,14 +109,6 @@ class ArduinoInterface:
         else:
             print("Arduino not connected. Cannot send command.")
         return response
-
-    def set_led_color(self, r, g, b):
-        """Set the NeoPixel LED color on the Arduino, scaling brightness by dividing by 5."""
-        r = int(int(r) / 5)
-        g = int(int(g) / 5)
-        b = int(int(b) / 5)
-        led_command = f"SET_LED;R={r};G={g};B={b}\n"
-        self.send_command(led_command)
 
     def set_mic_led_color(self, r, g, b):
         """Set only the microphone status NeoPixel to the given color, scaling brightness by dividing by 5."""

@@ -24,13 +24,6 @@ import openai  # For OpenAI API access
 from colorama import init, Fore, Style  # For colored terminal output
 import pathlib
 
-# Try to import RPi.GPIO for Raspberry Pi GPIO control; disable if not available
-try:
-    import RPi.GPIO as GPIO
-except ImportError:
-    GPIO = None
-    print("RPi.GPIO module not found; GPIO functionality will be disabled.")
-
 # =================== Imports: Local Modules ===================
 from hardware.arduino_interface import ArduinoInterface  # Arduino hardware interface
 from assistant.assistant import ConversationManager  # Manages conversation history
@@ -166,7 +159,6 @@ class Event:
     source: str        # e.g. "user", "timer", "gpio", "webhook", etc.
     payload: str       # human-readable description
     metadata: Optional[Dict[str, Any]] = None
-    ts: datetime.datetime = datetime.datetime.utcnow()
 
     def __str__(self):
         meta = f" {self.metadata}" if self.metadata else ""
