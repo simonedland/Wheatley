@@ -2,7 +2,6 @@
 
 import unittest
 import os
-import yaml
 import io
 import sys
 
@@ -13,7 +12,6 @@ from wheatley.llm.llm_client import GPTClient
 from wheatley.tts.tts_engine import TextToSpeechEngine
 from wheatley.stt.stt_engine import SpeechToTextEngine
 from wheatley.hardware.arduino_interface import ArduinoInterface
-from wheatley.llm.llm_client import Functions
 
 # NEW: Custom base test case for colored output
 class ColorfulTestCase(unittest.TestCase):

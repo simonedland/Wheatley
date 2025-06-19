@@ -11,7 +11,6 @@ import os  # For file and path operations
 import logging  # For logging events and timings
 import time  # For timing actions
 import asyncio
-import datetime
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 import sys
@@ -30,7 +29,7 @@ from assistant.assistant import ConversationManager  # Manages conversation hist
 from llm.llm_client import GPTClient, Functions  # LLM client and function tools
 from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
 from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
-from utils.timing_logger import record_timing, export_timings, clear_timings
+from utils.timing_logger import export_timings, clear_timings
 
 
 # Initialize colorama for colored terminal output
