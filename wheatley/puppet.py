@@ -10,7 +10,7 @@ rev 12.3 · 2025-06-06
 • All previous features (idle band, presets, LED, limit-lock) unchanged.
 """
 
-import argparse, json, os, queue, re, sys, threading, time
+import argparse, json, queue, re, sys, threading, time
 import tkinter as tk
 from functools import partial
 from tkinter import (
