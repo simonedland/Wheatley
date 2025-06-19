@@ -170,6 +170,11 @@ class TimelineGUI(tk.Tk):
         handles = [plt.Line2D([0], [0], color=label_to_color[lbl], lw=4) for lbl in unique_labels]
         ax.legend(handles, unique_labels, title="Functionality", bbox_to_anchor=(1.05, 1), loc='upper left')
 
+        # Annotate each bar with its duration in seconds
+        for i, (start, width, label) in enumerate(zip(starts_num, widths, labels)):
+            duration_sec = width * 86400
+            ax.text(start + width, i, f"{duration_sec:.2f}s", va='center', ha='left', fontsize=9, color='black', fontweight='bold')
+
         # embed in Tk
         canvas  = FigureCanvasTkAgg(fig, master=self.tab_timeline)
         toolbar = NavigationToolbar2Tk(canvas, self.tab_timeline, pack_toolbar=False)
@@ -217,17 +222,29 @@ class TimelineGUI(tk.Tk):
             ttk.Label(self.tab_summary, text="No timing data.").pack()
             return
 
+        # Calculate average duration per functionality
         totals = defaultdict(float)
+        counts = defaultdict(int)
         for t in self.timings:
-            totals[t["functionality"]] += float(t["durationMs"]) / 1000.0
+            func = t["functionality"]
+            duration = float(t["durationMs"]) / 1000.0
+            totals[func] += duration
+            counts[func] += 1
+        averages = {func: totals[func] / counts[func] for func in totals}
 
-        labels, secs = zip(*sorted(totals.items(), key=lambda x: -x[1]))
+        # Sort by average descending
+        labels, avgs = zip(*sorted(averages.items(), key=lambda x: -x[1]))
 
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.barh(labels, secs, color="orange")
-        ax.set_xlabel("Total Time (seconds)")
-        ax.set_title("Total Time per Functionality")
+        bars = ax.barh(labels, avgs, color="orange")
+        ax.set_xlabel("Average Time (seconds)")
+        ax.set_title("Average Time per Functionality")
         fig.tight_layout()
+
+        # Annotate each bar with the average time
+        for bar, avg in zip(bars, avgs):
+            ax.text(bar.get_width() + max(avgs) * 0.01, bar.get_y() + bar.get_height()/2,
+                    f"{avg:.2f}s", va='center', ha='left', fontsize=10, color='black', fontweight='bold')
 
         canvas = FigureCanvasTkAgg(fig, master=self.tab_summary)
         canvas.draw()
