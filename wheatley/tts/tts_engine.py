@@ -24,6 +24,7 @@ from elevenlabs import VoiceSettings
 
 
 class TextToSpeechEngine:
+    """Interface to ElevenLabs TTS with persistent playback stream."""
     def _load_config(self) -> None:
         """Load voice settings from configuration file."""
 
@@ -103,9 +104,10 @@ class TextToSpeechEngine:
         """Generate speech for ``text`` and play it using the persistent stream.
 
         The audio device remains open thanks to a background keep-alive thread,
-        so playback begins immediately when this method writes to the stream.
+        so playback begins immediately when this method writes to the stream. A
+        timing entry is recorded for both the generation and playback phases.
         """
-        start_time = time.time()
+        generate_start = time.time()
         self.reload_config()
         self._playing.set()
         audio_stream = self.elevenlabs_generate_audio_stream(text)
@@ -116,6 +118,8 @@ class TextToSpeechEngine:
 
         mp3_buffer = bytearray()
         chunk_count = 0
+        playback_started = False
+        play_start = None
 
         for chunk in audio_stream:
             if not isinstance(chunk, (bytes, bytearray)):
@@ -140,8 +144,14 @@ class TextToSpeechEngine:
                     .set_sample_width(2)
                     .raw_data
                 )
+                if not playback_started:
+                    play_start = time.time()
+                    playback_started = True
                 self.stream.write(pcm_data)
                 mp3_buffer = bytearray()
+
+        # Generation complete
+        record_timing("tts_generate", generate_start)
 
         # Flush any remaining audio
         if mp3_buffer:
@@ -153,11 +163,15 @@ class TextToSpeechEngine:
                 .set_sample_width(2)
                 .raw_data
             )
+            if not playback_started:
+                play_start = time.time()
+                playback_started = True
             self.stream.write(pcm_data)
 
         self._playing.clear()
 
-        record_timing("tts_generate_and_play", start_time)
+        if playback_started and play_start is not None:
+            record_timing("tts_play", play_start)
 
     def _keep_audio_device_alive(self) -> None:
         """Continuously play near-silent audio so the speakers stay active."""
