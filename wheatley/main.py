@@ -298,7 +298,7 @@ async def handle_tts_and_follow_up(
         stt_engine.resume_listening()
 
     if stt_enabled and last_input_type == "voice":
-        print("[STT] Listening for follow-up without hotword for 10 seconds...")
+        print("[STT] Listening for follow-up without hotword for 5 seconds...")
         loop = asyncio.get_event_loop()
         follow_up_future = loop.run_in_executor(None, lambda: stt_engine.record_and_transcribe(5))
         queue_get_task = asyncio.create_task(queue.get())
