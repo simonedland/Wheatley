@@ -121,6 +121,7 @@ class SpeechToTextEngine:
         recording = False
         start_time = time.time()
         print("Monitoring...")
+        self._update_mic_led(RECORDING_COLOR)
 
         min_amplitude = float('inf')
         max_amplitude = float('-inf')
