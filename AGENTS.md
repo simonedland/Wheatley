@@ -50,6 +50,7 @@ Maintain a “Documented Features” section in this file. Update whenever you a
 - [tts_and_hotword_flow](docs/tts_and_hotword_flow.md)
 - [Wiering_diagram](docs/Wiering_diagram.md)
 - [personality-switcher](docs/personality-switcher.md)
+- [service-authentication](docs/service-authentication.md)
 ```
 
 ---

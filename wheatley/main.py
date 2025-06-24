@@ -438,6 +438,10 @@ def main():
     feature_summary += f" - Text-to-Speech (TTS): {'Active' if tts_enabled else 'Inactive'}\n"
     print(feature_summary)
 
+    # Dynamic import to prevent circular dependencies with service_auth
+    from service_auth import authenticate_services
+    service_status = authenticate_services()
+
     # Initialize assistant components
     manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(config)
     

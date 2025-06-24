@@ -283,9 +283,13 @@ class Functions:
         """Initialise agents and read configuration."""
         self.test = GPTClient()
         config = _load_config()
+        try:
+            from ..service_auth import SERVICE_STATUS, GOOGLE_AGENT, SPOTIFY_AGENT
+        except ImportError:  # fallback when executed without package context
+            from service_auth import SERVICE_STATUS, GOOGLE_AGENT, SPOTIFY_AGENT
         self.tts_enabled = config["tts"]["enabled"]
-        self.google_agent = GoogleAgent()
-        self.spotify_agent = SpotifyAgent()
+        self.google_agent = GOOGLE_AGENT if SERVICE_STATUS.get("google") else None
+        self.spotify_agent = SPOTIFY_AGENT if SERVICE_STATUS.get("spotify") else None
         self.memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json")
         
 
@@ -305,15 +309,21 @@ class Functions:
                 text = self.test.get_text(conversation)
                 tts_engine.generate_and_play_advanced(text)
             if func_name == "call_google_agent":
-                user_request = item.get("arguments", {}).get("user_request", "")
-                args = item.get("arguments", {}).get("arguments", {})
-                response = self.google_agent.llm_decide_and_dispatch(user_request, args)
-                results.append((func_name, response))
+                if self.google_agent:
+                    user_request = item.get("arguments", {}).get("user_request", "")
+                    args = item.get("arguments", {}).get("arguments", {})
+                    response = self.google_agent.llm_decide_and_dispatch(user_request, args)
+                    results.append((func_name, response))
+                else:
+                    results.append((func_name, "Google service unavailable"))
             elif func_name == "call_spotify_agent":
-                user_req = item.get("arguments", {}).get("user_request", "")
-                args = item.get("arguments", {}).get("device_id", {})
-                response = self.spotify_agent.llm_decide_and_dispatch(user_req, args)
-                results.append((func_name, response))
+                if self.spotify_agent:
+                    user_req = item.get("arguments", {}).get("user_request", "")
+                    args = item.get("arguments", {}).get("device_id", {})
+                    response = self.spotify_agent.llm_decide_and_dispatch(user_req, args)
+                    results.append((func_name, response))
+                else:
+                    results.append((func_name, "Spotify service unavailable"))
             elif func_name == "set_timer":
                 if event_queue is not None:
                     duration = item.get("arguments", {}).get("duration")
