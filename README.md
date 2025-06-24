@@ -1,3 +1,10 @@
+# Wheatley
+
+Welcome to **Wheatley**, an experimental voice assistant powered by open-source
+tools. The project is a work in progress and we rely on community feedback to
+make it better. If you spot a bug or have an idea, please let us know or send a
+pull request.
+
 ## Getting Started
 
 1. Create your configuration:
@@ -32,29 +39,29 @@
   - [ ] STT streaming input transcription
   [reference](https://platform.openai.com/docs/guides/speech-to-text?lang=curl#streaming-transcriptions)
   - [ ] Stream LLM response to TTS
-  TTS does not support streaming innput there is therefore no value in streaming the LLM response to TTS.
+  TTS does not support streaming input, so there is no value in streaming the LLM response to TTS.
   [reference](https://platform.openai.com/docs/api-reference/responses-streaming)
   - [ ] Stream TTS response to speaker
   [reference](https://elevenlabs.io/docs/api-reference/streaming)
 
 ### LLM
 - [X] Add long term memory (LTM) to the LLM.
-- [ ] make a memmory store with conigurable storage prioroties, and storage timestamps.
-    - [ ] make a memmory "time out" for the LLM, so it can forget things after a certain time.
+- [ ] make a memory store with configurable storage priorities and storage timestamps.
+    - [ ] make a memory "timeout" for the LLM so it can forget things after a certain time.
 
 ### Tools
 - [ ] Add a google notes tool to the LLM.
 
 ### ideas
-    - [ ] Wifi monitoring/management
-    - [ ] remote webbhook management
+    - [ ] Wi-Fi monitoring/management
+    - [ ] remote webhook management
     - [ ] guest mode
     - [X] Proactive conversation
       - [ ] Monitoring calendar?
       - [ ] Air quality alert?
-      - [X] Sett timer for x minutes?
+      - [X] Set timer for x minutes?
     - [ ] Digital twin?
-    - [ ] Readup in another voice?
+    - [ ] Read up in another voice?
     - [ ] Self aware of mood?
     - [ ] Object spotting???
     - [X] Briefing?
@@ -66,3 +73,17 @@
 
 
 ![image](https://github.com/user-attachments/assets/8a19e5c1-a585-4bda-a584-b9c9db2b953a)
+
+## Contributing
+We know Wheatley isn't perfect—there are plenty of bugs and rough edges yet to be smoothed out. If you have ideas or fixes, please jump in! For guidelines on how to contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Code of Conduct
+Please read and abide by our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## License
+This project is licensed under the [MIT License](LICENSE).
+
+## Attribution
+If you reuse or adapt Wheatley's code in your own projects, please keep the
+license notice intact and include a link back to this repository. Giving credit
+helps others discover the original source and keeps the community strong.
