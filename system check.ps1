@@ -31,4 +31,6 @@ if (Test-Path $configPath) {
 
 # Run test.py to execute tests
 Write-Host "Running tests..."
-python -m wheatley.test
+Set-Location Wheatley
+python -m test
+Set-Location ..
