@@ -438,6 +438,7 @@ def main():
     feature_summary += f" - Text-to-Speech (TTS): {'Active' if tts_enabled else 'Inactive'}\n"
     print(feature_summary)
 
+    # Dynamic import to prevent circular dependencies with service_auth
     from service_auth import authenticate_services
     service_status = authenticate_services()
 
