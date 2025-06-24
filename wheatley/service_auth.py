@@ -33,7 +33,7 @@ def authenticate_services() -> Dict[str, bool]:
         GOOGLE_AGENT = GoogleAgent()
         print(Fore.GREEN + "✔ Google" + Style.RESET_ALL)
         statuses["google"] = True
-    except Exception:
+    except (RuntimeError, ValueError):  # Replace with specific exceptions raised by GoogleAgent
         print(Fore.RED + "✘ Google" + Style.RESET_ALL)
         statuses["google"] = False
         GOOGLE_AGENT = None
