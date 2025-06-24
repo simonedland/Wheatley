@@ -4,6 +4,11 @@ import yaml
 from datetime import datetime
 import requests
 
+try:
+    from ..service_auth import SERVICE_STATUS
+except ImportError:  # fallback when not running as package
+    from service_auth import SERVICE_STATUS
+
 # Weather code descriptions
 WEATHER_CODE_DESCRIPTIONS = {
     0: "Clear sky",
@@ -300,5 +305,9 @@ def build_tools():
         },
         # Tool for persisting long term memory. Memory retrieval happens automatically.
     ]
+    if not SERVICE_STATUS.get("google"):
+        tools = [t for t in tools if t.get("name") != "call_google_agent"]
+    if not SERVICE_STATUS.get("spotify"):
+        tools = [t for t in tools if t.get("name") != "call_spotify_agent"]
     #print(tools)
     return tools
