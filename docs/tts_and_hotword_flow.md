@@ -31,3 +31,4 @@ Mic -> Hotword Listener -> Record -> Whisper -> Intent -> GPT -> TTS -> Speaker
 3. The file is sent to Whisper and the resulting text goes into the conversation queue.
 4. GPT generates a reply and chooses an animation.
 5. TTS converts the reply to audio which is played back while the mic is paused.
+6. If speech-to-text is enabled, the hotword listener resumes after playback.

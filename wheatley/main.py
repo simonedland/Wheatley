@@ -295,8 +295,9 @@ async def handle_tts_and_follow_up(
         await asyncio.gather(hotword_task, return_exceptions=True)
         hotword_task = None
 
-    stt_engine.pause_listening()
-    print("[STT] Hotword listener paused.")
+    if stt_enabled:
+        stt_engine.pause_listening()
+        print("[STT] Hotword listener paused.")
     tts_engine.generate_and_play_advanced(gpt_text)
 
     if stt_enabled:
@@ -389,8 +390,8 @@ async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,ardui
                 stt_engine.cleanup()
             except Exception as e:
                 print(f"[Shutdown] Error during stt_engine cleanup: {e}")
-        print("👋 Exiting… (forced exit)")
-        sys.exit(0)
+        print("👋 Exiting…")
+        return
 
 def print_async_tasks():
     """Minimal async task list, one line per task, no table formatting."""
