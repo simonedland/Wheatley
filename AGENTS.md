@@ -51,6 +51,7 @@ Maintain a “Documented Features” section in this file. Update whenever you a
 - [Wiering_diagram](docs/Wiering_diagram.md)
 - [personality-switcher](docs/personality-switcher.md)
 - [service-authentication](docs/service-authentication.md)
+- [stt-threshold-calibration](docs/stt-threshold-calibration.md)
 ```
 
 ---
