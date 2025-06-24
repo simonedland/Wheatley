@@ -90,12 +90,14 @@ def print_welcome():
 
 # =================== Assistant Initialization ===================
 # Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
-def initialize_assistant(config):
+def initialize_assistant(config, *, stt_enabled: bool | None = None, tts_enabled: bool | None = None):
     """Initialise and return all major subsystems."""
 
     start_time = time.time()  # Start timing initialization
-    stt_enabled = config["stt"]["enabled"]  # Speech-to-text enabled
-    tts_enabled = config["tts"]["enabled"]  # Text-to-speech enabled
+    if stt_enabled is None:
+        stt_enabled = config["stt"]["enabled"]  # Speech-to-text enabled
+    if tts_enabled is None:
+        tts_enabled = config["tts"]["enabled"]  # Text-to-speech enabled
     assistant_config = config.get("app")  # App-specific config
     max_memory = assistant_config.get("max_memory")  # Conversation memory size
     llm_config = config.get("llm")  # LLM config
@@ -107,8 +109,8 @@ def initialize_assistant(config):
     # Fetch long term memory once at startup
     initial_memory = Functions().read_long_term_memory()
     manager.update_memory(f"LONG TERM MEMORY:\n{initial_memory}")
-    stt_engine = SpeechToTextEngine()
-    tts_engine = TextToSpeechEngine()
+    stt_engine = SpeechToTextEngine() if stt_enabled else None
+    tts_engine = TextToSpeechEngine() if tts_enabled else None
     import sys
     port = None
     dry_run = False
@@ -137,14 +139,17 @@ def initialize_assistant(config):
         try:
             arduino_interface = ArduinoInterface(port=port)
             arduino_interface.connect()
-            stt_engine.arduino_interface = arduino_interface
+            if stt_engine:
+                stt_engine.arduino_interface = arduino_interface
         except Exception as e:
             print(f"Could not connect to Arduino on {port}: {e}. Running in dry run mode.")
             arduino_interface = ArduinoInterface(port=port, dry_run=True)
-            stt_engine.arduino_interface = arduino_interface
+            if stt_engine:
+                stt_engine.arduino_interface = arduino_interface
     else:
         arduino_interface = ArduinoInterface(port="dryrun", dry_run=True)
-        stt_engine.arduino_interface = arduino_interface
+        if stt_engine:
+            stt_engine.arduino_interface = arduino_interface
     elapsed = time.time() - start_time
     logging.info(f"initialize_assistant completed in {elapsed:.3f} seconds.")
     # Return all initialized components and feature flags
@@ -441,9 +446,22 @@ def main():
     # Dynamic import to prevent circular dependencies with service_auth
     from service_auth import authenticate_services
     service_status = authenticate_services()
+    if not service_status.get("openai"):
+        stt_enabled = False
+    if not service_status.get("elevenlabs"):
+        tts_enabled = False
+
+    feature_summary = "\nFinal Feature Status:\n"
+    feature_summary += f" - Speech-to-Text (STT): {'Active' if stt_enabled else 'Inactive'}\n"
+    feature_summary += f" - Text-to-Speech (TTS): {'Active' if tts_enabled else 'Inactive'}\n"
+    print(feature_summary)
 
     # Initialize assistant components
-    manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(config)
+    manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(
+        config,
+        stt_enabled=stt_enabled,
+        tts_enabled=tts_enabled,
+    )
     
     print_welcome()
     
