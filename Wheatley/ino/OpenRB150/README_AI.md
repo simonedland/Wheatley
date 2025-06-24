@@ -1,267 +1,268 @@
 # AI Summary
 
-### C:\GIT\Wheatley\Wheatley\Wheatley\ino\OpenRB150\default.ino
-Certainly! Here’s a detailed summary and explanation of the provided Arduino sketch in plain English.
+### C:\GIT\Wheatly\Wheatley\Wheatley\ino\OpenRB150\default.ino
+Certainly! Here’s a detailed summary of the provided Arduino sketch in plain English:
 
 ---
 
 ## **Overall Purpose**
 
-This Arduino sketch acts as a **bidirectional serial bridge** between a computer (via USB) and a DYNAMIXEL servo bus (via a UART port, typically Serial1). It allows data to be passed back and forth between the USB serial port and the DYNAMIXEL bus, making it useful for debugging, firmware updates, or controlling DYNAMIXEL servos from a PC.
+This Arduino sketch acts as a **bidirectional serial bridge** between a computer (via the USB serial port) and a DYNAMIXEL bus (via a hardware serial port, typically Serial1). It allows data to be transparently passed back and forth between the two interfaces, making the Arduino function as a USB-to-DYNAMIXEL adapter. This is useful for configuring, testing, or controlling DYNAMIXEL servos using a PC.
 
 ---
 
 ## **Main Functions and Responsibilities**
 
-### 1. **setup()**
-- **Purpose:** Initializes hardware and communication settings.
-- **Actions:**
-  - Sets the built-in LED as an output.
-  - Starts USB serial communication at 57600 baud.
-  - Initializes the DYNAMIXEL bus (Serial1) at the same baud rate.
-  - Prepares the DYNAMIXEL2Arduino library for communication.
+### 1. **Serial Communication Bridging**
+- **USB ↔ DYNAMIXEL Bus:**  
+  The sketch reads data from the USB serial port and writes it to the DYNAMIXEL bus, and vice versa. This allows commands and responses to flow between a computer and DYNAMIXEL devices.
 
-### 2. **loop()**
-- **Purpose:** Main execution loop, runs repeatedly.
-- **Actions:**
-  - Calls `dataTransceiver()` to handle serial data transfer.
-  - Checks if the USB baud rate has changed; if so, updates the DYNAMIXEL bus to match.
+### 2. **LED Status Indication**
+- The built-in LED is used to indicate data transfer activity.
 
-### 3. **dataTransceiver()**
-- **Purpose:** Handles the actual data transfer between USB and DYNAMIXEL bus.
-- **Actions:**
-  - **USB → DXL:** Reads all available bytes from the USB serial port and writes them to the DYNAMIXEL bus.
-  - **DXL → USB:** Reads all available bytes from the DYNAMIXEL bus and writes them to the USB serial port.
-  - Calls `ledStatus()` whenever data is sent in either direction to indicate activity.
-
-### 4. **ledStatus()**
-- **Purpose:** Provides a visual indicator (using the built-in LED) when data is being transferred.
-- **Actions:**
-  - Turns the LED on for 200ms after data transfer, then turns it off.
-
----
-
-## **Key Classes, Functions, and Their Responsibilities**
-
-- **Dynamixel2Arduino dxl(DXL_BUS):**
-  - An instance of the `Dynamixel2Arduino` class, which manages communication with DYNAMIXEL servos via the specified serial port.
-  - Handles low-level serial communication and protocol management.
-
-- **USB (Serial):**
-  - Represents the USB serial interface, typically used for communication with a PC.
-
-- **DXL_BUS (Serial1):**
-  - Represents the UART port connected to the DYNAMIXEL bus.
-
-- **packet_buffer:**
-  - A buffer used to temporarily store data read from the DYNAMIXEL bus before sending it to the USB port.
-
----
-
-## **Hardware Peripherals Used**
-
-- **Serial1 (UART):** Communicates with DYNAMIXEL servos.
-- **Serial (USB):** Communicates with a PC.
-- **LED_BUILTIN:** Provides visual feedback for data transfer activity.
-
----
-
-## **Structure of the Code**
-
-1. **Global Definitions and Initialization:**
-   - Defines serial ports, buffer size, and creates necessary objects.
-2. **setup():**
-   - Initializes hardware and communication.
-3. **loop():**
-   - Continuously calls the data transfer function and checks for baud rate changes.
-4. **dataTransceiver():**
-   - Handles all data movement between USB and DYNAMIXEL bus.
-5. **ledStatus():**
-   - Manages the activity LED.
-
----
-
-## **Component Interaction**
-
-- **PC ↔ USB Serial ↔ Arduino ↔ UART (Serial1) ↔ DYNAMIXEL Bus**
-- Data from the PC is read from the USB serial port and written to the DYNAMIXEL bus, and vice versa.
-- The built-in LED is toggled to indicate when data is being transferred.
-
----
-
-## **Notable Algorithms or Logic**
-
-- **Serial Bridging:** The main logic is a simple, robust serial bridge, forwarding bytes between two serial interfaces.
-- **LED Activity Indicator:** Uses a timestamp (`led_update_time`) and `millis()` to ensure the LED is only briefly lit after data transfer, providing a clear activity signal without flicker.
-
----
-
-## **External Libraries and Dependencies**
-
-- **Dynamixel2Arduino:**  
-  - Required for communication with DYNAMIXEL servos.
-  - Must be installed via the Arduino Library Manager or manually.
-- **Hardware:**  
-  - Arduino board with at least two serial ports (e.g., Arduino Mega, Leonardo, or boards with a DYNAMIXEL Shield).
-  - DYNAMIXEL servos and appropriate wiring.
-
----
-
-## **Configuration and Environment Requirements**
-
-- **Baud Rate:** Both USB and DYNAMIXEL bus must be set to the same baud rate (default: 57600).
-- **Protocol Version:** The DYNAMIXEL protocol version should match between the library and the servos (though the code does not explicitly set it here).
-- **Buffer Size:** The buffer is set to 1024 bytes; if larger packets are expected, this may need adjustment.
-- **Board Compatibility:** The code assumes the presence of Serial1 and a built-in LED.
-
----
-
-## **Summary Table**
-
-| Component         | Purpose                                 |
-|-------------------|-----------------------------------------|
-| USB Serial        | PC communication                        |
-| Serial1 (DXL_BUS) | DYNAMIXEL servo communication           |
-| LED_BUILTIN       | Activity indicator                      |
-| Dynamixel2Arduino | DYNAMIXEL protocol handling             |
-| packet_buffer     | Temporary data storage                  |
-
----
-
-## **In Summary**
-
-This sketch is a **serial bridge** for DYNAMIXEL servos, relaying data between a PC and the servo bus, with visual feedback via the built-in LED. It uses the Dynamixel2Arduino library for protocol handling and is designed for debugging or direct control scenarios. The code is modular, with clear separation of initialization, main loop, data transfer, and status indication. No complex algorithms are used; the logic is straightforward and robust for its intended purpose.
-
-### C:\GIT\Wheatley\Wheatley\Wheatley\ino\OpenRB150\OpenRB-150.ino
-Certainly! Here’s a detailed summary of the provided Arduino sketch, written in plain English:
-
----
-
-## **Overall Purpose**
-
-This Arduino sketch is designed for an **OpenRB-150** board (or similar) to act as a **UART bridge and servo calibration demo**. It connects to a "Core-2" device (likely an ESP32-based controller) via UART (Serial3), manages a bus of Dynamixel servos, and can calibrate their mechanical limits. It also allows the Core-2 to command servo movements and receive calibration data.
-
----
-
-## **Main Functions and Responsibilities**
-
-### **1. UART Bridge & Handshake**
-- **Purpose:** Establishes a reliable UART (serial) communication link between the OpenRB-150 and a Core-2 device.
-- **How:** Uses Serial3 (pins D14/D13) for communication. On startup, it performs a 10-second handshake, sending "HELLO" and waiting for a response containing "ESP32". If handshake fails, the system enters "dry run" mode (no servo actions).
-
-### **2. Dynamixel Servo Bus Management**
-- **Purpose:** Controls up to 7 Dynamixel servos via Serial1.
-- **How:** Uses the [Dynamixel2Arduino](https://emanual.robotis.com/docs/en/software/arduino_api/overview/) library for communication and control.
-
-### **3. Servo Calibration**
-- **Purpose:** Determines the mechanical limits (min/max positions) of each servo, either automatically or via manual configuration.
-- **How:** For each servo, either:
-  - **Manual:** Uses predefined min/max angles.
-  - **Automatic:** Steps the servo in each direction until it stalls (doesn’t move as expected), recording the last good position.
-
-### **4. Command Handling**
-- **Purpose:** Receives and executes servo movement commands from Core-2.
-- **How:** Listens for commands like `MOVE_SERVO;ID=...;TARGET=...;VELOCITY=...;` via Serial3, parses them, and moves the specified servo.
-
-### **5. Status Reporting**
-- **Purpose:** Reports calibration results and servo presence to Core-2.
-- **How:** Sends a CSV-formatted string with each servo's ID, min/max angle, and ping status.
-
-### **6. Demo Routine**
-- **Purpose:** Demonstrates servo movement by sweeping the first servo back and forth twice, then turning on its LED.
+### 3. **Baudrate Synchronization**
+- The sketch ensures that the baudrate of the DYNAMIXEL bus matches the baudrate of the USB serial port, updating it if necessary.
 
 ---
 
 ## **Hardware Peripherals Used**
 
 - **Serial Ports:**
-  - `Serial` (USB): Debug output.
-  - `Serial1`: Dynamixel servo bus.
-  - `Serial3` (aliased as `Serial2`): UART link to Core-2.
-- **Digital Output:**
-  - `DXL_PWR_EN`: Enables power to the Dynamixel bus.
-  - `LED_BUILTIN`: Onboard LED for status indication.
+  - `Serial` (USB): Communication with a PC.
+  - `Serial1` (DXL_BUS): Communication with DYNAMIXEL devices.
+- **Built-in LED:** Used as a simple activity indicator.
 
 ---
 
 ## **Key Classes, Functions, and Their Responsibilities**
 
-### **Classes/Objects**
-- **Dynamixel2Arduino dxl:** Handles all communication and control for Dynamixel servos.
+### **Classes**
+
+- **Dynamixel2Arduino**
+  - Provided by the [Dynamixel2Arduino library](https://emanual.robotis.com/docs/en/software/arduino_api/overview/).
+  - Manages communication with DYNAMIXEL devices.
+  - Used here mainly to configure the serial port for DYNAMIXEL communication.
 
 ### **Functions**
-- **deg2t / t2deg:** Convert between degrees and Dynamixel ticks.
-- **findLimit:** Moves a servo stepwise in a direction until it stalls, returning the last good position.
-- **printAllServoStatus:** Prints a table of all servos’ min/max/current positions to the debug serial.
-- **calibrateOrAssignLimits:** For a given servo, either assigns manual limits or auto-calibrates using `findLimit`.
-- **sendLimitsToCore2:** Sends calibration and ping results to Core-2 in CSV format.
-- **handleMoveServoCommand:** Parses and executes a servo movement command from Core-2.
-- **blinkOnboardLED:** Blinks the onboard LED a specified number of times.
+
+- **`setup()`**
+  - Initializes the built-in LED pin.
+  - Starts the USB serial port at 57600 baud.
+  - Initializes the DYNAMIXEL bus serial port to match the USB baudrate.
+  - Sets up the DYNAMIXEL2Arduino object.
+
+- **`loop()`**
+  - Continuously calls `dataTransceiver()` to handle data transfer.
+  - Checks if the USB baudrate has changed and updates the DYNAMIXEL bus baudrate accordingly.
+
+- **`dataTransceiver()`**
+  - Handles the actual data transfer in both directions:
+    - **USB → DXL:** Reads available bytes from USB and writes them to the DYNAMIXEL bus.
+    - **DXL → USB:** Reads available bytes from the DYNAMIXEL bus and writes them to USB.
+  - Uses a buffer (`packet_buffer`) to temporarily store incoming DXL data.
+  - Calls `ledStatus()` to indicate activity.
+
+- **`ledStatus()`**
+  - Turns the built-in LED on for 200 ms after data transfer, then turns it off.
+  - Uses `millis()` for non-blocking timing.
 
 ---
 
 ## **Code Structure and Component Interaction**
 
-### **Setup**
-1. **Initialize Serial Ports** for debug, Dynamixel, and Core-2 link.
-2. **Enable Dynamixel Power** and set up bus.
-3. **Perform Handshake** with Core-2. If handshake fails, enter dry-run mode (no servo actions).
-4. **Probe and Calibrate Servos:** For each servo, ping it, and if present, calibrate limits (auto/manual).
-5. **Send Calibration Results** to Core-2.
+1. **Initialization (`setup`)**
+   - Set up hardware (LED, serial ports).
+   - Prepare the DYNAMIXEL2Arduino object for communication.
 
-### **Loop**
-1. **Command Handling:** If not in dry-run and a command is received from Core-2, parse and execute it.
-2. **Demo Sweep:** Sweeps the first servo back and forth twice, then turns on its LED.
+2. **Main Loop (`loop`)**
+   - Repeatedly calls `dataTransceiver()` to check for and relay data.
+   - Monitors for baudrate changes and updates the DYNAMIXEL bus if needed.
+
+3. **Data Transfer (`dataTransceiver`)**
+   - Forwards data from USB to DXL and vice versa.
+   - Uses a buffer to handle DXL-to-USB transfers.
+   - Calls `ledStatus()` to flash the LED on data activity.
+
+4. **LED Activity (`ledStatus`)**
+   - Manages the timing and state of the built-in LED to indicate recent data transfer.
 
 ---
 
-## **Notable Algorithms and Logic**
+## **Notable Algorithms or Logic**
 
-- **Auto-Calibration:** Steps the servo in a direction, checking if it moves as expected. If not, assumes a mechanical limit is reached.
-- **Handshake Logic:** Repeatedly sends "HELLO" and waits for "ESP32" response for up to 10 seconds.
-- **Dry-Run Mode:** If handshake fails, disables all servo actions for safety.
-- **Command Parsing:** Extracts parameters from a semi-colon delimited string.
+- **Bidirectional Serial Bridging:**  
+  The core logic is a simple, efficient loop that checks for available data on each serial port and forwards it to the other port. This is a common pattern for serial bridges.
+
+- **Non-blocking LED Timing:**  
+  Uses `millis()` to manage LED timing without blocking code execution.
+
+- **Baudrate Synchronization:**  
+  Automatically updates the DYNAMIXEL bus baudrate if the USB baudrate changes.
 
 ---
 
 ## **External Libraries and Dependencies**
 
-- **Dynamixel2Arduino:** Required for all servo communication and control.
-- **Arduino.h:** Standard Arduino core functions.
-- **stdarg.h, stdio.h:** Used for printf-compatibility on platforms lacking Serial.printf().
+- **Dynamixel2Arduino**  
+  - Required for DYNAMIXEL bus communication.
+  - Must be installed via the Arduino Library Manager or manually.
 
 ---
 
 ## **Configuration and Environment Requirements**
 
-- **Hardware:** OpenRB-150 (or compatible board), Dynamixel servos (up to 7), Core-2 (ESP32-based) device.
-- **Connections:**
-  - Dynamixel servos on Serial1.
-  - UART link to Core-2 on Serial3 (D14/D13).
-  - Dynamixel power enable pin defined by `BDPIN_DXL_PWR_EN`.
-- **Baud Rates:**
-  - Dynamixel: 57600 bps.
-  - Core-2 link: 115200 bps.
-- **Manual Limits:** Some servos use manual min/max angles, others are auto-calibrated.
-- **LED_BUILTIN:** Must be available for status indication.
+- **Hardware:**
+  - An Arduino board with at least two serial ports (e.g., Arduino Mega, Leonardo, or boards with a DYNAMIXEL Shield).
+  - DYNAMIXEL servos connected to the appropriate serial port (Serial1).
+  - USB connection to a PC.
+
+- **Software:**
+  - Arduino IDE.
+  - Dynamixel2Arduino library installed.
+
+- **Baudrate:**
+  - Default baudrate is 57600 for both USB and DYNAMIXEL bus, but the sketch will adapt if the USB baudrate changes.
 
 ---
 
 ## **Summary Table**
 
-| Component        | Purpose/Role                                              |
-|------------------|----------------------------------------------------------|
-| Serial           | Debug output                                              |
-| Serial1          | Dynamixel bus                                             |
-| Serial3/Serial2  | UART link to Core-2 (ESP32)                               |
-| Dynamixel2Arduino| Servo control and calibration                             |
-| Handshake Logic  | Ensures Core-2 is present before enabling servo actions   |
-| Calibration      | Finds/measures servo mechanical limits                    |
-| Command Handler  | Receives and executes servo move commands from Core-2     |
-| Demo Routine     | Sweeps first servo for demonstration                     |
+| Component         | Purpose/Functionality                                  |
+|-------------------|-------------------------------------------------------|
+| USB Serial        | Communication with PC                                  |
+| DXL Serial (Serial1) | Communication with DYNAMIXEL devices                |
+| Built-in LED      | Activity indicator                                     |
+| Dynamixel2Arduino | Library for DYNAMIXEL communication                    |
+| packet_buffer     | Temporary buffer for DXL-to-USB data                   |
+| ledStatus()       | Manages LED timing and state                           |
+| dataTransceiver() | Handles bidirectional data transfer                    |
 
 ---
 
 ## **In Summary**
 
-This sketch is a robust bridge and calibration tool for a multi-servo system, ensuring safe startup, automatic or manual calibration, and remote control via a UART link to a Core-2 controller. It uses the Dynamixel2Arduino library for servo management, supports both auto and manual limit assignment, and provides clear status feedback to both the user and the Core-2 host.
+This sketch is a **USB-to-DYNAMIXEL serial bridge** with activity indication. It’s designed for use with DYNAMIXEL servos and the DYNAMIXEL2Arduino library, and is typically run on an Arduino with a DYNAMIXEL Shield. It transparently passes data between a PC and DYNAMIXEL devices, making it useful for diagnostics, configuration, or control from a computer.
+
+### C:\GIT\Wheatly\Wheatley\Wheatley\ino\OpenRB150\OpenRB-150.ino
+Certainly! Here’s a **plain English summary** of what this Arduino sketch does, including its purpose, structure, hardware use, key functions, logic, libraries, and configuration.
+
+---
+
+## **Overall Purpose**
+
+This sketch is designed for an **OpenRB-150 board** (Arduino-compatible, likely with SAMD architecture), acting as a **UART bridge** between the board and a "Core-2" device (probably an ESP32-based controller). It also demonstrates **multi-servo calibration** using Dynamixel servos, allowing the Core-2 to command servo movements and receive calibration data.
+
+### **Key Features**
+- **UART Bridge**: Communicates with Core-2 via Serial3 (pins D14/D13).
+- **Servo Calibration**: Calibrates up to 7 Dynamixel servos, auto-detecting or using manual limits.
+- **Command Handling**: Receives and executes servo move commands from Core-2.
+- **Status Reporting**: Sends servo calibration and status back to Core-2.
+- **Demo Mode**: Sweeps a servo for demonstration purposes.
+
+---
+
+## **Hardware Peripherals Used**
+
+- **Serial Ports**:
+  - `Serial` (USB): Debug output.
+  - `Serial1`: For Dynamixel bus (servos).
+  - `Serial3` (aliased as `Serial2`): UART bridge to Core-2 (ESP32).
+- **Dynamixel Bus**: Controls up to 7 servos.
+- **Onboard LED**: Used for status indication (blinking).
+
+---
+
+## **External Libraries & Dependencies**
+
+- **Arduino.h**: Core Arduino functions.
+- **Dynamixel2Arduino**: Controls Dynamixel servos.
+- **stdarg.h, stdio.h**: For printf compatibility.
+
+---
+
+## **Configuration & Environment Requirements**
+
+- **Board**: OpenRB-150 (SAMD-based).
+- **Servos**: Dynamixel, using protocol 2.0, baud 57600.
+- **Core-2 Link**: Serial3 at 115200 baud, pins D14 (TX) and D13 (RX).
+- **Power Enable Pin**: `BDPIN_DXL_PWR_EN` (board-defined macro).
+- **Number of Servos**: 7, with IDs 0–6.
+- **Manual/Auto Calibration**: Some servos use manual limits, others are auto-calibrated.
+
+---
+
+## **Code Structure & Component Interaction**
+
+### **1. Preprocessor & Compatibility Layer**
+- **Printf Compatibility**: Ensures debug output works on all cores, even if `Serial.printf()` isn’t available (not on SAMD).
+- **Serial Aliases**: `Serial2` is aliased to `Serial3` for compatibility with code expecting `Serial2`.
+
+### **2. Servo Configuration**
+- **Servo IDs and Names**: Arrays define which servos are present and their names.
+- **Manual Limits**: Some servos use predefined min/max angles; others are auto-calibrated.
+
+### **3. Helper Functions**
+- **Angle/Tick Conversion**: Converts between degrees and Dynamixel ticks.
+- **findLimit**: Moves a servo in steps until it stalls (mechanical limit).
+- **printAllServoStatus**: Prints current, min, and max positions for all servos.
+- **calibrateOrAssignLimits**: For each servo, either assigns manual limits or auto-calibrates by finding mechanical stops.
+- **sendLimitsToCore2**: Sends calibration and ping results to Core-2 as a CSV string.
+- **handleMoveServoCommand**: Parses and executes servo move commands from Core-2.
+- **blinkOnboardLED**: Blinks the onboard LED for status indication.
+
+### **4. Setup Routine**
+- **Serial Initialization**: Starts debug, Dynamixel, and Core-2 serial ports.
+- **Dynamixel Power Enable**: Turns on servo power.
+- **Handshake with Core-2**: Waits up to 10 seconds for a "HELLO"/"ESP32" handshake. If not received, enters "dry run" mode (no servo action).
+- **Servo Probing & Calibration**:
+  - Pings each servo.
+  - If found, calibrates or assigns limits.
+  - Stores results for later reporting.
+- **Status Reporting**: Prints and sends calibration results to Core-2.
+
+### **5. Main Loop**
+- **Command Handling**: Listens for "MOVE_SERVO" commands from Core-2 and executes them if not in dry run.
+- **Demo Sweep**: Sweeps the first servo back and forth twice, then turns on its LED as a demo.
+
+---
+
+## **Key Classes, Functions, and Responsibilities**
+
+- **Dynamixel2Arduino dxl**: Main object for communicating with Dynamixel servos.
+- **findLimit(id, dir)**: Finds the mechanical limit of a servo by moving it stepwise until it stalls.
+- **calibrateOrAssignLimits(idx)**: Calibrates a servo or assigns manual limits.
+- **handleMoveServoCommand(cmd)**: Parses commands like `MOVE_SERVO;ID=1;TARGET=90;VELOCITY=10;` and moves the specified servo.
+- **sendLimitsToCore2()**: Sends all servo min/max/ping status to Core-2 as CSV.
+- **blinkOnboardLED(times)**: Blinks the onboard LED for visual feedback.
+
+---
+
+## **Notable Algorithms & Logic**
+
+- **Automatic Limit Finding**: For servos without manual limits, the code moves the servo in steps (15°) until it detects a stall (movement less than 20% of the step), indicating a mechanical stop.
+- **Handshake Protocol**: Waits for a specific response from Core-2 before enabling servo actions, ensuring both sides are ready.
+- **Dry Run Mode**: If handshake fails, disables all servo actions for safety.
+- **Command Parsing**: Extracts servo ID, target angle, and velocity from incoming UART commands using string manipulation.
+
+---
+
+## **Summary Table**
+
+| Component           | Purpose/Role                                                      |
+|---------------------|-------------------------------------------------------------------|
+| Serial (DEBUG)      | Debug output to PC                                                |
+| Serial3 (Serial2)   | UART bridge to Core-2 (ESP32)                                     |
+| Serial1             | Dynamixel bus for servo control                                   |
+| Dynamixel2Arduino   | Library for servo communication                                   |
+| findLimit           | Finds mechanical limits of servos                                 |
+| calibrateOrAssignLimits | Assigns/calibrates min/max for each servo                     |
+| handleMoveServoCommand | Parses and executes servo move commands from Core-2            |
+| sendLimitsToCore2   | Sends calibration and ping results to Core-2                      |
+| blinkOnboardLED     | Blinks onboard LED for status                                     |
+| dryRun              | Disables servo actions if handshake fails                         |
+
+---
+
+## **In Summary**
+
+This sketch enables an OpenRB-150 board to act as a smart bridge between a Core-2 (ESP32) controller and a set of Dynamixel servos. It supports robust startup (with handshake), automatic or manual servo calibration, command execution from Core-2, and status reporting. It is modular, safe (dry run mode), and provides clear debug output for troubleshooting. The code is ready for integration with a higher-level controller, such as a robot head or animatronic system.

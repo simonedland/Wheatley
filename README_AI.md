@@ -1,126 +1,173 @@
 # AI Codebase Overview
 
-Certainly! Here is a detailed summary and analysis of the provided Python script, **ad_nauseam.py**:
+Certainly! Here is a **detailed summary and analysis** of the provided `llm_client.py` script, focusing on its **purpose, structure, main classes/functions, dependencies, configuration, and notable logic**.
 
 ---
 
-## Overall Purpose
+## **Overall Purpose**
 
-The script **ad_nauseam.py** is designed to automate the process of generating AI-powered summaries and visualizations for source code files (specifically Python `.py` and Arduino `.ino` files) within a directory tree. Its main objectives are to:
+The script serves as the **central integration layer for an AI assistant** ("Wheatley"), orchestrating:
 
-- **Summarize each source file** in plain English using an LLM (Large Language Model, via OpenAI API).
-- **Aggregate summaries** at the directory and project (root) level.
-- **Generate visualizations** (using Mermaid diagrams) to illustrate code structure and relationships.
-- **Write documentation files** (`README_AI.md` and `AI_Graph.md`) in each relevant folder and at the project root.
+- Interactions with OpenAI's GPT models (LLMs)
+- Text-to-speech (TTS) via ElevenLabs
+- External APIs (Google Calendar, Spotify, weather, advice, etc.)
+- Tool invocation and workflow execution (timers, reminders, jokes, etc.)
+- Persistent long-term memory management
 
-This tool is intended to help developers quickly understand, document, and visualize large or unfamiliar codebases with minimal manual effort.
-
----
-
-## Main Classes and Functions
-
-### 1. **Configuration Helpers**
-- **_load_config()**: Loads a YAML configuration file (typically `config.yaml`) that contains secrets such as the OpenAI API key and other runtime settings.
-- **Config (dataclass)**: Encapsulates runtime configuration, such as the LLM model name, temperature, and file types to process. It allows for environment variable overrides.
-
-### 2. **LLMClient**
-- **Purpose**: Handles all interactions with the OpenAI API.
-- **Responsibilities**:
-  - Loads the API key and model configuration.
-  - Constructs prompts tailored to the file type (Python or Arduino).
-  - Sends file contents to the LLM and retrieves summaries or diagram code.
-  - Handles dry-run mode (for testing without making API calls).
-  - Robustly extracts summary text from various OpenAI API response formats.
-
-### 3. **DirectoryCrawler**
-- **Purpose**: Recursively scans a target directory for `.py` and `.ino` files, excluding any paths that contain `.venv` (to avoid virtual environments).
-- **Responsibilities**:
-  - Returns a list of all relevant source files for processing.
-
-### 4. **Summariser**
-- **Purpose**: Orchestrates the entire summarization and visualization workflow.
-- **Responsibilities**:
-  - Crawls the directory for source files.
-  - Summarizes each file using the LLMClient.
-  - Aggregates summaries by directory.
-  - Writes `README_AI.md` files in each folder and at the root, containing human-readable summaries.
-  - Generates Mermaid diagrams for each directory and the entire project, outputting them as `AI_Graph.md`.
-  - Handles dry-run and verbose modes for testing and debugging.
-
-### 5. **CLI Entry Point**
-- **_parse_args()**: Parses command-line arguments (such as target path and dry-run flag).
-- **main()**: Sets up the Summariser and runs the workflow based on parsed arguments.
-- **if __name__ == "__main__"**: Standard Python entry point for running the script as a standalone tool.
+It enables the assistant to process user input, decide when to call external tools, synthesize speech, and manage complex, multi-step conversational workflows.
 
 ---
 
-## Structure and Component Interaction
+## **Main Components and Structure**
 
-1. **Startup**: The script is run from the command line, with optional arguments for the target directory and dry-run mode.
-2. **Configuration**: Loads the YAML config to retrieve the OpenAI API key and other settings.
-3. **File Crawling**: Recursively finds all relevant source files, skipping virtual environment directories.
-4. **Summarization**:
-   - For each file, reads its content and sends it to the LLM with a file-type-specific prompt.
-   - Collects the resulting summaries, grouping them by directory.
-5. **Output Generation**:
-   - Writes `README_AI.md` files in each directory and at the root, containing summaries of the files and, at the root, an overview of the entire codebase.
-   - Generates Mermaid diagrams for each directory and the project as a whole, outputting them as `AI_Graph.md`.
-6. **Visualization**: Mermaid diagrams visually represent file relationships and code structure.
+### **1. TextToSpeech Class**
 
----
+**Purpose:**  
+Encapsulates ElevenLabs TTS API for generating and playing speech.
 
-## External Dependencies, APIs, and Configuration
+**Responsibilities:**
+- Loads TTS configuration from `config.yaml`
+- Generates speech audio from text using ElevenLabs
+- Plays audio using `playsound`, managing temporary files
+- Can reload configuration at runtime
 
-- **openai**: Official OpenAI Python client for LLM-powered summarization and diagram generation.
-- **yaml**: For reading configuration files.
-- **tqdm**: For progress bars during file processing.
-- **argparse**: For command-line argument parsing.
-- **dataclasses, pathlib, typing**: Standard Python modules for data handling and type hints.
-
-**Configuration Requirement**:
-- A YAML config file (e.g., `config/config.yaml`) containing at least:
-  ```yaml
-  secrets:
-    openai_api_key: YOUR_API_KEY
-  ```
-- The OpenAI model can be overridden via the `OPENAI_MODEL` environment variable.
+**Notable Logic:**
+- Uses a temp directory for audio files, cleans up after playback
+- Logs timing for TTS generation and playback
+- Supports dynamic reloading of voice/personality settings
 
 ---
 
-## Notable Algorithms and Logic
+### **2. GPTClient Class**
 
-- **File Filtering**: Uses recursive globbing and path filtering to efficiently locate all relevant source files, while excluding virtual environments.
-- **Prompt Engineering**: Dynamically generates detailed prompts for the LLM, tailored to the file type, to ensure high-quality, context-aware summaries and diagrams.
-- **Response Extraction**: Handles multiple possible OpenAI API response formats for robustness.
-- **Mermaid Diagram Generation**: Sends file contents to the LLM with explicit instructions to output Mermaid code blocks, visualizing code structure and relationships.
-- **Aggregation**: Groups summaries by directory for folder-level and root-level overviews.
-- **Dry-Run Mode**: Allows users to test the workflow without making actual API calls, which is useful for debugging or development.
+**Purpose:**  
+Handles all interactions with OpenAI’s GPT models, including standard conversation and tool invocation.
 
----
+**Responsibilities:**
+- Loads OpenAI API key and model from config
+- Sends conversation history to GPT and extracts the assistant’s reply
+- Asks GPT to select an animation/mood, using an emotion counter to encourage variety
+- Builds and sends tool invocation requests to GPT, supporting parallel tool calls
+- Tracks and persists emotion usage to encourage diverse responses
 
-## Summary Table
-
-| Component         | Responsibility                                      |
-|-------------------|-----------------------------------------------------|
-| _load_config      | Loads YAML config (API keys, settings)              |
-| Config            | Stores runtime configuration                        |
-| LLMClient         | Handles OpenAI API interaction                      |
-| DirectoryCrawler  | Recursively finds source files                      |
-| Summariser        | Orchestrates summarization and visualization        |
-| _parse_args       | Parses CLI arguments                                |
-| main              | Entry point, runs the workflow                      |
+**Notable Logic:**
+- Dynamically adjusts tool prompts/context based on emotion usage
+- Handles both standard text and tool-calling workflows
+- Persists emotion usage in a JSON file for continuity
 
 ---
 
-## Conclusion
+### **3. Functions Class**
 
-**ad_nauseam.py** is a modular, robust, and extensible tool for automated, LLM-powered documentation and visualization of Python and Arduino codebases. It:
+**Purpose:**  
+Implements the actual logic for the “tools” that GPT can invoke.
 
-- Recursively finds and processes relevant source files.
-- Summarizes each file using OpenAI's LLM, with prompts tailored to the file type.
-- Aggregates and writes summaries at both the folder and project level.
-- Generates Mermaid diagrams to visualize code structure and relationships.
-- Requires a YAML configuration file with the OpenAI API key.
-- Supports dry-run mode for safe testing.
+**Responsibilities:**
+- Initializes sub-agents (Google, Spotify) based on config/service status
+- Executes workflows: iterates over tool calls suggested by GPT, dispatches to the relevant function, and collects results
+- Provides implementations for:
+  - Google/Spotify agent calls
+  - Timer and reminder scheduling (with async event queue support)
+  - Weather queries (via Open-Meteo API)
+  - Jokes, quotes, advice (via utility functions or external APIs)
+  - City coordinate lookup
+  - Daily summary (combines calendar, weather, and quote)
+  - Personality switching (updates config and TTS settings)
+  - Persistent memory (read, write, edit)
 
-The script is well-structured, with clear separation of concerns between configuration, API interaction, file crawling, orchestration, and output generation, making it suitable for both standalone use and integration into larger documentation workflows.
+**Notable Logic:**
+- Uses async scheduling for timers and reminders
+- Supports event queue integration for real-time assistant events
+- Handles fallback and error cases for unavailable services
+- Allows dynamic personality switching by updating config and TTS
+
+---
+
+### **4. Utility Imports and Functions**
+
+- **From `llm_client_utils`:**  
+  Weather code descriptions, joke/quote fetchers, city coordinate lookup, tool builders, config loader
+- **From `utils.timing_logger`:**  
+  For performance measurement
+- **From `utils.long_term_memory`:**  
+  For persistent assistant memory
+
+---
+
+## **External Dependencies and APIs**
+
+- **OpenAI GPT API:**  
+  For all LLM-based conversation and tool selection
+- **ElevenLabs API:**  
+  For text-to-speech synthesis
+- **Google Calendar API:**  
+  Via `GoogleCalendarManager` and `GoogleAgent`
+- **Spotify API:**  
+  Via `SpotifyAgent`
+- **Open-Meteo API:**  
+  For weather data
+- **API Ninjas:**  
+  For random advice
+- **Other:**  
+  `playsound` for audio playback, `requests` for HTTP, `yaml` and `json` for config/data
+
+---
+
+## **Configuration Requirements**
+
+- **`config.yaml`:**  
+  Must exist in a `config` directory two levels up from this script. Contains:
+  - API keys (OpenAI, ElevenLabs, API Ninjas, etc.)
+  - TTS settings (voice, model, etc.)
+  - Assistant personalities and system messages
+  - Web search settings (optional)
+- **Emotion counter JSON:**  
+  Used to persist emotion/mood usage for animation selection
+- **Long-term memory JSON:**  
+  Used for persistent assistant memory
+
+---
+
+## **Code Structure and Interactions**
+
+- **Assistant workflow:**
+  1. **User input** is processed and sent to `GPTClient`
+  2. **GPTClient** determines if a tool call is needed, or generates a reply
+  3. If tools are invoked, **Functions** executes them (possibly using Google/Spotify agents, weather APIs, etc.)
+  4. **TextToSpeech** is used to vocalize summaries or actions
+  5. **Event queue** is used for timers/reminders, integrating with the assistant’s event loop
+  6. **Persistent memory** is managed via utility functions
+
+- **Modularity:**  
+  Each external service is abstracted behind a class or utility, allowing for easier extension and maintenance
+
+---
+
+## **Notable Algorithms and Logic**
+
+- **Emotion Counter:**  
+  Tracks which moods/animations have been used, and biases GPT to select less-used ones for variety
+- **Dynamic Tool Context:**  
+  System messages and tool descriptions are dynamically adjusted based on conversation state and emotion usage
+- **Async Scheduling:**  
+  Uses asyncio for timers and reminders, posting events to an event queue
+- **Personality Switching:**  
+  Updates both system messages and TTS settings on the fly, allowing the assistant to change “character”
+
+---
+
+## **Summary Table**
+
+| Component      | Purpose/Responsibility                                       | Notable Features/Logic              |
+|----------------|-------------------------------------------------------------|-------------------------------------|
+| TextToSpeech   | ElevenLabs TTS wrapper, playback, config reload             | Temp file mgmt, timing, personality |
+| GPTClient      | OpenAI GPT chat, tool invocation, animation selection       | Emotion counter, dynamic prompts    |
+| Functions      | Implements all tool logic (weather, reminders, memory, etc) | Async events, multi-agent support   |
+| Utilities      | Weather, jokes, quotes, city lookup, config, memory         | Modular, reusable                   |
+| Config         | Stores API keys, TTS, personalities, web search, etc.       | YAML-based, reloadable              |
+
+---
+
+## **Conclusion**
+
+This script is a **modular, extensible integration layer** for a conversational AI assistant. It coordinates LLM interactions, TTS, external APIs, and event scheduling, providing a robust foundation for a voice-enabled, multi-modal assistant. The code is designed for flexibility, with dynamic configuration, personality switching, and support for new tools and APIs.

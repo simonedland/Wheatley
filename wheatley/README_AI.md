@@ -1,32 +1,32 @@
 # AI Summary
 
-### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\main.py
-Certainly! Here’s a detailed summary and analysis of the provided Python script, focusing on its **purpose, structure, main components, interactions, dependencies, configuration, and notable logic**.
+### C:\GIT\Wheatly\Wheatley\Wheatley\main.py
+Certainly! Here is a **detailed summary and analysis** of the provided Python script, including its overall purpose, architecture, main classes and functions, configuration, dependencies, and notable logic.
 
 ---
 
 ## **Overall Purpose**
 
-This script is the **main entry point for a voice-enabled AI assistant** called "Wheatley." It orchestrates the integration of several subsystems:
-- **Speech-to-Text (STT)**: Converts user speech to text.
-- **Large Language Model (LLM) Client**: Handles conversation and tool-calling via an LLM (e.g., OpenAI GPT).
-- **Text-to-Speech (TTS)**: Converts the assistant’s responses to spoken output.
-- **Arduino Hardware Interface**: Controls physical actuators (servos, LEDs) on a robot.
-- **Event Loop**: Manages asynchronous user/system events and coordinates the above components.
+This script is the **main entry point** for the "Wheatley assistant," a multimodal AI assistant that integrates:
 
-The assistant can be run on systems with or without hardware (Arduino, Raspberry Pi GPIO), and supports both text and voice interaction.
+- **Speech-to-text (STT)** for voice input,
+- **Large Language Model (LLM)** (e.g., OpenAI GPT) for conversation and tool use,
+- **Text-to-speech (TTS)** for voice output,
+- **Arduino hardware interface** for controlling servos and LED animations on a physical robot.
+
+It orchestrates these components using an **asynchronous event loop** that reacts to user input (text or speech), processes it through the LLM, possibly invokes tools, generates a response, and controls the robot's hardware for expressive feedback.
 
 ---
 
-## **Code Structure and Main Components**
+## **Code Structure and Flow**
 
 ### **1. Imports and Initialization**
 
-- **Standard Libraries**: For logging, file I/O, async, timing, and typing.
-- **Third-Party Libraries**: For YAML config, OpenAI API, colored terminal output, and hardware access.
-- **Local Modules**: Import subsystems for hardware, assistant logic, LLM, TTS, and STT.
+- **Standard libraries**: For async operations, logging, config parsing, CLI, etc.
+- **Third-party libraries**: `yaml` for config, `openai` for LLM, `colorama` for colored output, etc.
+- **Local modules**: Hardware interface, conversation manager, LLM client, TTS/STT engines, timing utilities.
 
-**Colorama** is initialized for colored terminal output. Logging is configured to write to a file (`assistant.log`) and suppress verbose logs from HTTP libraries.
+**Logging** is set up to only log to a file, with verbose logs from HTTP libraries suppressed.
 
 ---
 
@@ -39,469 +39,693 @@ The assistant can be run on systems with or without hardware (Arduino, Raspberry
 
 ### **3. Assistant Initialization**
 
-- **`initialize_assistant(config)`**:
-  - Reads config to determine which features (STT, TTS) are enabled.
-  - Initializes core components:
-    - **ConversationManager**: Manages conversation history.
-    - **GPTClient**: Handles LLM queries and tool calls.
-    - **SpeechToTextEngine**: Manages speech recognition.
-    - **TextToSpeechEngine**: Handles speech synthesis.
-    - **ArduinoInterface**: Connects to Arduino hardware (with dry-run fallback if unavailable).
-  - Handles platform-specific serial port detection for Arduino.
+- **`initialize_assistant()`**: Central function to instantiate all major subsystems:
+  - **ConversationManager**: Tracks conversation history and memory.
+  - **GPTClient**: Handles LLM API calls and tool invocation.
+  - **SpeechToTextEngine** and **TextToSpeechEngine**: For voice input/output, if enabled.
+  - **ArduinoInterface**: Connects to the robot hardware (auto-detects serial port, supports dry-run if unavailable).
+  - Loads long-term memory into the conversation context.
   - Returns all initialized components and feature flags.
 
 ---
 
-### **4. Event Handling and Main Loop**
+### **4. Event Handling**
 
-#### **Event Dataclass**
-- **`Event`**: Simple container for events (source, payload, metadata, timestamp).
-
-#### **Producers and Consumers**
-- **`user_input_producer(q)`**: Async function that reads user text input and puts it into an event queue.
-- **`get_event(queue)`**: Retrieves and normalizes events from the queue (handles both text and voice events).
-
-#### **Event Processing**
-- **`handle_non_user_event(event, manager)`**: Adds system messages to the conversation for timer/reminder events.
-- **`process_event(event, manager, last_input)`**: Updates conversation history and checks for exit command.
-
-#### **Tool Workflow**
-- **`run_tool_workflow(manager, gpt_client, queue)`**:
-  - Asks the LLM for a workflow (sequence of tool calls).
-  - Executes tools via the `Functions` object.
-  - Adds tool results to the conversation.
-
-#### **Assistant Reply and Animation**
-- **`generate_assistant_reply(manager, gpt_client)`**:
-  - Gets assistant’s textual reply from the LLM.
-  - Gets a matching animation (for the robot).
-  - Updates conversation memory.
-
-#### **TTS and Follow-Up**
-- **`handle_tts_and_follow_up(...)`**:
-  - Plays assistant’s reply via TTS.
-  - If STT is enabled and the last input was voice, listens for a follow-up without requiring a hotword.
-  - Manages hotword detection tasks.
-
-#### **Async Conversation Loop**
-- **`async_conversation_loop(...)`**:
-  - Main event-driven loop.
-  - Handles user/system events, processes them, runs tool workflows, generates replies, triggers animations, manages TTS/STT, and prints status.
-  - Cleans up resources on exit.
-
-#### **Async Task Debugging**
-- **`print_async_tasks()`**: Prints a minimal list of running asyncio tasks for debugging.
+- **`Event` dataclass**: Represents an event in the system (source, payload, metadata).
+- **`user_input_producer()`**: Async producer that reads user text input and puts it into an event queue.
+- **`get_event()`**: Normalizes events from the queue, especially voice events.
+- **`handle_non_user_event()`**: Handles system events (timers, reminders) by injecting system messages into conversation history.
+- **`process_event()`**: Updates conversation history and checks for exit commands.
 
 ---
 
-### **5. Main Entry Point**
+### **5. Tool and LLM Interaction**
+
+- **`run_tool_workflow()`**: 
+  - Asks the LLM for a proposed workflow (sequence of tool calls).
+  - Executes tool calls via the `Functions` interface.
+  - Updates conversation with tool results.
+  - Handles web search results specially.
+  - Refreshes long-term memory before tool execution.
+
+- **`generate_assistant_reply()`**:
+  - Gets the LLM's textual reply and a suggested animation for the robot.
+  - Updates conversation history and prints memory.
+
+---
+
+### **6. Output and Follow-up**
+
+- **`handle_tts_and_follow_up()`**:
+  - Plays the assistant's reply via TTS (if enabled).
+  - Manages hotword detection and follow-up voice input.
+  - Pauses/resumes STT as needed to avoid conflicts with TTS playback.
+  - Supports a 5-second follow-up window for voice input after TTS.
+
+---
+
+### **7. Main Async Loop**
+
+- **`async_conversation_loop()`**:
+  - Main event loop: waits for events (user input, voice, etc.), processes them, runs tools, gets LLM reply, controls hardware, and manages TTS/STT.
+  - Handles graceful shutdown and cleanup.
+
+- **`print_async_tasks()`**: Debug utility to print active async tasks.
+
+---
+
+### **8. Main CLI Entry Point**
 
 - **`main()`**:
-  - Loads configuration and sets OpenAI API key.
-  - Prints feature status (STT/TTS enabled or not).
-  - Initializes all assistant components.
-  - Prints welcome banner and initial servo status.
-  - Starts the conversation with a greeting and gets the assistant’s introduction.
-  - Plays the introduction via TTS or prints it.
-  - Starts the main async conversation loop.
+  - Parses CLI args (e.g., export timings).
+  - Loads config and API keys.
+  - Authenticates external services (OpenAI, ElevenLabs, etc.).
+  - Initializes all components.
+  - Prints feature status.
+  - Sets initial animation and gets an introductory LLM reply.
+  - Starts the async conversation loop.
   - Handles shutdown and cleanup.
 
 ---
 
 ## **External Dependencies and APIs**
 
-- **OpenAI API**: For LLM (GPT) responses and tool-calling.
-- **RPi.GPIO**: For Raspberry Pi GPIO control (optional).
-- **PySerial**: For Arduino serial communication.
-- **colorama**: For colored terminal output.
-- **yaml**: For configuration.
-- **Local Modules**: Must be present in the project structure (`hardware.arduino_interface`, `assistant.assistant`, etc.).
+- **OpenAI API**: For LLM (GPT) interaction. Requires API key in config.
+- **ElevenLabs API** (implied): For advanced TTS, checked in service authentication.
+- **YAML config file**: For all settings, API keys, feature flags.
+- **Arduino hardware**: For robot control (servos, LEDs), via serial port.
+- **Colorama**: For colored terminal output.
+- **Other local modules**: For hardware, LLM, TTS, STT, and utility logic.
 
 ---
 
 ## **Configuration Requirements**
 
-- **YAML Config File**: Located at `config/config.yaml`, must include:
-  - OpenAI API key.
-  - Feature flags for STT and TTS.
-  - LLM model name.
-  - App-specific settings (e.g., conversation memory).
-- **Hardware**: Arduino (via serial port) and optionally Raspberry Pi GPIO.
+- **config/config.yaml**: Must exist and provide all necessary settings (API keys, model names, feature flags).
+- **API keys**: For OpenAI and TTS (e.g., ElevenLabs).
+- **Arduino**: Connected via serial port, or script runs in dry-run mode if not detected.
 
 ---
 
 ## **Notable Algorithms and Logic**
 
-- **Asynchronous Event Loop**: Uses `asyncio` to handle user input, hotword detection, TTS playback, and hardware control concurrently.
-- **Event Abstraction**: All user/system actions are wrapped as `Event` objects and processed uniformly.
-- **Tool-Calling via LLM**: The assistant can ask the LLM for a workflow (sequence of tool calls), execute them, and integrate their results into the conversation.
-- **Hotword and Follow-Up Handling**: After TTS playback, the assistant can listen for a follow-up voice command without requiring the hotword, improving conversational flow.
-- **Dry-Run Mode**: If hardware is unavailable, the assistant can run in a simulated mode for development/testing.
+- **Asynchronous Event Loop**: Uses asyncio to handle user input (text and voice), tool execution, LLM calls, and hardware control concurrently.
+- **Tool Use via LLM**: The LLM can propose a sequence of tool calls (workflow), which are executed and their results fed back into the conversation.
+- **Voice Interaction**: Hotword detection and follow-up voice input are managed to allow natural, hands-free conversation.
+- **Hardware Feedback**: The LLM suggests animations, which are mapped to servo/LED actions on the robot.
+- **Robustness**: Handles missing hardware, API failures, and supports dry-run mode for development.
 
 ---
 
 ## **Component Interactions**
 
-- **User Input** (text or voice) → **Event Queue** → **ConversationManager** (updates history) → **GPTClient** (gets reply/workflow) → **Functions** (executes tools) → **ArduinoInterface** (controls hardware) → **TextToSpeechEngine** (speaks reply) → **SpeechToTextEngine** (listens for next input).
-- **All subsystems are loosely coupled** via the event queue and conversation manager, allowing for modularity and extensibility.
+1. **User Input** (text or voice) → **Event Queue**
+2. **Event Loop** pulls events, updates **ConversationManager**
+3. **GPTClient** is queried for reply and tool workflow
+4. **Functions** executes any tool calls, updates conversation
+5. **GPTClient** provides reply text and animation
+6. **ArduinoInterface** sets animation on robot hardware
+7. **TextToSpeechEngine** plays reply (if enabled)
+8. **SpeechToTextEngine** listens for follow-up (if enabled)
+9. Loop continues until user exits
 
 ---
 
 ## **Summary Table**
 
-| Component                | Responsibility                                      |
-|--------------------------|-----------------------------------------------------|
-| `main()`                 | Entry point, initializes and launches assistant     |
-| `initialize_assistant()` | Sets up all subsystems and hardware                 |
-| `ConversationManager`    | Manages conversation history                        |
-| `GPTClient`              | Handles LLM queries and tool-calling                |
-| `Functions`              | Executes tool workflows suggested by LLM            |
-| `TextToSpeechEngine`     | Converts text replies to speech                     |
-| `SpeechToTextEngine`     | Converts user speech to text, manages hotword       |
-| `ArduinoInterface`       | Controls robot hardware (servos, LEDs, etc.)        |
-| `async_conversation_loop`| Orchestrates event-driven conversation flow         |
-| `Event`                  | Encapsulates user/system actions for processing     |
+| Component                | Responsibility                                  |
+|--------------------------|-------------------------------------------------|
+| `ConversationManager`    | Tracks and updates conversation history/memory  |
+| `GPTClient`              | LLM API calls, gets reply, proposes tools       |
+| `Functions`              | Executes tool calls suggested by LLM            |
+| `SpeechToTextEngine`     | Captures and transcribes voice input            |
+| `TextToSpeechEngine`     | Generates and plays speech output               |
+| `ArduinoInterface`       | Controls robot hardware (servos, LEDs)          |
+| `Event`                  | Represents events in async loop                 |
 
 ---
 
 ## **Conclusion**
 
-This script is a robust, modular, and extensible main controller for a conversational AI robot, integrating voice, LLM, and hardware control in a unified asynchronous framework. It is highly configurable, supports both text and voice interaction, and is designed for both development (dry-run) and deployment on hardware platforms.
+This script is a robust, extensible, and hardware-integrated AI assistant framework. It combines real-time multimodal interaction (text, voice, hardware), LLM-driven conversation and tool use, and asynchronous event-driven architecture. It is highly configurable and designed for both development (dry-run) and deployment with real hardware.
 
-### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\puppet.py
-Certainly! Here is a detailed summary and analysis of the provided Python script, **servo_puppet.py**.
-
----
-
-## **Overall Purpose**
-
-This script provides a **graphical user interface (GUI)** for controlling and configuring the servos and RGB LEDs of an OpenRB-150 / Core-2 robotic platform via a serial connection. The GUI allows users to:
-
-- Adjust servo positions, velocities, idle bands, and intervals.
-- Send commands to move servos or update their configuration.
-- Save and apply servo/LED presets (called "animations").
-- Monitor the actual servo positions as reported by the hardware.
-- Control onboard LEDs, including a special "mic LED".
-- View a log of all serial communications.
-
-It is intended for users (likely developers or robotics enthusiasts) who need to interactively tune, test, and operate the robot's servos and LEDs.
-
----
-
-## **Main Classes and Functions**
-
-### **1. SerialBackend**
-
-**Purpose:**  
-Handles all serial communication with the hardware.
-
-**Responsibilities:**
-- Open and close the serial port.
-- Start a background thread to read incoming serial data.
-- Provide thread-safe queues for incoming (rx_q) and outgoing (tx_q) messages.
-- Send text commands to the hardware.
-- Support a "dry run" mode for testing without hardware.
-
-**Key Methods:**
-- `open()`: Opens the serial port and starts the reader thread.
-- `_reader()`: Continuously reads lines from the serial port and puts them in the receive queue.
-- `send(txt)`: Sends a command to the hardware (or just queues it in dry run).
-- `close()`: Stops the reader thread and closes the port.
-
-### **2. PuppetGUI (Tk subclass)**
-
-**Purpose:**  
-Implements the main GUI and all user interactions.
-
-**Responsibilities:**
-- Layout and manage all GUI widgets (servo sliders, buttons, log, etc.).
-- Maintain servo configuration state (min/max, current/target angles, etc.).
-- Handle user actions (moving sliders, pressing buttons, saving/applying presets).
-- Parse and react to hardware responses.
-- Visualize actual servo positions (red dots on sliders).
-- Manage preset storage (load/save to JSON).
-- Control LED color pickers and send LED commands.
-
-**Key Methods:**
-- `__init__()`: Initializes the GUI, loads presets, sets up the layout, and starts the periodic update loop.
-- `_theme()`: Applies a custom theme to the GUI.
-- `_layout()`: Arranges all widgets in the window.
-- `_servo_row()`: Creates a row of widgets for each servo (slider, entries, buttons, etc.).
-- `_draw_band()`: Draws the slider bar, idle band, tick marks, and the red dot showing actual servo position.
-- `_led_row()`, `_preset_bar()`, `_log_area()`: Create corresponding control sections.
-- `_save_preset()`, `_apply_preset()`: Save/apply servo and LED configurations as named presets.
-- `_send_move()`, `_send_cfg_one()`, `_send_all()`: Send various servo commands to the hardware.
-- `_send_led()`, `_send_mic_led()`: Send LED color commands.
-- `_parse_servo_config_line()`, `_parse_move_line()`: Parse incoming serial lines to update GUI state.
-- `_pump()`: Main periodic loop to process serial queues and update the GUI/log.
-
-### **3. auto_port()**
-
-**Purpose:**  
-Tries to automatically detect the correct serial port for the hardware by scanning for USB/CP210 devices.
-
-### **4. main()**
-
-**Purpose:**  
-Entry point for the script. Parses command-line arguments, sets up the serial backend, launches the GUI, and manages the application lifecycle.
-
----
-
-## **Structure and Component Interaction**
-
-- **Startup:**  
-  - The script parses command-line arguments for serial port, baud rate, and dry-run mode.
-  - It tries to auto-detect the serial port if not specified.
-  - A `SerialBackend` is created and opened (unless in dry-run mode).
-  - The `PuppetGUI` is instantiated, passing the backend for communication.
-  - The GUI is started (`mainloop()`), and the backend is closed on exit.
-
-- **GUI Operation:**  
-  - The GUI displays a row for each servo, with sliders (for angle), entries (velocity, idle, interval), and buttons (move, configure).
-  - The user can move sliders, adjust parameters, and send commands to the hardware.
-  - The GUI periodically (every 50ms) checks for new serial messages and updates the log and servo state accordingly.
-  - Actual servo positions (as reported by the hardware) are shown as red dots on each slider.
-  - Presets (servo/LED settings) can be saved to or loaded from a JSON file.
-  - LED controls allow direct color picking and sending to the hardware.
-
-- **Serial Communication:**  
-  - Outgoing commands are sent via the backend.
-  - Incoming lines are parsed for servo configuration or move feedback, updating the GUI state.
-
----
-
-## **External Dependencies and APIs**
-
-- **Python Standard Library:**  
-  - `argparse`, `json`, `os`, `queue`, `re`, `sys`, `threading`, `time`
-  - `tkinter` and `tkinter.ttk` for GUI
-
-- **Optional External Library:**  
-  - `pyserial` (imported as `serial`): Required for actual serial communication. If not present, the script can run in dry-run mode.
-
-- **Hardware/API Protocol:**  
-  - The script expects the hardware to understand and respond to commands like:
-    - `MOVE_SERVO;ID=...;TARGET=...;VELOCITY=...;`
-    - `SET_SERVO_CONFIG:...`
-    - `SET_LED;R=...;G=...;B=...;`
-    - `SET_MIC_LED;IDX=...;R=...;G=...;B=...;`
-    - `GET_SERVO_CONFIG`
-  - It parses responses such as:
-    - `SERVO_CONFIG:...`
-    - `MOVE_SERVO;ID=...;TARGET=...;`
-    - `Servo n: angle=...`
-
-- **Configuration:**  
-  - Presets are saved in a local JSON file (`animations.json`).
-  - Serial port and baud rate can be set via command-line arguments.
-
----
-
-## **Notable Algorithms and Logic**
-
-- **Servo Value Mapping:**  
-  - Each servo has configurable min/max limits.
-  - GUI angles are mapped directly to hardware angles (1:1 mapping).
-  - Presets store servo positions as normalized factors (0.0–1.0) between min and max, allowing them to adapt if limits change.
-
-- **Idle Band Visualization:**  
-  - Each servo slider shows an "idle band" (a colored region) indicating the allowed range around the target angle where the servo can idle.
-  - The actual servo position is shown as a red dot, updated live from hardware feedback.
-
-- **Preset Management:**  
-  - Presets include servo velocities, target factors, idle ranges, intervals, and LED color.
-  - They are saved in a compact, human-readable JSON format, with each animation on a new line.
-
-- **Serial Threading:**  
-  - Serial reading is done in a background thread to avoid blocking the GUI.
-  - Communication between threads is handled via queues.
-
-- **GUI State Locking:**  
-  - The GUI disables all transmit (TX) controls until valid servo limits are received from the hardware, preventing invalid commands at startup.
-
-- **Auto Port Detection:**  
-  - Attempts to select the correct serial port by matching USB device descriptions.
-
----
-
-## **Configuration Requirements**
-
-- **Hardware:**  
-  - OpenRB-150 / Core-2 platform with servos and addressable LEDs.
-  - Serial connection to the host computer.
-
-- **Software:**  
-  - Python 3.x
-  - `pyserial` (optional, but required for real hardware communication)
-  - Tkinter (usually included with Python)
-
-- **Files:**  
-  - `animations.json` (created/updated by the script for presets)
-
-- **Command-line Arguments:**  
-  - `-p` or `--port`: Serial port (auto-detected if omitted)
-  - `-b` or `--baud`: Baud rate (default 115200)
-  - `--dry-run`: Run without hardware (for testing the GUI)
-
----
-
-## **Summary Table of Key Features**
-
-| Feature                | Description                                                                 |
-|------------------------|-----------------------------------------------------------------------------|
-| Servo Control          | Sliders and entries for position, velocity, idle band, interval per servo   |
-| Actual Position Display| Red dot shows real servo angle from hardware feedback                       |
-| Preset Management      | Save/apply named servo+LED configurations (animations)                      |
-| LED Control            | Set RGB values for main and mic LEDs                                        |
-| Serial Communication   | Threaded, with log and auto port detection                                  |
-| GUI Locking            | Controls disabled until servo limits received                               |
-| Dry Run Mode           | Allows GUI use without hardware                                             |
-| Log Area               | Shows all sent/received serial messages                                     |
-
----
-
-## **Conclusion**
-
-This script is a robust, user-friendly GUI tool for tuning, testing, and operating the servos and LEDs of an OpenRB-150/Core-2 robot via serial commands. It combines real-time feedback, configuration management, and preset storage in a single interface, with careful attention to usability and safety (e.g., GUI locking, live feedback). It is modular, with clear separation between the GUI and serial backend, and is extensible for further robotics applications.
-
-### C:\GIT\Wheatley\Wheatley\Wheatley\python\src\test.py
+### C:\GIT\Wheatly\Wheatley\Wheatley\present_timeline.py
 Certainly! Here is a detailed summary and analysis of the provided Python script:
 
 ---
 
 ## **Overall Purpose**
 
-This script is a **unit test suite** for a modular voice assistant application. Its primary goal is to verify the correct operation of the assistant’s main modules, including configuration loading, initialization, conversation management, LLM (Large Language Model) interaction, text-to-speech (TTS), speech-to-text (STT), and hardware interfacing. The tests are meant to be run automatically (e.g., via CI/CD or during development) to ensure that changes to the codebase do not break core functionality.
+The script implements a **Tkinter-based GUI application** that visualizes timing and log data from external files. Its main functions are:
+
+- **Display a timeline (Gantt chart) of events/functions** from timing data, with durations and color-coding by functionality.
+- **Show summary statistics** (average duration per functionality) as a bar chart.
+- **Display log file entries** in a text widget.
+- **Enable interactive exploration**: zooming (both axes), panning, and file selection for both timing and log data.
 
 ---
 
-## **Structure and Main Components**
+## **Main Classes and Functions**
 
-### **1. Imports and Dependencies**
+### **1. Helper Functions**
 
-- **Standard Library:**  
-  - `unittest`: For structuring and running the tests.
-  - `os`, `io`, `sys`: For file and I/O operations, and simulating user input/output.
-  - `yaml`: Presumably for configuration file parsing (though not directly used in this script).
+- **`load_timings(path)`**
+  - Loads a JSON file (default: `timings.json`) containing timing data.
+  - Returns a list of timing entries or an empty list if the file doesn't exist.
 
-- **Project Modules:**  
-  - `main`: Contains the main entry points and initialization logic for the assistant.
-  - `assistant.assistant`: Contains `ConversationManager` for managing the conversation state.
-  - `llm.llm_client`: Contains `GPTClient` for LLM interactions and `Functions` (not used in this script).
-  - `tts.tts_engine`: Contains `TextToSpeechEngine` for TTS.
-  - `stt.stt_engine`: Contains `SpeechToTextEngine` for STT.
-  - `hardware.arduino_interface`: Contains `ArduinoInterface` for hardware control.
-
-**External Dependencies:**  
-- The script assumes the presence of the above modules and their dependencies (e.g., LLM APIs, TTS/STT engines, hardware drivers).
-- Likely requires configuration files (YAML) and possibly hardware or API credentials.
+- **`load_logs(path)`**
+  - Loads and parses a log file (default: `assistant.log`).
+  - Uses a regular expression to extract timestamp, log level, and message from each line.
+  - Returns a list of log event dictionaries.
 
 ---
 
-### **2. Custom Test Base Class**
+### **2. Main GUI Class: `TimelineGUI`**
 
-- **`ColorfulTestCase`**:  
-  - Inherits from `unittest.TestCase`.
-  - Overrides some assertion methods (though currently just calls the parent methods; possibly a placeholder for future colored output).
+This class inherits from `tk.Tk` and encapsulates the entire GUI logic.
+
+#### **Initialization and Layout**
+
+- **`__init__`**
+  - Initializes the main window, sets title and size.
+  - Sets default file paths for timing and log files.
+  - Calls methods to create widgets and load data.
+
+- **`_make_widgets`**
+  - Constructs the GUI layout:
+    - Top bar with buttons to reload data or select files.
+    - Tabbed notebook with three tabs:
+      - **Timeline** (Gantt chart)
+      - **Time Summary** (bar chart)
+      - **Logs** (text display)
+
+#### **File Selection**
+
+- **`_pick_timing`** and **`_pick_log`**
+  - Open file dialogs for the user to select timing or log files.
+  - Update the relevant file path and reload all data.
+
+#### **Data Loading and Refresh**
+
+- **`_reload_everything`**
+  - Loads timing and log data using the helper functions.
+  - Refreshes all three tabs by calling their respective drawing/display methods.
+
+#### **Visualization and Display**
+
+- **`_draw_timeline`**
+  - Clears the timeline tab.
+  - Processes timing data:
+    - Converts start times to `datetime` and durations to seconds.
+    - Sorts entries chronologically.
+    - Assigns unique colors to each functionality.
+    - Plots a horizontal bar chart (Gantt chart) using Matplotlib, with:
+      - Time on the x-axis (formatted as dates).
+      - Functionality labels on the y-axis.
+      - Bar widths proportional to duration (converted from seconds to fractions of a day).
+      - Color legend for functionalities.
+      - Duration annotations on each bar.
+    - Embeds the plot in the Tkinter tab using `FigureCanvasTkAgg`.
+    - Adds a Matplotlib navigation toolbar for pan/zoom/save.
+    - Implements custom mouse wheel zoom:
+      - **Wheel**: horizontal (time) zoom.
+      - **Shift+Wheel**: vertical (label) zoom.
+
+- **`_draw_summary`**
+  - Clears the summary tab.
+  - Computes average duration per functionality.
+  - Plots a horizontal bar chart of these averages.
+  - Annotates each bar with its value.
+  - Embeds the plot in the Tkinter tab.
+
+- **`_show_logs`**
+  - Clears and repopulates the log tab's text widget.
+  - Displays each log entry in a formatted manner.
 
 ---
 
-### **3. Test Classes and Their Responsibilities**
+## **Structure and Component Interaction**
 
-#### **a. TestConfigLoad**
-
-- **Purpose:**  
-  - Verifies that the assistant’s configuration loader (`main.load_config`) works and returns a dictionary with all required top-level keys.
-
-#### **b. TestInitializationAssistant**
-
-- **Purpose:**  
-  - Tests the assistant initialization process (`main.initialize_assistant`).
-  - Ensures that all core components (conversation manager, LLM client, STT/TTS engines, Arduino interface, and feature flags) are instantiated and of the correct types.
-
-#### **c. TestConversationLoop**
-
-- **Purpose:**  
-  - Tests the main conversation loop (`main.conversation_loop`).
-  - Simulates user input ("exit") by redirecting `sys.stdin` and captures output by redirecting `sys.stdout`.
-  - Ensures the loop can start and exit gracefully and that user prompts are displayed.
-
-#### **d. TestLLMFunctionality**
-
-- **Purpose:**  
-  - Tests the LLM client’s ability to generate text responses (`GPTClient.get_text`).
-  - Ensures the output is a non-empty string and that no exceptions are raised.
-
-#### **e. TestTTSFunctionality**
-
-- **Purpose:**  
-  - Tests the TTS engine’s ability to generate, play, and clean up temporary audio files (`TextToSpeechEngine.generate_and_play_advanced`).
-  - Ensures no temporary files remain after playback.
-
-#### **f. TestConversationManagerFunctionality**
-
-- **Purpose:**  
-  - Tests the conversation manager’s ability to add and retrieve conversation turns.
-  - Ensures that user and assistant messages are correctly stored and retrievable.
+- The **main window** is a `TimelineGUI` instance.
+- **Helper functions** load and parse data from files.
+- **Tabs** separate the three main views (timeline, summary, logs).
+- **Matplotlib** is used for all plotting, embedded in Tkinter via the `FigureCanvasTkAgg` backend.
+- **User actions** (button clicks, file selections, mouse wheel) trigger data reloads or interactive plot navigation.
+- **Data flow**: File → Helper function → GUI class → Matplotlib plot or text widget.
 
 ---
 
-## **How Components Interact**
+## **External Dependencies**
 
-- **Configuration Loading:**  
-  - `main.load_config()` reads and parses the configuration, which is then used for initializing all assistant components.
+- **Standard Library**: `os`, `json`, `datetime`, `tkinter`, `collections`, `re`
+- **Matplotlib**: For plotting and embedding charts in the GUI.
+- **Tkinter**: For the GUI framework and widgets.
+- **No third-party dependencies** beyond Matplotlib.
 
-- **Initialization:**  
-  - `main.initialize_assistant(config)` creates instances of all core modules, passing configuration as needed.
+---
 
-- **Conversation Loop:**  
-  - `main.conversation_loop(...)` orchestrates the interaction between the user, LLM, TTS/STT, and hardware. The test simulates a user typing "exit" to ensure the loop can terminate gracefully.
+## **APIs and Configuration**
 
-- **LLM, TTS, STT, Hardware:**  
-  - Each has its own class, instantiated and tested independently to ensure modularity and testability.
+- **File Inputs**:
+  - **Timing file**: JSON format, default name `timings.json`. Each entry should have at least `startTime`, `durationMs`, and `functionality`.
+  - **Log file**: Plain text, default name `assistant.log`. Each line should match the regex:  
+    `YYYY-MM-DD HH:MM:SS LEVEL: message`
+- **No external APIs** or network requirements.
+- **Configuration**: File paths can be changed via the GUI.
 
 ---
 
 ## **Notable Algorithms and Logic**
 
-- **Input/Output Simulation:**  
-  - The test for the conversation loop uses `io.StringIO` to simulate user input and capture output, allowing automated testing of interactive code.
-
-- **Temporary File Cleanup:**  
-  - The TTS test checks that temporary audio files are deleted after playback, ensuring good resource management.
-
-- **Conversation Management:**  
-  - The conversation manager is tested for correct history tracking and message storage.
+- **Gantt Chart Width Calculation**:
+  - Durations are stored in milliseconds, converted to seconds, then to fractions of a day (for Matplotlib's date axis).
+- **Color Assignment**:
+  - Each unique functionality is mapped to a unique color using Matplotlib's `tab20` colormap.
+- **Mouse Wheel Zoom**:
+  - Custom event handler for Matplotlib's `scroll_event`:
+    - Normal wheel zooms x-axis (time).
+    - Shift+wheel zooms y-axis (labels).
+    - Zoom is centered on the mouse pointer.
+    - Zoom step is configurable (`ZOOM_STEP`).
+- **Legend and Annotation**:
+  - Automatic legend for functionality colors.
+  - Each bar is annotated with its duration or average time.
+- **File Dialogs**:
+  - Standard Tkinter dialogs for file selection, with filters for JSON/log files.
 
 ---
 
-## **External Dependencies, APIs, and Configuration**
+## **Summary**
 
-- **APIs:**  
-  - The LLM client likely interacts with an external API (e.g., OpenAI GPT).
-  - TTS and STT engines may use cloud or local APIs.
-  - The Arduino interface communicates with hardware.
+This script provides an interactive, user-friendly GUI for visualizing timing and log data. It is well-structured, modular, and leverages Matplotlib for powerful plotting within a Tkinter interface. The application is suitable for analyzing the chronological sequence and duration of various functionalities (e.g., in a software assistant or automated process), and for reviewing associated log events. Its interactive features (zoom, pan, file selection) make it flexible for exploratory data analysis.
 
-- **Configuration:**  
-  - The script expects a configuration file with sections for app, logging, stt, tts, llm, hardware, assistant, and secrets.
-  - Paths and credentials for APIs/hardware are likely required.
+**No advanced algorithms** are present; the logic is straightforward, focusing on robust data handling, user interaction, and clear visualization. The most notable implementation detail is the custom zoom handler for Matplotlib plots embedded in Tkinter.
+
+### C:\GIT\Wheatly\Wheatley\Wheatley\puppet.py
+Certainly! Here’s a detailed summary of the provided `servo_puppet.py` script, covering its purpose, structure, main classes and functions, dependencies, configuration, and notable logic.
+
+---
+
+## **Overall Purpose**
+
+The script provides a **graphical user interface (GUI)** to control and configure servos connected to an OpenRB-150 or Core-2 microcontroller board. It allows users to:
+
+- Move individual servos to specific angles.
+- Adjust servo parameters (velocity, idle band, interval).
+- Send configuration commands to the hardware.
+- Save and apply animation presets.
+- Control onboard LEDs.
+- View live feedback from the hardware, including actual servo positions.
+
+The GUI is built with **Tkinter** and communicates with the hardware via a serial connection.
+
+---
+
+## **Main Components**
+
+### 1. **Constants and Configuration**
+
+- **SERVO_NAMES**: List of servo names (e.g., lens, eyelid1, eyeX, etc.).
+- **DEFAULT_MIN/MAX**: Default min/max angles for each servo.
+- **UI Colors and Layout Constants**: Colors for UI elements, bar heights, etc.
+- **Column Indexes**: For organizing the grid layout.
+
+---
+
+### 2. **Serial Communication Layer**
+
+#### **SerialBackend Class**
+
+- **Purpose**: Abstracts serial communication with the hardware.
+- **Responsibilities**:
+  - Manages opening/closing the serial port.
+  - Handles sending and receiving messages (with optional dry-run mode).
+  - Runs a background thread to read incoming serial data and queues it for the GUI.
+  - Provides queues for RX (received) and TX (sent) messages for thread-safe communication.
+- **Notable Logic**:
+  - Handles absence of the `serial` module gracefully (for dry-run/testing).
+  - Uses a thread to avoid blocking the GUI.
+
+---
+
+### 3. **Graphical User Interface**
+
+#### **PuppetGUI Class (inherits from Tk)**
+
+- **Purpose**: Implements the main window and all UI logic.
+- **Responsibilities**:
+  - **Theme/Styling**: Sets up the look and feel using Tkinter’s `ttk.Style`.
+  - **Layout**: Organizes the window into two panes:
+    - **Left Pane**: Servo controls (sliders, parameter entries, move/config buttons, LED controls, preset management).
+    - **Right Pane**: Log area for serial communication and status messages.
+  - **Servo Control Rows**: For each servo, provides:
+    - A slider for target angle.
+    - Entry fields for velocity, idle band, interval.
+    - Buttons for moving/configuring the servo.
+    - A canvas showing the slider, idle band, and a red dot for the actual angle reported by the hardware.
+  - **LED Controls**: RGB entries, color picker, and buttons to send LED commands.
+  - **Preset Management**:
+    - Save current settings as a preset (animation).
+    - Apply a preset to all servos and LEDs.
+    - Presets are stored in a JSON file (`animations.json`).
+  - **Command Sending**:
+    - Sends commands to move/configure servos and set LEDs.
+    - Can send all servo configs at once.
+  - **Feedback and Parsing**:
+    - Parses incoming serial lines to update servo limits and actual angles.
+    - Updates the UI to reflect live hardware state (e.g., red dot on sliders).
+  - **Utilities**: Color picker, message logging, enabling/disabling controls.
+  - **Event Loop**: Uses a periodic `after` callback (`_pump`) to process serial queues and update the UI.
+
+---
+
+### 4. **Preset and Animation Management**
+
+- **Presets**: Saved as JSON objects with servo velocities, target factors (normalized positions), idle ranges, intervals, and LED color.
+- **Loading/Saving**: Presets are loaded at startup and saved when the user creates a new one.
+- **Applying**: When a preset is applied, all servo controls and LED fields are updated, and the configuration is sent to the hardware.
+
+---
+
+### 5. **Command and Feedback Protocol**
+
+- **Outgoing Commands**:
+  - `MOVE_SERVO;ID=...;TARGET=...;VELOCITY=...;`
+  - `SET_SERVO_CONFIG:...` (for all servos or one at a time)
+  - `SET_LED;R=...;G=...;B=...;`
+  - `SET_MIC_LED;R=...;G=...;B=...;`
+- **Incoming Feedback**:
+  - `SERVO_CONFIG:...` lines update the min/max for each servo.
+  - `MOVE_SERVO;ID=...;TARGET=...;` or `Servo n: angle=...` lines update the actual angle shown on the GUI.
+
+---
+
+### 6. **Startup and Main Loop**
+
+- **Argument Parsing**: Supports command-line options for serial port, baud rate, and dry-run mode.
+- **Auto Port Detection**: Tries to auto-detect the serial port if not specified.
+- **Initialization**:
+  - Starts the serial backend.
+  - Instantiates the GUI.
+  - Requests servo configuration from the hardware.
+  - Enters the Tkinter main loop.
+- **Graceful Shutdown**: Closes the serial port on exit.
+
+---
+
+## **External Dependencies**
+
+- **Tkinter**: For the GUI (standard in Python, but may require installation on some systems).
+- **pyserial**: For serial communication (`import serial`). If not installed, the script can run in dry-run mode for UI testing.
+- **animations.json**: A local file for saving/loading presets (created if not present).
+
+---
+
+## **Configuration Requirements**
+
+- **Serial Port**: Must be specified or auto-detected unless running in dry-run mode.
+- **Baud Rate**: Default is 115200, can be changed via command-line.
+- **Hardware**: Expects an OpenRB-150 or Core-2 board running compatible firmware.
+
+---
+
+## **Notable Algorithms and Logic**
+
+- **Live Feedback Visualization**: The GUI displays both the target angle (slider position) and the actual angle (red dot) as reported by the hardware, providing real-time feedback.
+- **Idle Band Visualization**: Each servo row’s canvas shows the allowed idle band as a colored bar.
+- **Preset Normalization**: Presets store servo positions as normalized factors (0.0–1.0 between min and max), allowing them to adapt to different hardware limits.
+- **Threaded Serial Reading**: Serial reads are performed in a background thread, with queues used for safe communication with the main GUI thread.
+- **UI Locking**: Controls are disabled until servo limits are received from the hardware, preventing invalid commands.
+
+---
+
+## **Component Interactions**
+
+- **SerialBackend** handles all serial I/O, providing queues for the GUI to read/write messages.
+- **PuppetGUI** manages the user interface, periodically polling the serial queues to update the UI and send commands.
+- **Preset Management** interacts with both the GUI and the file system (for JSON storage).
+- **Command/Feedback Parsing** ensures the GUI state matches the hardware state, updating controls and visualizations as needed.
 
 ---
 
 ## **Summary Table**
 
-| Component/Class              | Responsibility                                         |
-|------------------------------|-------------------------------------------------------|
-| `ColorfulTestCase`           | Base test case (potential for colored output)         |
-| `TestConfigLoad`             | Tests configuration loading                           |
-| `TestInitializationAssistant`| Tests assistant initialization                        |
-| `TestConversationLoop`       | Tests main conversation loop (user interaction)       |
-| `TestLLMFunctionality`       | Tests LLM text generation                             |
-| `TestTTSFunctionality`       | Tests TTS audio generation and cleanup                |
-| `TestConversationManagerFunctionality` | Tests conversation history management   |
+| Component         | Responsibility                                                |
+|-------------------|--------------------------------------------------------------|
+| SerialBackend     | Serial I/O, background reading, message queuing              |
+| PuppetGUI         | Main window, servo controls, LED controls, logging, parsing  |
+| Preset Management | Save/load/apply servo/LED settings as named animations       |
+| Command Protocol  | Text-based commands for servo/LED control and feedback       |
+| Main Loop         | Argument parsing, startup, shutdown                          |
 
 ---
 
 ## **Conclusion**
 
-This script is a comprehensive unit test suite for a modular voice assistant system. It ensures that configuration, initialization, conversation management, LLM, TTS, and hardware modules work as expected and interact correctly. The tests are designed to catch regressions and integration issues early, and they rely on both simulated and real interactions with the assistant’s components. The script assumes the presence of several external dependencies, including configuration files, APIs, and possibly hardware.
+This script is a comprehensive, user-friendly tool for configuring and controlling a multi-servo robotic device via serial communication. It provides live feedback, preset management, and robust error handling, making it suitable for both development and operation of animatronic or robotic systems using OpenRB-150/Core-2 hardware. The code is modular, with clear separation between GUI, serial communication, and configuration management.
+
+### C:\GIT\Wheatly\Wheatley\Wheatley\service_auth.py
+Certainly! Here’s a detailed summary and analysis of the provided Python script:
+
+---
+
+## **Overall Purpose**
+
+This script provides authentication helpers for a project called "Wheatley." Its main goal is to check and report whether the application can successfully authenticate with several external services (Google, Spotify, OpenAI, and ElevenLabs) using credentials stored in a YAML configuration file. It also initializes agent objects for Google and Spotify if authentication is successful.
+
+---
+
+## **Main Components**
+
+### **1. Configuration Loader**
+
+- **Function:** `_load_config`
+- **Responsibility:** Loads and parses a YAML configuration file (`config.yaml`) located in a `config` directory relative to the script. This file is expected to contain API keys and other secrets required for authenticating with external services.
+
+### **2. Service Authentication Checkers**
+
+- **Function:** `_check_openai`
+  - **Responsibility:** Attempts to authenticate with the OpenAI API using the provided API key. It supports both the new and old versions of the OpenAI Python library by checking for the presence of the `OpenAI` class.
+  - **Logic:** If authentication is successful (i.e., a list of models can be retrieved), returns `True`; otherwise, returns `False`.
+
+- **Function:** `_check_elevenlabs`
+  - **Responsibility:** Attempts to authenticate with the ElevenLabs API using the provided API key. It tries to retrieve all available voices as a test of credentials.
+  - **Logic:** Returns `True` if successful, `False` otherwise.
+
+### **3. Service Agent Initialization**
+
+- **GoogleAgent** and **SpotifyAgent**:
+  - **Purpose:** These are classes (imported from local modules) that encapsulate logic for interacting with Google and Spotify APIs, respectively.
+  - **Initialization:** The script tries to instantiate these agents and perform a simple operation (listing calendars for Google, getting current playback for Spotify) to verify authentication.
+
+### **4. Authentication Orchestrator**
+
+- **Function:** `authenticate_services`
+  - **Responsibility:** Coordinates the authentication process for all supported services:
+    - Loads configuration.
+    - Attempts to authenticate with Google and Spotify by initializing their respective agents and performing a test operation.
+    - Checks OpenAI and ElevenLabs authentication using their respective helper functions.
+    - Prints the authentication status for each service using colored output (green for success, red for failure).
+    - Updates a global `SERVICE_STATUS` dictionary with the results.
+    - Returns a dictionary mapping service names to their authentication status.
+
+---
+
+## **Code Structure and Interactions**
+
+- **Global Variables:**  
+  - `SERVICE_STATUS`: Tracks authentication status for each service.
+  - `GOOGLE_AGENT`, `SPOTIFY_AGENT`: Hold initialized agent objects if authentication is successful.
+
+- **Imports and Dependencies:**
+  - **External Libraries:**  
+    - `openai` (optional, for OpenAI API)
+    - `elevenlabs` (optional, for ElevenLabs API)
+    - `colorama` (for colored terminal output)
+    - `yaml` (for reading configuration)
+  - **Local Modules:**  
+    - `llm.google_agent` and `llm.spotify_agent` (for agent classes)
+  - **Fallback Imports:**  
+    - Tries both relative and absolute imports for agent classes to support different execution contexts.
+
+- **Error Handling:**  
+  - Uses broad exception handling to ensure that missing libraries or failed authentications do not crash the script, but are reported as failures.
+
+- **Configuration Requirements:**  
+  - Expects a YAML file at `config/config.yaml` relative to the script, containing a `secrets` section with API keys for OpenAI and ElevenLabs.
+
+---
+
+## **Notable Algorithms and Logic**
+
+- **Dynamic Library Support:**  
+  - The script detects at runtime whether the `openai` and `elevenlabs` libraries are installed, allowing it to run even if some dependencies are missing (e.g., during documentation builds).
+
+- **Version Compatibility:**  
+  - The OpenAI checker supports both the new and old versions of the OpenAI Python library by checking for the existence of the `OpenAI` class.
+
+- **Service Verification:**  
+  - Authentication is verified not just by instantiating clients, but by making a simple API call (e.g., listing models, listing voices, listing calendars, getting playback) to ensure credentials are valid and the service is reachable.
+
+- **User Feedback:**  
+  - Uses `colorama` to print colored checkmarks or crosses for each service, providing clear visual feedback on authentication status.
+
+---
+
+## **External Dependencies and Configuration**
+
+- **Required Python Packages:**
+  - `PyYAML` (for YAML parsing)
+  - `colorama` (for colored output)
+  - Optionally: `openai`, `elevenlabs`, and any dependencies of `GoogleAgent` and `SpotifyAgent`
+
+- **Configuration File:**
+  - `config/config.yaml` must exist and contain at least:
+    ```yaml
+    secrets:
+      openai_api_key: "..."
+      elevenlabs_api_key: "..."
+    ```
+
+- **Agent Classes:**
+  - `GoogleAgent` and `SpotifyAgent` must be implemented and importable from the specified modules.
+
+---
+
+## **Summary Table**
+
+| Component        | Purpose                                              | Key Logic/Behavior                                  |
+|------------------|-----------------------------------------------------|-----------------------------------------------------|
+| `_load_config`   | Load YAML config with API keys                      | Reads and parses config file                        |
+| `_check_openai`  | Validate OpenAI API key                             | Supports multiple library versions, lists models    |
+| `_check_elevenlabs` | Validate ElevenLabs API key                      | Lists voices to verify credentials                  |
+| `authenticate_services` | Authenticate all services, print status      | Orchestrates checks, prints colored output, updates global status |
+| `GoogleAgent`/`SpotifyAgent` | Service-specific API wrappers           | Instantiated and tested for authentication          |
+
+---
+
+## **Conclusion**
+
+This script is a robust, user-friendly authentication helper for a multi-service Python application. It abstracts away the details of authenticating with several APIs, provides clear feedback to the user, and gracefully handles missing dependencies or failed authentications. It is designed to be extensible and maintainable, with clear separation of concerns for configuration loading, authentication checking, and user feedback.
+
+### C:\GIT\Wheatly\Wheatley\Wheatley\test.py
+Certainly! Here’s a detailed summary and analysis of the provided Python script:
+
+---
+
+## **Overall Purpose**
+
+This script is a **unit test suite** for a modular Python-based assistant application named "Wheatley." It exercises and validates the core modules and functionalities of the assistant, including configuration loading, component initialization, conversation handling, language model (LLM) interaction, text-to-speech (TTS), speech-to-text (STT), hardware interfacing, and long-term memory management.
+
+---
+
+## **Main Classes and Functions**
+
+### **1. ColorfulTestCase**
+- **Purpose:** Custom subclass of `unittest.TestCase` (though not adding color output, just overriding some assertion methods).
+- **Responsibilities:** Provides a base for all test cases, potentially for future extension (e.g., colored output).
+
+---
+
+### **2. TestConfigLoad**
+- **Purpose:** Tests configuration loading as used in `main.py`.
+- **Responsibilities:** Ensures that the configuration file is loaded and contains all required keys (e.g., app, logging, stt, tts, llm, hardware, assistant, secrets).
+
+---
+
+### **3. TestInitializationAssistant**
+- **Purpose:** Tests assistant initialization logic.
+- **Responsibilities:** Verifies that the `initialize_assistant` function returns all expected components (ConversationManager, GPTClient, STT/TTS engines, ArduinoInterface, and boolean flags for STT/TTS enablement).
+
+---
+
+### **4. TestConversationLoop**
+- **Purpose:** Tests the main conversation loop logic.
+- **Responsibilities:** Simulates user input (specifically "exit") to ensure the loop can start and exit cleanly. Redirects `sys.stdin` and `sys.stdout` to simulate and capture input/output.
+
+---
+
+### **5. TestLLMFunctionality**
+- **Purpose:** Tests the GPT-based language model client.
+- **Responsibilities:** Ensures that the LLM client (`GPTClient`) can process a conversation and return a non-empty string response.
+
+---
+
+### **6. TestTTSFunctionality**
+- **Purpose:** Tests the text-to-speech engine.
+- **Responsibilities:** Ensures that the TTS engine can generate, play, and clean up temporary audio files after speaking.
+
+---
+
+### **7. TestConversationManagerFunctionality**
+- **Purpose:** Tests the assistant's conversation management.
+- **Responsibilities:** Ensures that the conversation manager can add user/assistant messages and retrieve the conversation history correctly.
+
+---
+
+### **8. TestLongTermMemory**
+- **Purpose:** Tests the long-term memory utilities.
+- **Responsibilities:** Verifies that memory can be overwritten, edited, and read, and that long text fields are truncated as expected.
+
+---
+
+## **Structure and Component Interaction**
+
+- **Test Classes:** Each test class targets a specific module or functionality.
+- **Test Methods:** Each method within a class tests a specific aspect (e.g., loading config, adding conversation, generating TTS).
+- **Setup:** Tests typically initialize components using the same logic as the main application (via `main.load_config()` and `main.initialize_assistant()`).
+- **Simulation:** For interactive components (like the conversation loop), the script simulates user input/output using `io.StringIO` and redirects `sys.stdin`/`sys.stdout`.
+- **Assertions:** The script uses assertions to check types, return values, and side effects (like file cleanup).
+
+---
+
+## **External Dependencies and APIs**
+
+- **Wheatley Modules:** The script imports from various `wheatley` submodules:
+  - `wheatley.main`: Main entry point, configuration, and initialization logic.
+  - `wheatley.assistant.assistant`: Conversation management.
+  - `wheatley.llm.llm_client`: GPT-based LLM client.
+  - `wheatley.tts.tts_engine`: Text-to-speech engine.
+  - `wheatley.stt.stt_engine`: Speech-to-text engine.
+  - `wheatley.hardware.arduino_interface`: Hardware interface (Arduino).
+  - `wheatley.utils.long_term_memory`: Memory utilities.
+
+- **Standard Library:** Uses `unittest`, `os`, `io`, and `sys`.
+
+- **Configuration Requirements:** The tests assume the presence of a configuration file or system that `main.load_config()` can access, with specific keys.
+
+- **Temporary Files:** TTS tests expect a `temp` directory for audio files, and long-term memory tests create/delete a temporary JSON file.
+
+---
+
+## **Notable Algorithms and Logic**
+
+- **Conversation Loop Simulation:** The test for the conversation loop simulates user input by redirecting `sys.stdin` to a `StringIO` object containing "exit\n". This allows the test to drive the loop as if a user typed "exit", ensuring the loop exits gracefully.
+
+- **Temporary File Cleanup:** The TTS test checks that temporary audio files are deleted after playback, ensuring no resource leaks.
+
+- **Long-Term Memory Truncation:** The long-term memory tests check that long text fields are truncated to a specific length (197 characters plus ellipsis), enforcing memory size limits.
+
+---
+
+## **Configuration and Environment**
+
+- **File System:** Some tests read/write files (e.g., temporary memory JSON, TTS temp files).
+- **Environment:** The tests expect the Wheatley package to be installed and importable, with all submodules available.
+- **Hardware:** The Arduino interface is initialized, but not actively tested for hardware interaction (would require hardware to be connected for full integration testing).
+
+---
+
+## **Summary of Component Interactions**
+
+1. **Configuration is loaded** using `main.load_config()`.
+2. **Assistant components are initialized** via `main.initialize_assistant(config)`, returning all core modules and flags.
+3. **Conversation loop** is tested by simulating user input and capturing output.
+4. **LLM, TTS, and Conversation Manager** are tested in isolation for their core methods.
+5. **Long-term memory** is tested for correct file handling and data truncation.
+
+---
+
+## **Conclusion**
+
+This script provides a comprehensive suite of **unit tests** for the main modules of the Wheatley assistant application. It ensures that configuration, initialization, conversation management, language model interaction, speech synthesis, and memory management all function as expected. The tests are designed to be run automatically and simulate user interaction where necessary, providing a solid foundation for regression testing and future development.
