@@ -1,0 +1,80 @@
+[
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-24T11:29:51.865760",
+    "endTime": "2025-06-24T11:29:53.681587",
+    "durationMs": 1815
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-24T11:29:53.697717",
+    "endTime": "2025-06-24T11:29:54.192663",
+    "durationMs": 494
+  },
+  {
+    "functionality": "tts_generate",
+    "startTime": "2025-06-24T11:29:54.193647",
+    "endTime": "2025-06-24T11:29:55.050846",
+    "durationMs": 857
+  },
+  {
+    "functionality": "tts_play",
+    "startTime": "2025-06-24T11:29:55.135018",
+    "endTime": "2025-06-24T11:30:07.035571",
+    "durationMs": 11900
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-24T11:30:07.047576",
+    "endTime": "2025-06-24T11:30:07.936001",
+    "durationMs": 888
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-24T11:30:07.979720",
+    "endTime": "2025-06-24T11:30:08.562418",
+    "durationMs": 582
+  },
+  {
+    "functionality": "tts_generate",
+    "startTime": "2025-06-24T11:30:08.562418",
+    "endTime": "2025-06-24T11:30:09.083969",
+    "durationMs": 521
+  },
+  {
+    "functionality": "tts_play",
+    "startTime": "2025-06-24T11:30:09.083969",
+    "endTime": "2025-06-24T11:30:12.000050",
+    "durationMs": 2916
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-24T11:30:12.007384",
+    "endTime": "2025-06-24T11:30:12.798773",
+    "durationMs": 791
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-24T11:30:12.815575",
+    "endTime": "2025-06-24T11:30:14.016838",
+    "durationMs": 1201
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-06-24T11:30:14.031775",
+    "endTime": "2025-06-24T11:30:16.078311",
+    "durationMs": 2046
+  },
+  {
+    "functionality": "tts_generate",
+    "startTime": "2025-06-24T11:30:16.080309",
+    "endTime": "2025-06-24T11:30:16.598615",
+    "durationMs": 518
+  },
+  {
+    "functionality": "tts_play",
+    "startTime": "2025-06-24T11:30:16.679095",
+    "endTime": "2025-06-24T11:30:22.965543",
+    "durationMs": 6286
+  }
+]

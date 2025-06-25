@@ -40,6 +40,7 @@ pull request.
   [reference](https://platform.openai.com/docs/guides/speech-to-text?lang=curl#streaming-transcriptions)
   - [ ] Stream LLM response to TTS
   TTS does not support streaming input, so there is no value in streaming the LLM response to TTS.
+  TTS supports "previus text" and "next text" wich means we can "stream" the innput by continuously sending previus, current, and next text to the TTS service.
   [reference](https://platform.openai.com/docs/api-reference/responses-streaming)
   - [ ] Stream TTS response to speaker
   [reference](https://elevenlabs.io/docs/api-reference/streaming)
