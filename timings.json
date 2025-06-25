@@ -1,80 +1,122 @@
 [
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-06-24T11:29:51.865760",
-    "endTime": "2025-06-24T11:29:53.681587",
-    "durationMs": 1815
+    "startTime": "2025-06-25T10:42:20.428202",
+    "endTime": "2025-06-25T10:42:22.545316",
+    "durationMs": 2117
   },
   {
     "functionality": "llm_select_animation",
-    "startTime": "2025-06-24T11:29:53.697717",
-    "endTime": "2025-06-24T11:29:54.192663",
-    "durationMs": 494
+    "startTime": "2025-06-25T10:42:22.556948",
+    "endTime": "2025-06-25T10:42:23.036990",
+    "durationMs": 480
   },
   {
     "functionality": "tts_generate",
-    "startTime": "2025-06-24T11:29:54.193647",
-    "endTime": "2025-06-24T11:29:55.050846",
-    "durationMs": 857
+    "startTime": "2025-06-25T10:42:23.039021",
+    "endTime": "2025-06-25T10:42:23.989528",
+    "durationMs": 950
   },
   {
     "functionality": "tts_play",
-    "startTime": "2025-06-24T11:29:55.135018",
-    "endTime": "2025-06-24T11:30:07.035571",
-    "durationMs": 11900
+    "startTime": "2025-06-25T10:42:24.074096",
+    "endTime": "2025-06-25T10:42:38.859592",
+    "durationMs": 14785
   },
   {
     "functionality": "llm_get_workflow",
-    "startTime": "2025-06-24T11:30:07.047576",
-    "endTime": "2025-06-24T11:30:07.936001",
-    "durationMs": 888
+    "startTime": "2025-06-25T10:43:04.197030",
+    "endTime": "2025-06-25T10:43:09.512681",
+    "durationMs": 5315
   },
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-06-24T11:30:07.979720",
-    "endTime": "2025-06-24T11:30:08.562418",
-    "durationMs": 582
+    "startTime": "2025-06-25T10:43:09.552885",
+    "endTime": "2025-06-25T10:43:10.236274",
+    "durationMs": 683
   },
   {
     "functionality": "tts_generate",
-    "startTime": "2025-06-24T11:30:08.562418",
-    "endTime": "2025-06-24T11:30:09.083969",
-    "durationMs": 521
+    "startTime": "2025-06-25T10:43:10.236274",
+    "endTime": "2025-06-25T10:43:10.681611",
+    "durationMs": 445
   },
   {
     "functionality": "tts_play",
-    "startTime": "2025-06-24T11:30:09.083969",
-    "endTime": "2025-06-24T11:30:12.000050",
-    "durationMs": 2916
+    "startTime": "2025-06-25T10:43:10.681611",
+    "endTime": "2025-06-25T10:43:10.846689",
+    "durationMs": 165
   },
   {
     "functionality": "llm_get_workflow",
-    "startTime": "2025-06-24T11:30:12.007384",
-    "endTime": "2025-06-24T11:30:12.798773",
-    "durationMs": 791
+    "startTime": "2025-06-25T10:43:12.195832",
+    "endTime": "2025-06-25T10:43:13.078064",
+    "durationMs": 882
   },
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-06-24T11:30:12.815575",
-    "endTime": "2025-06-24T11:30:14.016838",
-    "durationMs": 1201
+    "startTime": "2025-06-25T10:43:13.108846",
+    "endTime": "2025-06-25T10:43:13.714810",
+    "durationMs": 605
+  },
+  {
+    "functionality": "tts_generate",
+    "startTime": "2025-06-25T10:43:13.714810",
+    "endTime": "2025-06-25T10:43:14.085215",
+    "durationMs": 370
+  },
+  {
+    "functionality": "tts_play",
+    "startTime": "2025-06-25T10:43:14.085215",
+    "endTime": "2025-06-25T10:43:17.346757",
+    "durationMs": 3261
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-06-25T10:43:18.595719",
+    "endTime": "2025-06-25T10:43:19.489806",
+    "durationMs": 894
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-25T10:43:19.519866",
+    "endTime": "2025-06-25T10:43:20.220919",
+    "durationMs": 701
+  },
+  {
+    "functionality": "tts_generate",
+    "startTime": "2025-06-25T10:43:20.220919",
+    "endTime": "2025-06-25T10:43:20.638046",
+    "durationMs": 417
+  },
+  {
+    "functionality": "tts_play",
+    "startTime": "2025-06-25T10:43:20.638046",
+    "endTime": "2025-06-25T10:43:23.701136",
+    "durationMs": 3063
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-06-25T10:43:24.874245",
+    "endTime": "2025-06-25T10:43:26.232075",
+    "durationMs": 1357
   },
   {
     "functionality": "llm_select_animation",
-    "startTime": "2025-06-24T11:30:14.031775",
-    "endTime": "2025-06-24T11:30:16.078311",
-    "durationMs": 2046
+    "startTime": "2025-06-25T10:43:26.245311",
+    "endTime": "2025-06-25T10:43:26.723286",
+    "durationMs": 477
   },
   {
     "functionality": "tts_generate",
-    "startTime": "2025-06-24T11:30:16.080309",
-    "endTime": "2025-06-24T11:30:16.598615",
-    "durationMs": 518
+    "startTime": "2025-06-25T10:43:26.726285",
+    "endTime": "2025-06-25T10:43:27.558169",
+    "durationMs": 831
   },
   {
     "functionality": "tts_play",
-    "startTime": "2025-06-24T11:30:16.679095",
-    "endTime": "2025-06-24T11:30:22.965543",
-    "durationMs": 6286
+    "startTime": "2025-06-25T10:43:27.658160",
+    "endTime": "2025-06-25T10:43:42.018939",
+    "durationMs": 14360
   }
 ]
