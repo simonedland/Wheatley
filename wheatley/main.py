@@ -395,6 +395,8 @@ async def stream_assistant_reply(
 ) -> tuple[str, str, Optional[asyncio.Task]]:
     """Stream GPT reply and play TTS while generating."""
 
+    print(f"[Stream] Starting streaming with {MAX_TTS_WORKERS} TTS workers")
+
     if hotword_task:
         hotword_task.cancel()
         await asyncio.gather(hotword_task, return_exceptions=True)
@@ -447,12 +449,15 @@ async def stream_assistant_reply(
     def play_mp3(data: bytes | None, _idx: float) -> None:
         if data is None:
             return
+        print(f"[Player] Playing clip {_idx}")
         tts_engine.play_mp3_bytes(data)
+        print(f"[Player] Finished clip {_idx}")
 
     def producer() -> None:
         idx = 0.0
         for sent in gpt_client.sentence_stream(manager.get_conversation()):
             sentences.append(sent)
+            print(f"[Producer] Sentence {idx}: {sent}")
             asyncio.run_coroutine_threadsafe(q_sent.put((idx, sent)), loop)
             idx += 1.0
         asyncio.run_coroutine_threadsafe(q_sent.put(None), loop)
@@ -467,10 +472,12 @@ async def stream_assistant_reply(
 
         async def handle(idx: float, cur: str, nxt: str, prev: str):
             async with sem:
+                print(f"[TTS] Generating clip {idx}")
                 data = await asyncio.wrap_future(
                     loop2.run_in_executor(pool, http_tts, cur, prev, nxt, idx)
                 )
                 await aq.put((idx, data))
+                print(f"[TTS] Done clip {idx}")
 
         item = await sq.get()
         while item:
@@ -506,6 +513,7 @@ async def stream_assistant_reply(
         last_input_type, stt_engine, queue, hotword_task, stt_enabled
     )
 
+    print("[Stream] Finished streaming")
     return gpt_text, animation, hotword_task
 
 
