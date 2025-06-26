@@ -89,7 +89,6 @@ class TextToSpeech:
             output_format=self.output_format
         )
         elapsed = time.time() - start_time
-        logging.info(f"TTS audio generation took {elapsed:.3f} seconds.")
         return audio
     
     def reload_config(self) -> None:
@@ -122,7 +121,6 @@ class TextToSpeech:
                 logging.error(f"Error deleting audio file: {e}")
         record_timing("tts_play", play_start)
         play_elapsed = time.time() - play_start
-        logging.info(f"TTS audio playback took {play_elapsed:.3f} seconds.")
 
 # =================== LLM Client ===================
 # This class is responsible for interacting with the OpenAI API
@@ -329,7 +327,6 @@ class Functions:
         results = []
         for item in workflow:
             func_name = item.get("name")
-            logging.info(f"\n--- Tool Execution: {func_name} ---")
             tool_start = time.time()
             if self.tts_enabled and func_name != "write_long_term_memory":
                 conversation = [
@@ -442,7 +439,6 @@ class Functions:
                 results.append((func_name, response))
 
             tool_elapsed = time.time() - tool_start
-            logging.info(f"Tool '{func_name}' execution took {tool_elapsed:.3f} seconds.")
         return results
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):

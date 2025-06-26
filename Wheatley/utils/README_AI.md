@@ -175,6 +175,8 @@ The script is a lightweight utility designed to **capture, store, and export exe
   - Calculates the duration in milliseconds.
   - Converts start and end times to UTC ISO 8601 strings.
   - Appends a dictionary with all this information to the global `timings` list.
+  - Captures the name of the calling thread for multithreaded timing.
+  - Uses a lock to ensure thread-safe writes.
 
 #### 3. **`export_timings(path: str = "timings.json")`**
 
@@ -218,11 +220,14 @@ The script is a lightweight utility designed to **capture, store, and export exe
   - Uses `time.time()` for high-resolution wall-clock timing (in seconds).
   - Duration is calculated as the difference between end and start times, converted to milliseconds for precision.
 
-- **Timestamp Formatting**:  
+- **Timestamp Formatting**:
   - Converts timestamps to UTC and formats them as ISO 8601 strings using `datetime.utcfromtimestamp().isoformat()`. This ensures compatibility and readability for downstream tools.
 
-- **Error Handling**:  
+- **Error Handling**:
   - File deletion in `clear_timings` is wrapped in a try-except block to handle and report any issues gracefully.
+
+- **Thread Safety**:
+  - A `threading.Lock` guards access to the shared `timings` list so that concurrent threads can record timings without race conditions.
 
 ---
 

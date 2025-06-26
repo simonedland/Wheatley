@@ -164,7 +164,6 @@ def initialize_assistant(config, *, stt_enabled: bool | None = None, tts_enabled
         if stt_engine:
             stt_engine.arduino_interface = arduino_interface
     elapsed = time.time() - start_time
-    logging.info(f"initialize_assistant completed in {elapsed:.3f} seconds.")
     # Return all initialized components and feature flags
     return manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled
 
@@ -396,7 +395,6 @@ async def stream_assistant_reply(
     """Stream GPT reply and play TTS while generating."""
 
     stream_start_time = time.time()
-    logging.info(f"[Timing] Streaming started at {stream_start_time:.3f}")
     record_timing("streaming_start", stream_start_time)
     print(f"[Stream] Starting streaming with {MAX_TTS_WORKERS} TTS workers")
 
@@ -443,7 +441,6 @@ async def stream_assistant_reply(
                 resp = _post()
                 resp.raise_for_status()
                 tts_end = time.time()
-                logging.info(f"[Timing] TTS clip {idx} generated in {tts_end - tts_start:.3f}s (sentence: {text[:30]}...)")
                 record_timing("tts_clip_generated", tts_start)
                 return resp.content
             except Exception:
@@ -460,7 +457,6 @@ async def stream_assistant_reply(
         print(f"[Player] Playing clip {_idx}")
         tts_engine.play_mp3_bytes(data)
         play_end = time.time()
-        logging.info(f"[Timing] TTS clip {_idx} played in {play_end - play_start:.3f}s")
         record_timing("tts_clip_played", play_start)
         print(f"[Player] Finished clip {_idx}")
 
@@ -470,7 +466,6 @@ async def stream_assistant_reply(
             sent_time = time.time()
             sentences.append(sent)
             print(f"[Producer] Sentence {idx}: {sent}")
-            logging.info(f"[Timing] Sentence {idx} produced at {sent_time - stream_start_time:.3f}s (sentence: {sent[:30]}...)")
             record_timing("sentence_produced", sent_time)
             asyncio.run_coroutine_threadsafe(q_sent.put((idx, sent)), loop)
             idx += 1.0
@@ -492,7 +487,6 @@ async def stream_assistant_reply(
                     loop2.run_in_executor(pool, http_tts, cur, prev, nxt, idx)
                 )
                 tts_clip_end = time.time()
-                logging.info(f"[Timing] TTS dispatch for clip {idx} took {tts_clip_end - tts_clip_start:.3f}s")
                 record_timing("tts_dispatch", tts_clip_start)
                 await aq.put((idx, data))
                 print(f"[TTS] Done clip {idx}")
@@ -519,7 +513,6 @@ async def stream_assistant_reply(
                 play_clip_start = time.time()
                 await loop3.run_in_executor(None, play_mp3, heap.pop(expect), expect)
                 play_clip_end = time.time()
-                logging.info(f"[Timing] Sequencer played clip {expect} in {play_clip_end - play_clip_start:.3f}s")
                 record_timing("sequencer_clip_played", play_clip_start)
                 expect += 1.0
 
@@ -532,7 +525,6 @@ async def stream_assistant_reply(
     animation = gpt_client.reply_with_animation(manager.get_conversation())
 
     stream_end_time = time.time()
-    logging.info(f"[Timing] Streaming finished at {stream_end_time:.3f}, duration: {stream_end_time - stream_start_time:.3f}s")
     record_timing("streaming_end", stream_end_time)
 
     hotword_task = await handle_follow_up_after_stream(
@@ -731,7 +723,7 @@ def main():
             except Exception as e:
                 print(f"[Shutdown] Error during stt_engine cleanup: {e}")
         sys.exit(0)
-    logging.info("Assistant finished.")
+    
 
 if __name__ == "__main__":
     main()
