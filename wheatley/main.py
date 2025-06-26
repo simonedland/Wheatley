@@ -35,7 +35,7 @@ from assistant.assistant import ConversationManager  # Manages conversation hist
 from llm.llm_client import GPTClient, Functions  # LLM client and function tools
 from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
 from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
-from utils.timing_logger import export_timings, clear_timings
+from utils.timing_logger import export_timings, clear_timings, record_timing
 
 
 # Initialize colorama for colored terminal output
@@ -395,6 +395,9 @@ async def stream_assistant_reply(
 ) -> tuple[str, str, Optional[asyncio.Task]]:
     """Stream GPT reply and play TTS while generating."""
 
+    stream_start_time = time.time()
+    logging.info(f"[Timing] Streaming started at {stream_start_time:.3f}")
+    record_timing("streaming_start", stream_start_time)
     print(f"[Stream] Starting streaming with {MAX_TTS_WORKERS} TTS workers")
 
     if hotword_task:
@@ -436,8 +439,12 @@ async def stream_assistant_reply(
         attempt, backoff = 1, 1
         while attempt <= MAX_ATTEMPTS:
             try:
+                tts_start = time.time()
                 resp = _post()
                 resp.raise_for_status()
+                tts_end = time.time()
+                logging.info(f"[Timing] TTS clip {idx} generated in {tts_end - tts_start:.3f}s (sentence: {text[:30]}...)")
+                record_timing("tts_clip_generated", tts_start)
                 return resp.content
             except Exception:
                 if attempt == MAX_ATTEMPTS:
@@ -449,15 +456,22 @@ async def stream_assistant_reply(
     def play_mp3(data: bytes | None, _idx: float) -> None:
         if data is None:
             return
+        play_start = time.time()
         print(f"[Player] Playing clip {_idx}")
         tts_engine.play_mp3_bytes(data)
+        play_end = time.time()
+        logging.info(f"[Timing] TTS clip {_idx} played in {play_end - play_start:.3f}s")
+        record_timing("tts_clip_played", play_start)
         print(f"[Player] Finished clip {_idx}")
 
     def producer() -> None:
         idx = 0.0
         for sent in gpt_client.sentence_stream(manager.get_conversation()):
+            sent_time = time.time()
             sentences.append(sent)
             print(f"[Producer] Sentence {idx}: {sent}")
+            logging.info(f"[Timing] Sentence {idx} produced at {sent_time - stream_start_time:.3f}s (sentence: {sent[:30]}...)")
+            record_timing("sentence_produced", sent_time)
             asyncio.run_coroutine_threadsafe(q_sent.put((idx, sent)), loop)
             idx += 1.0
         asyncio.run_coroutine_threadsafe(q_sent.put(None), loop)
@@ -472,10 +486,14 @@ async def stream_assistant_reply(
 
         async def handle(idx: float, cur: str, nxt: str, prev: str):
             async with sem:
+                tts_clip_start = time.time()
                 print(f"[TTS] Generating clip {idx}")
                 data = await asyncio.wrap_future(
                     loop2.run_in_executor(pool, http_tts, cur, prev, nxt, idx)
                 )
+                tts_clip_end = time.time()
+                logging.info(f"[Timing] TTS dispatch for clip {idx} took {tts_clip_end - tts_clip_start:.3f}s")
+                record_timing("tts_dispatch", tts_clip_start)
                 await aq.put((idx, data))
                 print(f"[TTS] Done clip {idx}")
 
@@ -498,7 +516,11 @@ async def stream_assistant_reply(
                 break
             heap[idx] = clip
             while expect in heap:
+                play_clip_start = time.time()
                 await loop3.run_in_executor(None, play_mp3, heap.pop(expect), expect)
+                play_clip_end = time.time()
+                logging.info(f"[Timing] Sequencer played clip {expect} in {play_clip_end - play_clip_start:.3f}s")
+                record_timing("sequencer_clip_played", play_clip_start)
                 expect += 1.0
 
     with ThreadPoolExecutor(MAX_TTS_WORKERS) as pool:
@@ -508,6 +530,10 @@ async def stream_assistant_reply(
     manager.add_text_to_conversation("assistant", gpt_text)
     manager.print_memory()
     animation = gpt_client.reply_with_animation(manager.get_conversation())
+
+    stream_end_time = time.time()
+    logging.info(f"[Timing] Streaming finished at {stream_end_time:.3f}, duration: {stream_end_time - stream_start_time:.3f}s")
+    record_timing("streaming_end", stream_end_time)
 
     hotword_task = await handle_follow_up_after_stream(
         last_input_type, stt_engine, queue, hotword_task, stt_enabled
