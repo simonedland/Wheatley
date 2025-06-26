@@ -462,11 +462,10 @@ async def stream_assistant_reply(
 
     def producer() -> None:
         idx = 0.0
-        for sent in gpt_client.sentence_stream(manager.get_conversation()):
-            sent_time = time.time()
+        for sent, start_ts, end_ts in gpt_client.sentence_stream(manager.get_conversation()):
             sentences.append(sent)
             print(f"[Producer] Sentence {idx}: {sent}")
-            record_timing("sentence_produced", sent_time)
+            record_timing(f"sentence_{int(idx)}", start_ts)
             asyncio.run_coroutine_threadsafe(q_sent.put((idx, sent)), loop)
             idx += 1.0
         asyncio.run_coroutine_threadsafe(q_sent.put(None), loop)
@@ -487,8 +486,8 @@ async def stream_assistant_reply(
                     loop2.run_in_executor(pool, http_tts, cur, prev, nxt, idx)
                 )
                 tts_clip_end = time.time()
-                record_timing("tts_dispatch", tts_clip_start)
                 await aq.put((idx, data))
+                record_timing("tts_dispatch", tts_clip_end)
                 print(f"[TTS] Done clip {idx}")
 
         item = await sq.get()
@@ -513,7 +512,6 @@ async def stream_assistant_reply(
                 play_clip_start = time.time()
                 await loop3.run_in_executor(None, play_mp3, heap.pop(expect), expect)
                 play_clip_end = time.time()
-                record_timing("sequencer_clip_played", play_clip_start)
                 expect += 1.0
 
     with ThreadPoolExecutor(MAX_TTS_WORKERS) as pool:
