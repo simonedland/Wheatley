@@ -165,15 +165,18 @@ class GPTClient:
         return text
 
     def sentence_stream(self, conversation):
-        """Yield sentences from a streaming completion."""
+        """Yield sentences from a streaming completion with timing info."""
         stream = openai.chat.completions.create(
             model=self.model, stream=True, messages=conversation
         )
         buf, scan = "", 0
+        sentence_start = None
         for ch in stream:
             tok = getattr(ch.choices[0].delta, "content", "") or ""
             if not tok:
                 continue
+            if sentence_start is None:
+                sentence_start = time.time()
             buf += tok
             while True:
                 m = PUNCT_RE.search(buf, scan)
@@ -186,9 +189,12 @@ class GPTClient:
                 sent = buf[: m.end()].strip()
                 buf = buf[m.end() :].lstrip()
                 scan = 0
-                yield sent
+                end_time = time.time()
+                yield sent, sentence_start or end_time, end_time
+                sentence_start = None
         if buf.strip():
-            yield buf.strip()
+            end_time = time.time()
+            yield buf.strip(), sentence_start or end_time, end_time
 
     def reply_with_animation(self, conversation):
         """Ask GPT to select an animation based on the conversation."""
