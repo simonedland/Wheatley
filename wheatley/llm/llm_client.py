@@ -3,12 +3,16 @@
 import openai
 import json
 import yaml
+import re
 
 import os
 import logging
 import requests
 import time
 import asyncio
+
+PUNCT_RE = re.compile(r'[.!?]\s+')
+ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
@@ -161,6 +165,32 @@ class GPTClient:
         else:
             raise Exception("No text found in the response message")
         return text
+
+    def sentence_stream(self, conversation):
+        """Yield sentences from a streaming completion."""
+        stream = openai.chat.completions.create(
+            model=self.model, stream=True, messages=conversation
+        )
+        buf, scan = "", 0
+        for ch in stream:
+            tok = getattr(ch.choices[0].delta, "content", "") or ""
+            if not tok:
+                continue
+            buf += tok
+            while True:
+                m = PUNCT_RE.search(buf, scan)
+                if not m:
+                    break
+                word = re.findall(r"\b\w+\b", buf[: m.start() + 1])[-1].lower()
+                if word in ABBREVS or re.fullmatch(r"\d+", word):
+                    scan = m.end()
+                    continue
+                sent = buf[: m.end()].strip()
+                buf = buf[m.end() :].lstrip()
+                scan = 0
+                yield sent
+        if buf.strip():
+            yield buf.strip()
 
     def reply_with_animation(self, conversation):
         """Ask GPT to select an animation based on the conversation."""

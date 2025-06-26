@@ -173,6 +173,18 @@ class TextToSpeechEngine:
         if playback_started and play_start is not None:
             record_timing("tts_play", play_start)
 
+    def play_mp3_bytes(self, data: bytes) -> None:
+        """Play MP3 data using the persistent audio stream."""
+        audio = AudioSegment.from_file(io.BytesIO(data), format="mp3")
+        pcm_data = (
+            audio
+            .set_frame_rate(self.SAMPLE_RATE)
+            .set_channels(self.CHANNELS)
+            .set_sample_width(2)
+            .raw_data
+        )
+        self.stream.write(pcm_data)
+
     def _keep_audio_device_alive(self) -> None:
         """Continuously play near-silent audio so the speakers stay active."""
         tone = (
