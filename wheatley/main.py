@@ -465,7 +465,7 @@ async def stream_assistant_reply(
         for sent, start_ts, end_ts in gpt_client.sentence_stream(manager.get_conversation()):
             sentences.append(sent)
             print(f"[Producer] Sentence {idx}: {sent}")
-            record_timing(f"sentence_{int(idx)}", start_ts)
+            record_timing(f"sentence_created", start_ts)
             asyncio.run_coroutine_threadsafe(q_sent.put((idx, sent)), loop)
             idx += 1.0
         asyncio.run_coroutine_threadsafe(q_sent.put(None), loop)
