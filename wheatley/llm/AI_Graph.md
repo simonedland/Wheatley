@@ -2,44 +2,63 @@
 
 ```mermaid
 graph TD
-    google_agent_py["google_agent.py"]
-    llm_client_py["llm_client.py"]
-    llm_client_utils_py["llm_client_utils.py"]
-    spotify_agent_py["spotify_agent.py"]
-    spotify_ha_utils_py["spotify_ha_utils.py"]
 
-    %% Imports and relationships
-    llm_client_py --> google_agent_py
-    llm_client_py --> spotify_agent_py
-    llm_client_py --> llm_client_utils_py
+%% File nodes
+google_agent_py["google_agent.py"]
+llm_client_py["llm_client.py"]
+llm_client_utils_py["llm_client_utils.py"]
+spotify_agent_py["spotify_agent.py"]
+spotify_ha_utils_py["spotify_ha_utils.py"]
 
-    spotify_agent_py --> spotify_ha_utils_py
+%% Relationships inferred from imports and usage
 
-    %% google_agent.py uses config.yaml (not a code file, so not shown as a node)
-    google_agent_py -->|uses config.yaml| google_agent_py
+%% google_agent.py
+google_agent_py --> llm_client_py %% (circular, but llm_client.py imports GoogleAgent)
+google_agent_py --> llm_client_utils_py %% via openai, yaml, etc. (shared config, but not direct import)
+google_agent_py --> spotify_agent_py %% via llm_client.py (indirect, see below)
 
-    %% llm_client_utils.py is a utilities file, used by llm_client.py
-    llm_client_utils_py -->|used by| llm_client_py
+%% llm_client.py
+llm_client_py --> google_agent_py
+llm_client_py --> spotify_agent_py
+llm_client_py --> llm_client_utils_py
+llm_client_py -->|record_timing, long_term_memory| utils_timing_logger["utils/timing_logger.py"]
+llm_client_py -->|long_term_memory| utils_long_term_memory["utils/long_term_memory.py"]
 
-    %% spotify_agent.py uses config.yaml (not a code file, so not shown as a node)
-    spotify_agent_py -->|uses config.yaml| spotify_agent_py
+%% llm_client_utils.py
+llm_client_utils_py -->|SERVICE_STATUS| service_auth["service_auth.py"]
 
-    %% spotify_ha_utils.py uses config.yaml (not a code file, so not shown as a node)
-    spotify_ha_utils_py -->|uses config.yaml| spotify_ha_utils_py
+%% spotify_agent.py
+spotify_agent_py --> spotify_ha_utils_py
+spotify_agent_py --> google_agent_py %% via openai, yaml (shared config, not direct import)
+spotify_agent_py -->|openai| llm_client_utils_py %% (shared config, not direct import)
 
-    %% google_agent.py and spotify_agent.py both depend on openai API
-    google_agent_py -->|uses openai| google_agent_py
-    spotify_agent_py -->|uses openai| spotify_agent_py
-    llm_client_py -->|uses openai| llm_client_py
+%% spotify_ha_utils.py
+spotify_ha_utils_py -->|spotipy| spotipy["spotipy (external)"]
+spotify_ha_utils_py -->|yaml| yaml["yaml (external)"]
+spotify_ha_utils_py -->|rich| rich["rich (optional, external)"]
 
-    %% google_agent.py and llm_client.py both use yaml, requests, etc. (not shown as nodes)
+%% External dependencies (not shown as nodes, but referenced in code)
+google_agent_py -->|googleapiclient, google.oauth2| google_api["Google API (external)"]
+llm_client_py -->|openai, elevenlabs, playsound, requests| openai["openai (external)"]
+llm_client_py -->|elevenlabs| elevenlabs["elevenlabs (external)"]
+llm_client_py -->|playsound| playsound["playsound (external)"]
+llm_client_py -->|requests| requests["requests (external)"]
+llm_client_utils_py -->|requests| requests
 
-    %% llm_client.py: Functions class instantiates GoogleAgent and SpotifyAgent
-    llm_client_py -->|instantiates| google_agent_py
-    llm_client_py -->|instantiates| spotify_agent_py
+%% Service Auth
+llm_client_utils_py --> service_auth
+llm_client_py --> service_auth
 
-    %% spotify_agent.py: SpotifyAgent uses SpotifyHA
-    spotify_agent_py -->|uses| spotify_ha_utils_py
+%% Indirect/circular relationships
+llm_client_py -.-> google_agent_py %% GoogleCalendarManager used in __main__
 
-    %% llm_client.py: TextToSpeech uses elevenlabs.client (not shown as node)
+%% Tool/Agent relationships (usage)
+llm_client_py -->|GoogleAgent, SpotifyAgent| google_agent_py
+llm_client_py -->|SpotifyAgent| spotify_agent_py
+
+%% Not shown: config.yaml, token.json, emotion_counter.json, etc. (external files)
+
+%% Legend (not rendered in Mermaid, for reader reference)
+%% - Solid arrows: direct imports or usage
+%% - Dashed arrows: indirect usage or circular references
 ```

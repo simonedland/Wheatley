@@ -2,27 +2,18 @@
 
 ```mermaid
 graph TD
-    arduino_interface.py["arduino_interface.py"]
-    %% Classes
-    arduino_interface.py -->|defines| ArduinoInterface
-    arduino_interface.py -->|defines| Servo
-    arduino_interface.py -->|defines| ServoController
+    arduino_interface_py["arduino_interface.py"]
 
-    %% Internal usage
-    ArduinoInterface -->|instantiates| ServoController
-    ServoController -->|instantiates| Servo
+    %% Classes in arduino_interface.py
+    arduino_interface_py -->|defines| ArduinoInterface
+    arduino_interface_py -->|defines| Servo
+    arduino_interface_py -->|defines| ServoController
 
+    %% Internal relationships
     ArduinoInterface -->|uses| ServoController
-    ArduinoInterface -->|uses| Servo
+    ServoController -->|uses| Servo
 
     %% External dependencies
-    arduino_interface.py -->|imports| serial
-    arduino_interface.py -->|imports| time
-
-    %% Relationships
-    ArduinoInterface -.->|calls methods on| ServoController
-    ArduinoInterface -.->|calls methods on| Servo
-    ServoController -.->|calls methods on| Servo
-
-    %% No other files in directory
+    arduino_interface_py -.->|imports| serial
+    arduino_interface_py -.->|imports| time
 ```

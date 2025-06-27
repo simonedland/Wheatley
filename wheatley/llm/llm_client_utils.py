@@ -4,6 +4,11 @@ import yaml
 from datetime import datetime
 import requests
 
+try:
+    from ..service_auth import SERVICE_STATUS
+except ImportError:  # fallback when not running as package
+    from service_auth import SERVICE_STATUS
+
 # Weather code descriptions
 WEATHER_CODE_DESCRIPTIONS = {
     0: "Clear sky",
@@ -47,7 +52,7 @@ def get_joke():
     """Return a random joke string from the official joke API."""
     response = requests.get("https://official-joke-api.appspot.com/random_joke")
     data = response.json()
-    joke = f"Provide the following joke to the user: {data.get('setup')} - {data.get('punchline')}"
+    joke = f"Joke provided: {data.get('setup')} - {data.get('punchline')}"
     return joke
 
 def get_quote():
@@ -300,5 +305,9 @@ def build_tools():
         },
         # Tool for persisting long term memory. Memory retrieval happens automatically.
     ]
+    if not SERVICE_STATUS.get("google"):
+        tools = [t for t in tools if t.get("name") != "call_google_agent"]
+    if not SERVICE_STATUS.get("spotify"):
+        tools = [t for t in tools if t.get("name") != "call_spotify_agent"]
     #print(tools)
     return tools

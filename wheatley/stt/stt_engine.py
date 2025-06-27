@@ -28,7 +28,10 @@ PROCESSING_COLOR = (255, 165, 0)    # orange
 PAUSED_COLOR = (255, 0, 0)          # red
 
 class SpeechToTextEngine:
+    """High-level speech-to-text engine with optional hardware integration."""
+
     def __init__(self, arduino_interface=None):
+        """Initialize the engine and calibrate microphone thresholds."""
         # Load STT settings from the config file
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:
@@ -60,6 +63,12 @@ class SpeechToTextEngine:
         # Ensure the microphone status LED reflects the initial paused state
         self._update_mic_led(PAUSED_COLOR)
 
+        # Calibrate ambient and speech thresholds on startup
+        try:
+            self.calibrate_threshold()
+        except Exception as e:
+            print(f"[STT] Threshold calibration failed: {e}")
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -69,6 +78,63 @@ class SpeechToTextEngine:
         if self.arduino_interface:
             r, g, b = color
             self.arduino_interface.set_mic_led_color(r, g, b)
+
+    def calibrate_threshold(self, ambient_time: float = 5.0, speech_time: float = 5.0) -> None:
+        """Calibrate ``THRESHOLD`` using ambient and spoken audio samples.
+
+        The microphone LED blinks blue during ``ambient_time`` while background
+        noise is measured and blinks red during ``speech_time`` while the user
+        speaks. The maximum amplitudes from both phases are averaged to derive
+        the new threshold.
+        """
+
+        self._audio = pyaudio.PyAudio()
+        stream = self._audio.open(
+            format=self.FORMAT,
+            channels=self.CHANNELS,
+            rate=self.RATE,
+            input=True,
+            frames_per_buffer=self.CHUNK,
+        )
+        self._stream = stream
+
+        ambient_max = 0
+        speech_max = 0
+
+        start = time.time()
+        next_toggle = start
+        led_on = False
+        while time.time() - start < ambient_time:
+            data = stream.read(self.CHUNK, exception_on_overflow=False)
+            amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
+            ambient_max = max(ambient_max, amplitude)
+            if time.time() >= next_toggle:
+                self._update_mic_led(HOTWORD_COLOR if led_on else (0, 0, 0))
+                led_on = not led_on
+                next_toggle = time.time() + 0.5
+
+        start = time.time()
+        next_toggle = start
+        led_on = False
+        while time.time() - start < speech_time:
+            data = stream.read(self.CHUNK, exception_on_overflow=False)
+            amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
+            speech_max = max(speech_max, amplitude)
+            if time.time() >= next_toggle:
+                self._update_mic_led(PAUSED_COLOR if led_on else (0, 0, 0))
+                led_on = not led_on
+                next_toggle = time.time() + 0.5
+
+        stream.stop_stream()
+        stream.close()
+        self._stream = None
+        self._audio.terminate()
+        self._audio = None
+        self._update_mic_led(PAUSED_COLOR)
+
+        if speech_max > ambient_max:
+            self.THRESHOLD = int((ambient_max + speech_max) / 2)
+        print(f"[STT] Calibration ambient_max={ambient_max} speech_max={speech_max} threshold={self.THRESHOLD}")
 
     # ------------------------------------------------------------------
     # Listening control helpers
