@@ -88,7 +88,7 @@ class TextToSpeech:
             model_id=self.model_id,
             output_format=self.output_format
         )
-        elapsed = time.time() - start_time
+        record_timing("tts_generate_audio", start_time)
         return audio
     
     def reload_config(self) -> None:
@@ -120,7 +120,6 @@ class TextToSpeech:
             except Exception as e:
                 logging.error(f"Error deleting audio file: {e}")
         record_timing("tts_play", play_start)
-        play_elapsed = time.time() - play_start
 
 # =================== LLM Client ===================
 # This class is responsible for interacting with the OpenAI API
@@ -259,8 +258,23 @@ class GPTClient:
         temp_conversation = conversation.copy()
         temp_conversation[0] = {
             "role": "system",
-            "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE."
+            "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. look at earlier conversation to see if the information is there already. like for example dont call get joke, if there is already a joke fresh in memory. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE. NEVER summarize data."
         }
+        #pop message 1
+        temp_conversation.pop(1)
+        #remove all the messages from assistant
+        temp_conversation = [msg for msg in temp_conversation if msg["role"] != "assistant"]
+        #add one shot example after the first system message
+        temp_conversation.insert(1, {
+            "role": "user",
+            "content": "hello mister!"
+        })
+        temp_conversation.insert(2, {
+            "role": "assistant",
+            "content": "DONE"
+        })
+        print(f"Temp conversation: {temp_conversation}")
+
         completion = openai.responses.create(
             model=self.model,
             input=temp_conversation,
@@ -511,12 +525,18 @@ class Functions:
             return f"Error retrieving weather: {e}"
 
     def _schedule_timer_event(self, duration, reason, event_queue):
-        """Schedule an async timer that posts an event when it expires."""
+        """Schedule an async timer that posts an event when it expires. Minimal error handling, print when event is notified."""
+        import asyncio
+        from datetime import datetime
+        try:
+            from main import Event as MainEvent
+        except ImportError:
+            MainEvent = None
 
         async def timer_task():
             await asyncio.sleep(duration)
-            from datetime import datetime
-            from main import Event as MainEvent
+            if MainEvent is None:
+                return
             timer_event = MainEvent(
                 source="timer",
                 payload=reason,
@@ -527,7 +547,10 @@ class Functions:
                 },
                 ts=datetime.utcnow()
             )
-            await event_queue.put(timer_event)
+            if event_queue:
+                await event_queue.put(timer_event)
+                print(f"[TIMER] Timer event notified: {timer_event}")
+
         asyncio.create_task(timer_task())
 
     def write_long_term_memory(self, data: dict) -> str:
