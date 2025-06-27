@@ -529,9 +529,12 @@ class Functions:
         import asyncio
         from datetime import datetime
         try:
-            from main import Event as MainEvent
-        except ImportError:
-            MainEvent = None
+            from ..main import Event as MainEvent
+        except Exception:
+            try:
+                from main import Event as MainEvent
+            except Exception:
+                MainEvent = None
 
         async def timer_task():
             await asyncio.sleep(duration)
@@ -618,7 +621,15 @@ class Functions:
         delay = (target - now).total_seconds()
         async def reminder_task():
             await asyncio.sleep(delay)
-            from main import Event as MainEvent
+            try:
+                from ..main import Event as MainEvent
+            except Exception:
+                try:
+                    from main import Event as MainEvent
+                except Exception:
+                    MainEvent = None
+            if MainEvent is None:
+                return
             reminder_event = MainEvent(
                 source="reminder",
                 payload=reason or time_str,

@@ -13,6 +13,7 @@ import time  # For timing actions
 import asyncio
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
+from datetime import datetime
 import sys
 import argparse
 import atexit
@@ -176,10 +177,12 @@ class Event:
     source: str        # e.g. "user", "timer", "gpio", "webhook", etc.
     payload: str       # human-readable description
     metadata: Optional[Dict[str, Any]] = None
+    ts: Optional[datetime] = None
 
     def __str__(self):
         meta = f" {self.metadata}" if self.metadata else ""
-        return f"[{self.source.upper()}] {self.payload}{meta}"
+        ts = f" ({self.ts.isoformat()})" if self.ts else ""
+        return f"[{self.source.upper()}] {self.payload}{meta}{ts}"
 
 # =================== Async Event Handling ===================
 async def user_input_producer(q: asyncio.Queue):
