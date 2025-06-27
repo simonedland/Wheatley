@@ -52,7 +52,7 @@ def get_joke():
     """Return a random joke string from the official joke API."""
     response = requests.get("https://official-joke-api.appspot.com/random_joke")
     data = response.json()
-    joke = f"Provide the following joke to the user: {data.get('setup')} - {data.get('punchline')}"
+    joke = f"Joke provided: {data.get('setup')} - {data.get('punchline')}"
     return joke
 
 def get_quote():

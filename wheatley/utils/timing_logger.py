@@ -6,11 +6,14 @@ import time
 import datetime as _dt
 import json
 import os
+import threading
 from typing import List, Dict, Any
 
 # Central in-memory store for timing entries
 
 timings: List[Dict[str, Any]] = []
+# Lock to ensure thread-safe writes to the timings list
+_timings_lock = threading.Lock()
 
 
 def clear_timings(path: str = "timings.json") -> None:
@@ -21,7 +24,8 @@ def clear_timings(path: str = "timings.json") -> None:
     path:
         Location of the timings JSON file to delete.
     """
-    timings.clear()
+    with _timings_lock:
+        timings.clear()
     if os.path.exists(path):
         try:
             os.remove(path)
@@ -41,14 +45,15 @@ def record_timing(name: str, start: float) -> None:
         the operation.
     """
     end = time.time()
-    timings.append(
-        {
-            "functionality": name,
-            "startTime": _dt.datetime.utcfromtimestamp(start).isoformat(),
-            "endTime": _dt.datetime.utcfromtimestamp(end).isoformat(),
-            "durationMs": int((end - start) * 1000),
-        }
-    )
+    entry = {
+        "functionality": name,
+        "startTime": _dt.datetime.utcfromtimestamp(start).isoformat(),
+        "endTime": _dt.datetime.utcfromtimestamp(end).isoformat(),
+        "durationMs": int((end - start) * 1000),
+        "thread": threading.current_thread().name,
+    }
+    with _timings_lock:
+        timings.append(entry)
 
 
 def export_timings(path: str = "timings.json") -> None:
@@ -56,6 +61,9 @@ def export_timings(path: str = "timings.json") -> None:
 
     print(f"Exporting timings to {path}...")
 
+    with _timings_lock:
+        data = list(timings)
+
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(timings, f, indent=2)
+        json.dump(data, f, indent=2)
 

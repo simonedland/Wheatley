@@ -3,12 +3,16 @@
 import openai
 import json
 import yaml
+import re
 
 import os
 import logging
 import requests
 import time
 import asyncio
+
+PUNCT_RE = re.compile(r'[.!?]\s+')
+ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
@@ -84,8 +88,7 @@ class TextToSpeech:
             model_id=self.model_id,
             output_format=self.output_format
         )
-        elapsed = time.time() - start_time
-        logging.info(f"TTS audio generation took {elapsed:.3f} seconds.")
+        record_timing("tts_generate_audio", start_time)
         return audio
     
     def reload_config(self) -> None:
@@ -117,8 +120,6 @@ class TextToSpeech:
             except Exception as e:
                 logging.error(f"Error deleting audio file: {e}")
         record_timing("tts_play", play_start)
-        play_elapsed = time.time() - play_start
-        logging.info(f"TTS audio playback took {play_elapsed:.3f} seconds.")
 
 # =================== LLM Client ===================
 # This class is responsible for interacting with the OpenAI API
@@ -161,6 +162,38 @@ class GPTClient:
         else:
             raise Exception("No text found in the response message")
         return text
+
+    def sentence_stream(self, conversation):
+        """Yield sentences from a streaming completion with timing info."""
+        stream = openai.chat.completions.create(
+            model=self.model, stream=True, messages=conversation
+        )
+        buf, scan = "", 0
+        sentence_start = None
+        for ch in stream:
+            tok = getattr(ch.choices[0].delta, "content", "") or ""
+            if not tok:
+                continue
+            if sentence_start is None:
+                sentence_start = time.time()
+            buf += tok
+            while True:
+                m = PUNCT_RE.search(buf, scan)
+                if not m:
+                    break
+                word = re.findall(r"\b\w+\b", buf[: m.start() + 1])[-1].lower()
+                if word in ABBREVS or re.fullmatch(r"\d+", word):
+                    scan = m.end()
+                    continue
+                sent = buf[: m.end()].strip()
+                buf = buf[m.end() :].lstrip()
+                scan = 0
+                end_time = time.time()
+                yield sent, sentence_start or end_time, end_time
+                sentence_start = None
+        if buf.strip():
+            end_time = time.time()
+            yield buf.strip(), sentence_start or end_time, end_time
 
     def reply_with_animation(self, conversation):
         """Ask GPT to select an animation based on the conversation."""
@@ -225,8 +258,23 @@ class GPTClient:
         temp_conversation = conversation.copy()
         temp_conversation[0] = {
             "role": "system",
-            "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE."
+            "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. look at earlier conversation to see if the information is there already. like for example dont call get joke, if there is already a joke fresh in memory. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE. NEVER summarize data."
         }
+        #pop message 1
+        temp_conversation.pop(1)
+        #remove all the messages from assistant
+        temp_conversation = [msg for msg in temp_conversation if msg["role"] != "assistant"]
+        #add one shot example after the first system message
+        temp_conversation.insert(1, {
+            "role": "user",
+            "content": "hello mister!"
+        })
+        temp_conversation.insert(2, {
+            "role": "assistant",
+            "content": "DONE"
+        })
+        print(f"Temp conversation: {temp_conversation}")
+
         completion = openai.responses.create(
             model=self.model,
             input=temp_conversation,
@@ -299,7 +347,6 @@ class Functions:
         results = []
         for item in workflow:
             func_name = item.get("name")
-            logging.info(f"\n--- Tool Execution: {func_name} ---")
             tool_start = time.time()
             if self.tts_enabled and func_name != "write_long_term_memory":
                 conversation = [
@@ -412,7 +459,6 @@ class Functions:
                 results.append((func_name, response))
 
             tool_elapsed = time.time() - tool_start
-            logging.info(f"Tool '{func_name}' execution took {tool_elapsed:.3f} seconds.")
         return results
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):
@@ -479,12 +525,21 @@ class Functions:
             return f"Error retrieving weather: {e}"
 
     def _schedule_timer_event(self, duration, reason, event_queue):
-        """Schedule an async timer that posts an event when it expires."""
+        """Schedule an async timer that posts an event when it expires. Minimal error handling, print when event is notified."""
+        import asyncio
+        from datetime import datetime
+        try:
+            from ..main import Event as MainEvent
+        except Exception:
+            try:
+                from main import Event as MainEvent
+            except Exception:
+                MainEvent = None
 
         async def timer_task():
             await asyncio.sleep(duration)
-            from datetime import datetime
-            from main import Event as MainEvent
+            if MainEvent is None:
+                return
             timer_event = MainEvent(
                 source="timer",
                 payload=reason,
@@ -495,7 +550,10 @@ class Functions:
                 },
                 ts=datetime.utcnow()
             )
-            await event_queue.put(timer_event)
+            if event_queue:
+                await event_queue.put(timer_event)
+                print(f"[TIMER] Timer event notified: {timer_event}")
+
         asyncio.create_task(timer_task())
 
     def write_long_term_memory(self, data: dict) -> str:
@@ -563,7 +621,15 @@ class Functions:
         delay = (target - now).total_seconds()
         async def reminder_task():
             await asyncio.sleep(delay)
-            from main import Event as MainEvent
+            try:
+                from ..main import Event as MainEvent
+            except Exception:
+                try:
+                    from main import Event as MainEvent
+                except Exception:
+                    MainEvent = None
+            if MainEvent is None:
+                return
             reminder_event = MainEvent(
                 source="reminder",
                 payload=reason or time_str,
