@@ -382,6 +382,20 @@ async def handle_follow_up_after_stream(
     print("[STT] Hotword listener resumed.")
     return hotword_task
 
+# Stream GPT reply and play TTS while generating.
+#
+# Args:
+#   manager: ConversationManager instance managing conversation state.
+#   gpt_client: GPTClient instance for LLM streaming.
+#   tts_engine: TextToSpeechEngine instance for TTS playback.
+#   last_input_type: Type of last user input ("text" or "voice").
+#   stt_engine: SpeechToTextEngine instance for STT control.
+#   queue: Asyncio queue for event communication.
+#   hotword_task: Optional asyncio.Task for hotword detection.
+#   stt_enabled: Whether STT is enabled.
+#
+# Returns:
+#   Tuple of (assistant reply text, animation, hotword_task)
 async def stream_assistant_reply(
     manager: ConversationManager,
     gpt_client: GPTClient,
@@ -420,6 +434,9 @@ async def stream_assistant_reply(
     headers = {"xi-api-key": xi_key, "Content-Type": "application/json"}
 
     def http_tts(text: str, prev: str, nxt: str, idx: float) -> bytes | None:
+        # Synchronously call ElevenLabs TTS API for a text segment.
+        # Retries with exponential backoff on failure.
+        # Returns MP3 bytes or None on failure.
         def _post() -> requests.Response:
             return requests.post(
                 api_url,
@@ -440,7 +457,6 @@ async def stream_assistant_reply(
                 tts_start = time.time()
                 resp = _post()
                 resp.raise_for_status()
-                tts_end = time.time()
                 record_timing("tts_clip_generated", tts_start)
                 return resp.content
             except Exception:
@@ -451,16 +467,18 @@ async def stream_assistant_reply(
                 attempt += 1
 
     def play_mp3(data: bytes | None, _idx: float) -> None:
+        # Play MP3 audio bytes using the TTS engine.
+        # Logs timing and playback events.
         if data is None:
             return
         play_start = time.time()
         print(f"[Player] Playing clip {_idx}")
         tts_engine.play_mp3_bytes(data)
-        play_end = time.time()
         record_timing("tts_clip_played", play_start)
         print(f"[Player] Finished clip {_idx}")
 
     def producer() -> None:
+        # Producer thread: streams sentences from GPT and puts them in the queue for TTS.
         idx = 0.0
         for sent, start_ts, end_ts in gpt_client.sentence_stream(manager.get_conversation()):
             sentences.append(sent)
@@ -473,14 +491,16 @@ async def stream_assistant_reply(
     threading.Thread(target=producer, daemon=True).start()
 
     async def tts_dispatch(sq: asyncio.Queue, aq: asyncio.Queue, pool):
+        # Asynchronously dispatch TTS jobs to a thread pool, respecting concurrency limits.
+        # Puts generated audio clips into the audio queue.
         loop2 = asyncio.get_running_loop()
         sem = asyncio.Semaphore(MAX_TTS_WORKERS)
         prev_text = ""
         pending: list[asyncio.Task] = []
 
         async def handle(idx: float, cur: str, nxt: str, prev: str):
+            # Handle a single TTS job: generate audio and put in audio queue.
             async with sem:
-                tts_clip_start = time.time()
                 print(f"[TTS] Generating clip {idx}")
                 data = await asyncio.wrap_future(
                     loop2.run_in_executor(pool, http_tts, cur, prev, nxt, idx)
@@ -502,6 +522,7 @@ async def stream_assistant_reply(
         await aq.put((-1, b""))
 
     async def sequencer(aq: asyncio.Queue):
+        # Play audio clips in order as they become available in the audio queue.
         loop3, heap, expect = asyncio.get_running_loop(), {}, 0.0
         while True:
             idx, clip = await aq.get()
@@ -509,12 +530,11 @@ async def stream_assistant_reply(
                 break
             heap[idx] = clip
             while expect in heap:
-                play_clip_start = time.time()
                 await loop3.run_in_executor(None, play_mp3, heap.pop(expect), expect)
-                play_clip_end = time.time()
                 expect += 1.0
 
     with ThreadPoolExecutor(MAX_TTS_WORKERS) as pool:
+        # Run TTS dispatch and audio playback concurrently.
         await asyncio.gather(tts_dispatch(q_sent, q_audio, pool), sequencer(q_audio))
 
     gpt_text = " ".join(sentences)
