@@ -395,20 +395,6 @@ async def handle_follow_up_after_stream(
     return hotword_task
 
 # Stream GPT reply and play TTS while generating.
-#
-# Args:
-#   manager: ConversationManager instance managing conversation state.
-#   gpt_client: GPTClient instance for LLM streaming.
-#   tts_engine: TextToSpeechEngine instance for TTS playback.
-#   last_input_type: Type of last user input ("text" or "voice").
-#   stt_engine: SpeechToTextEngine instance for STT control.
-#   queue: Asyncio queue for event communication.
-#   hotword_task: Optional asyncio.Task for hotword detection.
-#   stt_enabled: Whether STT is enabled.
-#   arduino_interface: ArduinoInterface used to control animations.
-#
-# Returns:
-#   Tuple of (assistant reply text, animation, hotword_task)
 async def stream_assistant_reply(
     manager: ConversationManager,
     gpt_client: GPTClient,
