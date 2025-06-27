@@ -173,6 +173,7 @@ class SpeechToTextEngine:
             allows callers to fall back to hotword detection after a period
             of silence.
         """
+        start_time = time.time()
         self._audio = pyaudio.PyAudio()
         try:
             self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
@@ -226,6 +227,7 @@ class SpeechToTextEngine:
         self._audio.terminate()
         self._audio = None
         if not frames:
+            record_timing("stt_record_until_silent", start_time)
             return None
         self._update_mic_led(PROCESSING_COLOR)
 
@@ -236,6 +238,7 @@ class SpeechToTextEngine:
         wf.setframerate(self.RATE)
         wf.writeframes(b''.join(frames))
         wf.close()
+        record_timing("stt_record_until_silent", start_time)
         return wav_filename
 
     def transcribe(self, filename):
@@ -278,6 +281,7 @@ class SpeechToTextEngine:
         int | None
             Index of detected keyword or ``None`` if listening was interrupted.
         """
+        start_time = time.time()
         if access_key is None:
             # Try to load from config
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
@@ -286,6 +290,7 @@ class SpeechToTextEngine:
             access_key = config.get("stt", {}).get("porcupine_api_key")
         if not access_key:
             print("Porcupine API key not found in config. Hotword detection disabled.")
+            record_timing("stt_listen_hotword", start_time)
             return None
         if keywords is None:
             keywords = ["computer", "jarvis"]
@@ -317,6 +322,7 @@ class SpeechToTextEngine:
         self._update_mic_led(HOTWORD_COLOR)
         self._listening = True
         print("[STT] Listening")
+        detected_index = None
         try:
             while True:
                 if self._pause_event.is_set():
@@ -326,7 +332,8 @@ class SpeechToTextEngine:
                 keyword_index = self._porcupine.process(pcm_unpacked)
                 if keyword_index >= 0:
                     print(f"[Hotword] Detected: {keywords[keyword_index]}")
-                    return keyword_index
+                    detected_index = keyword_index
+                    break
                 # Status update every 10 seconds
                 # Periodic status updates so the user knows we're alive
                 if time.time() % 10 < 0.03:
@@ -347,8 +354,8 @@ class SpeechToTextEngine:
                 print("[STT] Not listening")
             # Reflect current state on the microphone LED
             self._update_mic_led(PAUSED_COLOR)
-
-        return None
+        record_timing("stt_listen_hotword", start_time)
+        return detected_index
 
 
     def get_voice_input(self):

@@ -528,6 +528,7 @@ class Functions:
         """Schedule an async timer that posts an event when it expires. Minimal error handling, print when event is notified."""
         import asyncio
         from datetime import datetime
+        start_time = time.time()
         try:
             from ..main import Event as MainEvent
         except Exception:
@@ -539,6 +540,7 @@ class Functions:
         async def timer_task():
             await asyncio.sleep(duration)
             if MainEvent is None:
+                record_timing("timer_countdown", start_time)
                 return
             timer_event = MainEvent(
                 source="timer",
@@ -553,6 +555,8 @@ class Functions:
             if event_queue:
                 await event_queue.put(timer_event)
                 print(f"[TIMER] Timer event notified: {timer_event}")
+
+            record_timing("timer_countdown", start_time)
 
         asyncio.create_task(timer_task())
 

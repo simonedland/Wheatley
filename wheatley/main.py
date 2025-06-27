@@ -189,7 +189,9 @@ async def user_input_producer(q: asyncio.Queue):
     """Asynchronously read user text input and push Event objects to the queue."""
     loop = asyncio.get_event_loop()
     while True:
+        wait_start = time.time()
         text = await loop.run_in_executor(None, input, "You: ")
+        record_timing("await_user_input", wait_start)
         await q.put(Event("user", text.strip(), {"input_type": "text"}))
         if text.strip().lower() == "exit":
             break
