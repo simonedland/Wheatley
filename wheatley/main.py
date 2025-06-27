@@ -643,21 +643,8 @@ def print_async_tasks():
 # =================== Main Code ===================
 def main():
     """CLI entry point for launching the assistant."""
-
-
-    parser = argparse.ArgumentParser(description="Launch the Wheatley assistant")
-    parser.add_argument(
-        "--export-timings",
-        action="store_true",
-        help="Write timing information to timings.json on exit",
-    )
-    args = parser.parse_args()
-
-    # Start each run with a clean timing log
     clear_timings()
-
-    if args.export_timings:
-        atexit.register(export_timings)
+    atexit.register(export_timings)
 
     config = load_config()
     openai.api_key = config["secrets"]["openai_api_key"]
