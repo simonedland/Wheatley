@@ -36,6 +36,7 @@ from llm.llm_client import GPTClient, Functions  # LLM client and function tools
 from tts.tts_engine import TextToSpeechEngine  # Text-to-speech engine
 from stt.stt_engine import SpeechToTextEngine  # Speech-to-text engine
 from utils.timing_logger import export_timings, clear_timings, record_timing
+from utils.main_helpers import feature_summary, authenticate_and_update_features
 
 
 # Initialize colorama for colored terminal output
@@ -293,15 +294,16 @@ async def handle_tts_and_follow_up(
     last_input_type: str,
     tts_engine: TextToSpeechEngine,
     stt_engine: SpeechToTextEngine,
-    queue: asyncio.Queue,
+    event_queue: asyncio.Queue,
     hotword_task: Optional[asyncio.Task],
     stt_enabled: bool,
     tts_enabled: bool,
-):
-    """Play TTS output and optionally listen for a follow-up voice response."""
+) -> Optional[asyncio.Task]:
+    """Play the assistant reply and optionally capture a quick follow-up."""
     if not tts_enabled:
         return hotword_task
 
+    # Stop hotword detection while speaking
     if hotword_task:
         hotword_task.cancel()
         await asyncio.gather(hotword_task, return_exceptions=True)
@@ -310,40 +312,47 @@ async def handle_tts_and_follow_up(
     if stt_enabled:
         stt_engine.pause_listening()
         print("[STT] Hotword listener paused.")
+
     tts_engine.generate_and_play_advanced(gpt_text)
 
-    if stt_enabled:
-        stt_engine.resume_listening()
+    if not stt_enabled:
+        return hotword_task
 
-    if stt_enabled and last_input_type == "voice":
+    stt_engine.resume_listening()
+
+    if last_input_type == "voice":
         print("[STT] Listening for follow-up without hotword for 5 seconds...")
         loop = asyncio.get_event_loop()
-        follow_up_future = loop.run_in_executor(None, lambda: stt_engine.record_and_transcribe(5))
-        queue_get_task = asyncio.create_task(queue.get())
-        done, _ = await asyncio.wait([follow_up_future, queue_get_task], return_when=asyncio.FIRST_COMPLETED)
+        follow_up_future = loop.run_in_executor(
+            None, lambda: stt_engine.record_and_transcribe(5)
+        )
+        next_event_task = asyncio.create_task(event_queue.get())
+        done, _ = await asyncio.wait(
+            [follow_up_future, next_event_task], return_when=asyncio.FIRST_COMPLETED
+        )
         if follow_up_future in done:
             follow_up = follow_up_future.result()
             if follow_up and follow_up.strip():
-                await queue.put(Event("user", follow_up.strip(), {"input_type": "voice"}))
-            queue_get_task.cancel()
-            await asyncio.gather(queue_get_task, return_exceptions=True)
+                await event_queue.put(
+                    Event("user", follow_up.strip(), {"input_type": "voice"})
+                )
+            next_event_task.cancel()
+            await asyncio.gather(next_event_task, return_exceptions=True)
         else:
             follow_up_future.cancel()
             await asyncio.gather(follow_up_future, return_exceptions=True)
-            next_event = queue_get_task.result()
-            await queue.put(next_event)
+            next_event = next_event_task.result()
+            await event_queue.put(next_event)
 
-    if stt_enabled:
-        stt_engine.resume_listening()
-        hotword_task = asyncio.create_task(stt_engine.hotword_listener(queue))
-        print("[STT] Hotword listener resumed.")
+    hotword_task = asyncio.create_task(stt_engine.hotword_listener(event_queue))
+    print("[STT] Hotword listener resumed.")
 
     return hotword_task
 
 async def handle_follow_up_after_stream(
     last_input_type: str,
     stt_engine: SpeechToTextEngine,
-    queue: asyncio.Queue,
+    event_queue: asyncio.Queue,
     hotword_task: Optional[asyncio.Task],
     stt_enabled: bool,
 ) -> Optional[asyncio.Task]:
@@ -360,25 +369,25 @@ async def handle_follow_up_after_stream(
         follow_up_future = loop.run_in_executor(
             None, lambda: stt_engine.record_and_transcribe(5)
         )
-        queue_get_task = asyncio.create_task(queue.get())
+        next_event_task = asyncio.create_task(event_queue.get())
         done, _ = await asyncio.wait(
-            [follow_up_future, queue_get_task], return_when=asyncio.FIRST_COMPLETED
+            [follow_up_future, next_event_task], return_when=asyncio.FIRST_COMPLETED
         )
         if follow_up_future in done:
             follow_up = follow_up_future.result()
             if follow_up and follow_up.strip():
-                await queue.put(
+                await event_queue.put(
                     Event("user", follow_up.strip(), {"input_type": "voice"})
                 )
-            queue_get_task.cancel()
-            await asyncio.gather(queue_get_task, return_exceptions=True)
+            next_event_task.cancel()
+            await asyncio.gather(next_event_task, return_exceptions=True)
         else:
             follow_up_future.cancel()
             await asyncio.gather(follow_up_future, return_exceptions=True)
-            next_event = queue_get_task.result()
-            await queue.put(next_event)
+            next_event = next_event_task.result()
+            await event_queue.put(next_event)
 
-    hotword_task = asyncio.create_task(stt_engine.hotword_listener(queue))
+    hotword_task = asyncio.create_task(stt_engine.hotword_listener(event_queue))
     print("[STT] Hotword listener resumed.")
     return hotword_task
 
@@ -393,6 +402,7 @@ async def handle_follow_up_after_stream(
 #   queue: Asyncio queue for event communication.
 #   hotword_task: Optional asyncio.Task for hotword detection.
 #   stt_enabled: Whether STT is enabled.
+#   arduino_interface: ArduinoInterface used to control animations.
 #
 # Returns:
 #   Tuple of (assistant reply text, animation, hotword_task)
@@ -405,6 +415,7 @@ async def stream_assistant_reply(
     queue: asyncio.Queue,
     hotword_task: Optional[asyncio.Task],
     stt_enabled: bool,
+    arduino_interface: ArduinoInterface,
 ) -> tuple[str, str, Optional[asyncio.Task]]:
     """Stream GPT reply and play TTS while generating."""
 
@@ -422,8 +433,8 @@ async def stream_assistant_reply(
         print("[STT] Hotword listener paused.")
 
     sentences: list[str] = []
-    q_sent: asyncio.Queue = asyncio.Queue(QUEUE_MAXSIZE)
-    q_audio: asyncio.Queue = asyncio.Queue(QUEUE_MAXSIZE)
+    sentence_queue: asyncio.Queue = asyncio.Queue(QUEUE_MAXSIZE)
+    audio_queue: asyncio.Queue = asyncio.Queue(QUEUE_MAXSIZE)
     loop = asyncio.get_running_loop()
     config = load_config()
     xi_key = config["secrets"]["elevenlabs_api_key"]
@@ -433,7 +444,7 @@ async def stream_assistant_reply(
     api_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {"xi-api-key": xi_key, "Content-Type": "application/json"}
 
-    def http_tts(text: str, prev: str, nxt: str, idx: float) -> bytes | None:
+    def fetch_tts_clip(text: str, prev: str, nxt: str, index: float) -> bytes | None:
         # Synchronously call ElevenLabs TTS API for a text segment.
         # Retries with exponential backoff on failure.
         # Returns MP3 bytes or None on failure.
@@ -466,81 +477,90 @@ async def stream_assistant_reply(
                 backoff = min(backoff * 2, 32)
                 attempt += 1
 
-    def play_mp3(data: bytes | None, _idx: float) -> None:
+    def play_mp3_bytes(data: bytes | None, clip_index: float) -> None:
         # Play MP3 audio bytes using the TTS engine.
         # Logs timing and playback events.
         if data is None:
             return
         play_start = time.time()
-        print(f"[Player] Playing clip {_idx}")
+        print(f"[Player] Playing clip {clip_index}")
         tts_engine.play_mp3_bytes(data)
         record_timing("tts_clip_played", play_start)
-        print(f"[Player] Finished clip {_idx}")
+        print(f"[Player] Finished clip {clip_index}")
 
     def producer() -> None:
-        # Producer thread: streams sentences from GPT and puts them in the queue for TTS.
-        idx = 0.0
-        for sent, start_ts, end_ts in gpt_client.sentence_stream(manager.get_conversation()):
+        """Stream sentences from GPT and enqueue them for TTS."""
+        index = 0.0
+        for sent, start_ts, _ in gpt_client.sentence_stream(manager.get_conversation()):
             sentences.append(sent)
-            print(f"[Producer] Sentence {idx}: {sent}")
-            record_timing(f"sentence_created", start_ts)
-            asyncio.run_coroutine_threadsafe(q_sent.put((idx, sent)), loop)
-            idx += 1.0
-        asyncio.run_coroutine_threadsafe(q_sent.put(None), loop)
+            print(f"[Producer] Sentence {index}: {sent}")
+            record_timing("sentence_created", start_ts)
+            asyncio.run_coroutine_threadsafe(sentence_queue.put((index, sent)), loop)
+            index += 1.0
+        asyncio.run_coroutine_threadsafe(sentence_queue.put(None), loop)
 
     threading.Thread(target=producer, daemon=True).start()
 
-    async def tts_dispatch(sq: asyncio.Queue, aq: asyncio.Queue, pool):
-        # Asynchronously dispatch TTS jobs to a thread pool, respecting concurrency limits.
-        # Puts generated audio clips into the audio queue.
-        loop2 = asyncio.get_running_loop()
-        sem = asyncio.Semaphore(MAX_TTS_WORKERS)
-        prev_text = ""
-        pending: list[asyncio.Task] = []
+    async def tts_dispatch(text_queue: asyncio.Queue, audio_queue: asyncio.Queue, pool):
+        """Generate TTS clips concurrently and enqueue them for playback."""
+        dispatch_loop = asyncio.get_running_loop()
+        semaphore = asyncio.Semaphore(MAX_TTS_WORKERS)
+        previous_text = ""
+        pending_tasks: list[asyncio.Task] = []
 
-        async def handle(idx: float, cur: str, nxt: str, prev: str):
-            # Handle a single TTS job: generate audio and put in audio queue.
-            async with sem:
-                print(f"[TTS] Generating clip {idx}")
+        async def handle(index: float, current_text: str, next_text: str, previous_text_val: str):
+            """Run a single TTS job."""
+            async with semaphore:
+                print(f"[TTS] Generating clip {index}")
                 data = await asyncio.wrap_future(
-                    loop2.run_in_executor(pool, http_tts, cur, prev, nxt, idx)
+                    dispatch_loop.run_in_executor(pool, fetch_tts_clip, current_text, previous_text_val, next_text, index)
                 )
                 tts_clip_end = time.time()
-                await aq.put((idx, data))
+                await audio_queue.put((index, data))
                 record_timing("tts_dispatch", tts_clip_end)
-                print(f"[TTS] Done clip {idx}")
+                print(f"[TTS] Done clip {index}")
 
-        item = await sq.get()
+        item = await text_queue.get()
         while item:
-            idx, cur = item
-            nxt_item = await sq.get()
-            nxt_txt = "" if nxt_item is None else nxt_item[1]
-            pending.append(asyncio.create_task(handle(idx, cur, nxt_txt, prev_text)))
-            prev_text, item = cur, nxt_item
+            index, current_text = item
+            next_item = await text_queue.get()
+            next_text = "" if next_item is None else next_item[1]
+            pending_tasks.append(
+                asyncio.create_task(handle(index, current_text, next_text, previous_text))
+            )
+            previous_text, item = current_text, next_item
 
-        await asyncio.gather(*pending)
-        await aq.put((-1, b""))
+        await asyncio.gather(*pending_tasks)
+        await audio_queue.put((-1, b""))
 
-    async def sequencer(aq: asyncio.Queue):
-        # Play audio clips in order as they become available in the audio queue.
-        loop3, heap, expect = asyncio.get_running_loop(), {}, 0.0
+    async def sequencer(audio_queue: asyncio.Queue):
+        """Play audio clips in the original sentence order."""
+        playback_loop, buffer, expected_index = asyncio.get_running_loop(), {}, 0.0
         while True:
-            idx, clip = await aq.get()
-            if idx == -1:
+            index, clip = await audio_queue.get()
+            if index == -1:
                 break
-            heap[idx] = clip
-            while expect in heap:
-                await loop3.run_in_executor(None, play_mp3, heap.pop(expect), expect)
-                expect += 1.0
+            buffer[index] = clip
+            while expected_index in buffer:
+                await playback_loop.run_in_executor(None, play_mp3_bytes, buffer.pop(expected_index), expected_index)
+                expected_index += 1.0
 
     with ThreadPoolExecutor(MAX_TTS_WORKERS) as pool:
-        # Run TTS dispatch and audio playback concurrently.
-        await asyncio.gather(tts_dispatch(q_sent, q_audio, pool), sequencer(q_audio))
+        # Launch TTS generation and playback in parallel
+        dispatch_task = asyncio.create_task(tts_dispatch(sentence_queue, audio_queue, pool))
+        seq_task = asyncio.create_task(sequencer(audio_queue))
+
+        # Wait until all sentences have been processed by the TTS dispatcher
+        await dispatch_task
 
     gpt_text = " ".join(sentences)
     manager.add_text_to_conversation("assistant", gpt_text)
     manager.print_memory()
     animation = gpt_client.reply_with_animation(manager.get_conversation())
+    arduino_interface.set_animation(animation)
+
+    # Wait for all audio to finish playing
+    await seq_task
 
     stream_end_time = time.time()
     record_timing("streaming_end", stream_end_time)
@@ -553,7 +573,15 @@ async def stream_assistant_reply(
     return gpt_text, animation, hotword_task
 
 
-async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,arduino_interface,stt_enabled,tts_enabled):
+async def async_conversation_loop(
+    manager: ConversationManager,
+    gpt_client: GPTClient,
+    stt_engine: SpeechToTextEngine,
+    tts_engine: TextToSpeechEngine,
+    arduino_interface: ArduinoInterface,
+    stt_enabled: bool,
+    tts_enabled: bool,
+) -> None:
     """Main asynchronous interaction loop handling user events and tool calls."""
     import sys
 
@@ -591,6 +619,7 @@ async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,ardui
                         queue,
                         hotword_task,
                         stt_enabled,
+                        arduino_interface,
                     )
                 else:
                     gpt_text, animation = generate_assistant_reply(manager, gpt_client)
@@ -598,8 +627,8 @@ async def async_conversation_loop(manager,gpt_client,stt_engine,tts_engine,ardui
                 logging.error(f"Error generating assistant reply: {e}")
                 continue
 
+            # The animation is applied during streaming so it matches the speech
             print(f"[Animation chosen]: {animation}")
-            arduino_interface.set_animation(animation)
 
             print_async_tasks()
             arduino_interface.servo_controller.print_servo_status()
@@ -663,52 +692,45 @@ def print_async_tasks():
 # =================== Main Code ===================
 def main():
     """CLI entry point for launching the assistant."""
+
+    # --- Setup and configuration ---------------------------------------
     clear_timings()
     atexit.register(export_timings)
 
     config = load_config()
     openai.api_key = config["secrets"]["openai_api_key"]
 
-    # Print active/inactive features from config
+    # Initial feature flags from configuration file
     stt_enabled = config["stt"]["enabled"]
     tts_enabled = config["tts"]["enabled"]
-    feature_summary = "\nFeature Status:\n"
-    feature_summary += f" - Speech-to-Text (STT): {'Active' if stt_enabled else 'Inactive'}\n"
-    feature_summary += f" - Text-to-Speech (TTS): {'Active' if tts_enabled else 'Inactive'}\n"
-    print(feature_summary)
+    print(feature_summary(stt_enabled, tts_enabled, "Feature Status"))
 
-    # Dynamic import to prevent circular dependencies with service_auth
-    from service_auth import authenticate_services
-    service_status = authenticate_services()
-    if not service_status.get("openai"):
-        stt_enabled = False
-    if not service_status.get("elevenlabs"):
-        tts_enabled = False
+    # Authenticate external services and update feature flags accordingly
+    stt_enabled, tts_enabled = authenticate_and_update_features(
+        stt_enabled, tts_enabled
+    )
+    print(feature_summary(stt_enabled, tts_enabled, "Final Feature Status"))
 
-    feature_summary = "\nFinal Feature Status:\n"
-    feature_summary += f" - Speech-to-Text (STT): {'Active' if stt_enabled else 'Inactive'}\n"
-    feature_summary += f" - Text-to-Speech (TTS): {'Active' if tts_enabled else 'Inactive'}\n"
-    print(feature_summary)
-
-    # Initialize assistant components
+    # --- Initialise core subsystems ------------------------------------
     manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(
         config,
         stt_enabled=stt_enabled,
         tts_enabled=tts_enabled,
     )
-    
+
     print_welcome()
-    
-    # Print the status of all servos
+
+    # Establish a neutral pose on startup and display servo status
     arduino_interface.set_animation("neutral")  # Set initial animation to neutral
     arduino_interface.servo_controller.print_servo_status()
-    
-    # Get initial GPT response
+
+    # --- Warm-up conversation -----------------------------------------
+    # Ask the assistant to introduce itself so we can verify everything works
     manager.add_text_to_conversation("user", "Hello, please introduce yourself.")
     gpt_text = gpt_client.get_text(manager.get_conversation())
     manager.add_text_to_conversation("assistant", gpt_text)
     manager.print_memory()
-    
+
     animation = gpt_client.reply_with_animation(manager.get_conversation())
     arduino_interface.set_animation(animation)  # Set initial animation
     
