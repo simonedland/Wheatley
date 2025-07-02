@@ -56,7 +56,6 @@ def _optimize_memory(data: List[Dict[str, Any]], max_entries: int = 100) -> List
     return data
 
 
-
 def overwrite_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
     """Replace the entire memory with ``entry``.
 
@@ -74,7 +73,6 @@ def overwrite_memory(entry: Dict[str, Any], path: str = MEMORY_FILE) -> None:
             json.dump(data, f, indent=2)
     except Exception as e:
         print(f"Failed to write memory to {path}: {e}")
-
 
 
 def edit_memory(index: int, entry: Dict[str, Any], path: str = MEMORY_FILE) -> bool:
@@ -99,7 +97,6 @@ def edit_memory(index: int, entry: Dict[str, Any], path: str = MEMORY_FILE) -> b
     bool
         ``True`` if the entry was written successfully, ``False`` on error.
     """
-
     data = read_memory(path)
     if 0 <= index < len(data):
         data[index] = _compress_entry(entry)

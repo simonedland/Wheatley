@@ -25,6 +25,7 @@ from elevenlabs import VoiceSettings
 
 class TextToSpeechEngine:
     """Interface to ElevenLabs TTS with persistent playback stream."""
+
     def _load_config(self) -> None:
         """Load voice settings from configuration file."""
 
@@ -88,10 +89,10 @@ class TextToSpeechEngine:
 
     def elevenlabs_generate_audio_stream(self, text: str):
         """Return a generator yielding MP3-encoded audio chunks for `text`."""
-        print (f"Generating speech for: {text}")
-        print (f"Using voice ID: {self.voice_id}")
-        print (f"Using model ID: {self.model_id}")
-        print (f"Using output format: {self.output_format}")
+        print(f"Generating speech for: {text}")
+        print(f"Using voice ID: {self.voice_id}")
+        print(f"Using model ID: {self.model_id}")
+        print(f"Using output format: {self.output_format}")
         return self.client.text_to_speech.convert(
             text=text,
             voice_id=self.voice_id,
@@ -113,8 +114,8 @@ class TextToSpeechEngine:
         audio_stream = self.elevenlabs_generate_audio_stream(text)
 
         # Buffering parameters
-        INITIAL_BUFFER_CHUNKS = 500
-        SUBSEQUENT_BUFFER_CHUNKS = 500
+        initial_buffer_chunks = 500
+        subsequent_buffer_chunks = 500
 
         mp3_buffer = bytearray()
         chunk_count = 0
@@ -130,9 +131,9 @@ class TextToSpeechEngine:
 
             # Use a small initial threshold, then the same small chunk size thereafter
             threshold = (
-                INITIAL_BUFFER_CHUNKS
-                if chunk_count <= INITIAL_BUFFER_CHUNKS
-                else SUBSEQUENT_BUFFER_CHUNKS
+                initial_buffer_chunks
+                if chunk_count <= initial_buffer_chunks
+                else subsequent_buffer_chunks
             )
 
             if chunk_count % threshold == 0:
@@ -216,6 +217,7 @@ class TextToSpeechEngine:
             self.p.terminate()
 
     def __del__(self):
+        """Destructor to ensure resources are released."""
         try:
             self.close()
         except Exception:
