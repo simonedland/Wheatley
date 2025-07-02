@@ -120,9 +120,9 @@ class DirectoryCrawler:
             p
             for p in self.root.rglob("*")
             if (
-                p.is_file()
-                and p.suffix in self.extensions
-                and ".venv" not in p.parts
+                p.is_file() and
+                p.suffix in self.extensions and
+                ".venv" not in p.parts
             )
         ]
 
@@ -188,7 +188,7 @@ class Summariser:
         combined = "\n".join(item for group in groups.values() for item in group)
         overview = self.llm.summarise(combined, "global_summary", dry_run=self.dry_run)
         (root / "README_AI.md").write_text("# AI Codebase Overview\n\n" + overview, encoding="utf-8")
-        print(f"[INFO] Root-level summary written.")
+        print("[INFO] Root-level summary written.")
         return overview
 
     def _write_graph_md_per_directory(self, by_dir: Dict[Path, List[str]]):
