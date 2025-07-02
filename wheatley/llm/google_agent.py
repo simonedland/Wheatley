@@ -33,8 +33,6 @@ class GoogleCalendarManager:
 
     def get_google_credentials(self):
         try:
-            cfg = self._load_config()
-
             creds = None
             base_dir = os.path.dirname(os.path.dirname(__file__))
             token_path = os.path.join(base_dir, "config", "token.json")
@@ -208,13 +206,13 @@ class GoogleAgent:
             parallel_tool_calls=False
         )
         choice = completion.output
-        print("LLM chose:")
+        print(f"LLM chose:")
         for msg in choice:
             if msg.type == "function_call":
                 print(f"  Tool: {msg.name}")
                 print(f"  Arguments: {msg.arguments}")
                 print(f"  Call ID: {getattr(msg, 'call_id', None)}")
-        print(f"--- End Google Agent Decision Trace ---\n")
+        print("--- End Google Agent Decision Trace ---\n")
         # Dispatch the chosen tool
         for msg in choice:
             if msg.type == "function_call":
