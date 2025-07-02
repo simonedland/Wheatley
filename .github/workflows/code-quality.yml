@@ -39,7 +39,7 @@ jobs:
           REPORT: flake8-report.txt
         run: |
           flake8 . --ignore=E501 --max-complexity=10 --max-cognitive-complexity=10 \
-            --format="%(path)s:%(row)d:%(col)d: %(code) %(text)" \
+            --format="%(path)s:%(row)d:%(col)d: %(code)s %(text)s" \
             > "$REPORT" || true
           cat "$REPORT"
           echo "issue_count=$(wc -l < "$REPORT")" >> "$GITHUB_OUTPUT"
@@ -50,9 +50,9 @@ jobs:
         uses: reviewdog/action-flake8@v3
         with:
           reporter: github-pr-review
-          level: warning            # ‘warning’ icons in the diff
-          fail_level: none          # <-- replaces deprecated fail_on_error
-          flake8_args: "--ignore=E501 --max-complexity=10 --max-cognitive-complexity=10"
+          level: warning
+          fail_level: none
+          flake8_args: "--ignore=E501 --max-complexity=10 --max-cognitive-complexity=10 --format='%(path)s:%(row)d:%(col)d: %(code)s %(text)s'"
 
       # ------- Upload artifact -------
       - name: Upload Flake8 report
