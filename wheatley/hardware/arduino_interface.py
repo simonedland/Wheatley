@@ -217,6 +217,7 @@ class ServoController:
     """Manage servo configurations and emotion animations."""
 
     def __init__(self, servo_count=7):
+        """Initialize the ServoController with a given number of servos and their configurations."""
         self.servo_count = servo_count
         # Updated servo configurations with names and sensible ranges.
         servo_configs = [
