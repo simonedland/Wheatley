@@ -208,9 +208,7 @@ class Servo:
         """Move servo to ``target_angle`` respecting configured limits."""
         # Clamp target_angle within allowed range
         clamped_angle = min(max(self.min_angle, target_angle), self.max_angle)
-        command = f"MOVE_SERVO;ID={self.servo_id};TARGET={clamped_angle};VELOCITY={self.velocity}"
         self.current_angle = clamped_angle
-        # print(f"{self.name} (ID: {self.servo_id}): {command}")
 
 
 class ServoController:
@@ -303,4 +301,3 @@ class ServoController:
             b = int(int(color[2]) / 5)
             return (r, g, b)
         return (51, 51, 51)
-
