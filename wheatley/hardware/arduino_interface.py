@@ -1,6 +1,8 @@
 """Interface classes for controlling the Arduino-based servo hardware."""
 
+
 class ArduinoInterface:
+
     def __init__(self, port, baud_rate=115200, dry_run=False):
         self.port = port
         self.baud_rate = baud_rate
@@ -46,7 +48,7 @@ class ArduinoInterface:
             if self.serial_connection.in_waiting:
                 line = self.serial_connection.readline().decode(errors="ignore").strip()
                 if line.startswith("SERVO_CONFIG:"):
-                    config_line = line[len("SERVO_CONFIG:") :]
+                    config_line = line[len("SERVO_CONFIG:"):]
                     break
             time.sleep(0.05)
 
@@ -57,7 +59,7 @@ class ArduinoInterface:
                 if self.serial_connection.in_waiting:
                     line = self.serial_connection.readline().decode(errors="ignore").strip()
                     if line.startswith("SERVO_CONFIG:"):
-                        config_line = line[len("SERVO_CONFIG:") :]
+                        config_line = line[len("SERVO_CONFIG:"):]
                         break
                 time.sleep(0.05)
 
@@ -66,15 +68,14 @@ class ArduinoInterface:
             print(f"[INFO] Got servo config from M5Stack: {config_line}")
             self.update_servo_config_from_string(config_line)
         else:
-            print("[WARN] No servo config received from M5Stack "
-                  f"after {active_timeout + passive_timeout:.0f}s, using defaults.")
-
+            print(f"[WARN] No servo config received from M5Stack after {active_timeout + passive_timeout:.0f}s, using defaults.")
 
     def update_servo_config_from_string(self, config_str):
         """Parse and update servo configs from calibration string."""
         chunks = config_str.strip().split(';')
         for chunk in chunks:
-            if not chunk: continue
+            if not chunk:
+                continue
             parts = chunk.split(',')
             if len(parts) != 4:
                 continue
@@ -92,7 +93,7 @@ class ArduinoInterface:
     def send_command(self, command):
         """Send a command to the Arduino."""
         if self.dry_run:
-            #print(f"Dry run command: {command}")
+            # print(f"Dry run command: {command}")
             return
         self.send_command_to_m5(command)
 
@@ -121,7 +122,7 @@ class ArduinoInterface:
     def read_response(self):
         """Read a response from the Arduino."""
         if self.dry_run:
-            print(f"[DRY RUN] Would read response from Arduino.")
+            print("[DRY RUN] Would read response from Arduino.")
             return None
         if self.serial_connection and self.serial_connection.is_open:
             return self.serial_connection.readline().decode().strip()
@@ -178,8 +179,10 @@ class ArduinoInterface:
         command = f"SET_SERVO_CONFIG:{config_str}\n"
         self.send_command(command)
 
+
 class Servo:
     """Representation of a single servo motor."""
+
     def __init__(
         self,
         servo_id,
@@ -203,12 +206,12 @@ class Servo:
 
     def move_to(self, target_angle):
         """Move servo to ``target_angle`` respecting configured limits."""
-
         # Clamp target_angle within allowed range
         clamped_angle = min(max(self.min_angle, target_angle), self.max_angle)
         command = f"MOVE_SERVO;ID={self.servo_id};TARGET={clamped_angle};VELOCITY={self.velocity}"
         self.current_angle = clamped_angle
-        #print(f"{self.name} (ID: {self.servo_id}): {command}")
+        # print(f"{self.name} (ID: {self.servo_id}): {command}")
+
 
 class ServoController:
     """Manage servo configurations and emotion animations."""
@@ -217,13 +220,13 @@ class ServoController:
         self.servo_count = servo_count
         # Updated servo configurations with names and sensible ranges.
         servo_configs = [
-            {'name': 'lens',    "idle_range": 10, 'min_angle': -720, 'max_angle': 720, 'interval': 2000},
-            {'name': 'eyelid1', "idle_range": 10, 'min_angle': 30,  'max_angle': 60,  'interval': 2000},
-            {'name': 'eyelid2', "idle_range": 10, 'min_angle': 30,  'max_angle': 60,  'interval': 2000},
-            {'name': 'eyeX',    "idle_range": 10, 'min_angle': 45,  'max_angle': 135, 'interval': 2000},
-            {'name': 'eyeY',    "idle_range": 10, 'min_angle': 40,  'max_angle': 140, 'interval': 2000},
-            {'name': 'handle1', "idle_range": 10, 'min_angle': 0,   'max_angle': 170, 'interval': 2000},
-            {'name': 'handle2', "idle_range": 10, 'min_angle': 0,   'max_angle': 170, 'interval': 2000}
+            {'name': 'lens', 'idle_range': 10, 'min_angle': -720, 'max_angle': 720, 'interval': 2000},
+            {'name': 'eyelid1', 'idle_range': 10, 'min_angle': 30, 'max_angle': 60, 'interval': 2000},
+            {'name': 'eyelid2', 'idle_range': 10, 'min_angle': 30, 'max_angle': 60, 'interval': 2000},
+            {'name': 'eyeX', 'idle_range': 10, 'min_angle': 45, 'max_angle': 135, 'interval': 2000},
+            {'name': 'eyeY', 'idle_range': 10, 'min_angle': 40, 'max_angle': 140, 'interval': 2000},
+            {'name': 'handle1', 'idle_range': 10, 'min_angle': 0, 'max_angle': 170, 'interval': 2000},
+            {'name': 'handle2', 'idle_range': 10, 'min_angle': 0, 'max_angle': 170, 'interval': 2000}
         ]
         self.servos = []
         for i in range(self.servo_count):
@@ -239,27 +242,27 @@ class ServoController:
         # Update emotion animations using target_factors (value between 0 and 1),
         # and add idle_ranges for each emotion.
         self.emotion_animations = {
-  "angry": {"velocities": [5,5,5,5,5,5,5],"target_factors": [0.185,0.075,0.925,0.489,0.486,0.5,0.0],"idle_ranges": [100,2,2,40,3,10,10],"intervals": [2000,5000,5000,5000,5000,2000,2000],"color": [255,0,0]},
-  "happy": {"velocities": [10,1,1,10,1,5,5],"target_factors": [0.865,0.15,0.0,0.489,0.043,1.0,0.0],"idle_ranges": [100,5,1,40,3,10,10],"intervals": [2000,1000,5000,3000,5000,2000,2000],"color": [0,255,0]},
-  "sad": {"velocities": [1,1,1,1,1,1,1],"target_factors": [0.927,0.4,0.65,0.5,0.0,0.0,0.0],"idle_ranges": [50,10,10,50,10,10,10],"intervals": [5000,5000,5000,5000,10400,10500,10600],"color": [0,0,255]},
-  "neutral": {"velocities": [1,1,1,1,1,1,1],"target_factors": [0.501,0.75,0.225,0.489,0.457,1.0,0.0],"idle_ranges": [400,5,5,30,30,10,10],"intervals": [20000,20000,20000,20000,20000,20000,20000],"color": [255,255,255]},
-  "excited": {"velocities": [20,1,1,10,1,1,1],"target_factors": [0.471,0.475,0.075,0.5,0.0,0.0,0.0],"idle_ranges": [200,5,3,50,10,10,10],"intervals": [5000,1000,1000,500,10400,10500,10600],"color": [255,128,64]},
-  "confused": {"velocities": [20,1,1,10,1,1,1],"target_factors": [0.471,0.175,0.5,0.5,0.0,0.0,0.0],"idle_ranges": [200,5,5,50,10,10,10],"intervals": [5000,1000,1000,500,10400,10500,10600],"color": [128,255,255]},
-  "surprised": {"velocities": [20,5,5,10,10,1,1],"target_factors": [1.0,1.0,0.0,0.489,0.486,0.0,0.0],"idle_ranges": [50,1,1,10,10,10,10],"intervals": [500,1000,1000,500,500,10500,10600],"color": [255,255,0]},
-  "curious": {"velocities": [10,1,1,5,1,1,1],"target_factors": [0.865,0.375,0.25,0.5,0.0,0.0,0.0],"idle_ranges": [100,5,5,50,10,10,10],"intervals": [5000,1000,1000,2000,10400,10500,10600],"color": [255,128,0]},
-  "bored": {"velocities": [5,1,1,1,1,1,1],"target_factors": [0.865,1.0,1.0,0.5,0.0,0.0,0.0],"idle_ranges": [100,5,5,20,10,10,10],"intervals": [5000,1000,1000,2000,10400,10500,10600],"color": [128,0,255]},
-  "fearful": {"velocities": [10,3,3,10,10,1,1],"target_factors": [0.854,1.0,0.0,0.5,0.486,0.0,0.0],"idle_ranges": [100,2,2,40,30,10,10],"intervals": [1000,1000,1000,1000,1000,10500,10600],"color": [255,0,0]},
-  "hopeful": {"velocities": [20,1,1,10,1,1,1],"target_factors": [0.47,0.475,0.075,0.5,0.0,0.0,0.0],"idle_ranges": [200,5,3,50,10,10,10],"intervals": [5000,1000,1000,500,10400,10500,10600],"color": [128,128,255]},
-  "embarrassed": {"velocities": [5,1,1,5,1,1,1],"target_factors": [0.491,1.0,0.0,0.5,0.0,0.0,0.0],"idle_ranges": [300,5,3,50,10,10,10],"intervals": [5000,1000,1000,1000,10400,10500,10600],"color": [255,0,255]},
-  "frustrated": {"velocities": [5,1,1,5,1,1,1],"target_factors": [0.032,0.25,0.75,0.5,0.5,0.0,0.0],"idle_ranges": [10,5,3,10,10,10,10],"intervals": [5000,1000,1000,1000,1000,1000,1000],"color": [255,0,0]},
-  "proud": {"velocities": [10,1,1,10,1,5,5],"target_factors": [0.865,0.15,0.0,0.489,0.043,1.0,0.0],"idle_ranges": [100,5,1,40,3,10,10],"intervals": [2000,1000,5000,3000,5000,2000,2000],"color": [255,255,0]},
-  "nostalgic": {"velocities": [10,1,1,5,1,1,1],"target_factors": [0.865,0.375,0.25,0.5,0.0,0.0,0.0],"idle_ranges": [100,5,5,50,10,10,10],"intervals": [5000,1000,1000,2000,10400,10500,10600],"color": [0,0,64]},
-  "relieved": {"velocities": [10,1,1,10,1,5,5],"target_factors": [0.865,0.15,0.0,0.489,0.043,1.0,0.0],"idle_ranges": [100,5,1,40,3,10,10],"intervals": [2000,1000,5000,3000,5000,2000,2000],"color": [0,0,160]},
-  "grateful": {"velocities": [10,1,1,10,1,5,5],"target_factors": [0.865,0.15,0.0,0.489,0.043,1.0,0.0],"idle_ranges": [100,5,1,40,3,10,10],"intervals": [2000,1000,5000,3000,5000,2000,2000],"color": [0,255,255]},
-  "shy": {"velocities": [5,1,1,5,1,1,1],"target_factors": [0.49,1.0,0.0,0.5,0.0,0.0,0.0],"idle_ranges": [300,5,3,50,10,10,10],"intervals": [5000,1000,1000,1000,10400,10500,10600],"color": [255,0,255]},
-  "disappointed": {"velocities": [2,1,1,1,1,1,1],"target_factors": [0.45,1.0,0.8,0.5,0.529,0.0,0.0],"idle_ranges": [100,5,5,20,10,10,10],"intervals": [5000,1000,1000,2000,1000,1000,1000],"color": [255,255,0]},
-  "jealous": {"velocities": [2,10,10,5,5,5,5],"target_factors": [0.16,0.325,0.625,0.489,0.486,0.5,0.0],"idle_ranges": [100,2,2,40,3,10,10],"intervals": [2000,5000,5000,5000,5000,2000,2000],"color": [128,0,255]}
-}
+            "angry": {"velocities": [5, 5, 5, 5, 5, 5, 5], "target_factors": [0.185, 0.075, 0.925, 0.489, 0.486, 0.5, 0.0], "idle_ranges": [100, 2, 2, 40, 3, 10, 10], "intervals": [2000, 5000, 5000, 5000, 5000, 2000, 2000], "color": [255, 0, 0]},
+            "happy": {"velocities": [10, 1, 1, 10, 1, 5, 5], "target_factors": [0.865, 0.15, 0.0, 0.489, 0.043, 1.0, 0.0], "idle_ranges": [100, 5, 1, 40, 3, 10, 10], "intervals": [2000, 1000, 5000, 3000, 5000, 2000, 2000], "color": [0, 255, 0]},
+            "sad": {"velocities": [1, 1, 1, 1, 1, 1, 1], "target_factors": [0.927, 0.4, 0.65, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [50, 10, 10, 50, 10, 10, 10], "intervals": [5000, 5000, 5000, 5000, 10400, 10500, 10600], "color": [0, 0, 255]},
+            "neutral": {"velocities": [1, 1, 1, 1, 1, 1, 1], "target_factors": [0.501, 0.75, 0.225, 0.489, 0.457, 1.0, 0.0], "idle_ranges": [400, 5, 5, 30, 30, 10, 10], "intervals": [20000, 20000, 20000, 20000, 20000, 20000, 20000], "color": [255, 255, 255]},
+            "excited": {"velocities": [20, 1, 1, 10, 1, 1, 1], "target_factors": [0.471, 0.475, 0.075, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [200, 5, 3, 50, 10, 10, 10], "intervals": [5000, 1000, 1000, 500, 10400, 10500, 10600], "color": [255, 128, 64]},
+            "confused": {"velocities": [20, 1, 1, 10, 1, 1, 1], "target_factors": [0.471, 0.175, 0.5, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [200, 5, 5, 50, 10, 10, 10], "intervals": [5000, 1000, 1000, 500, 10400, 10500, 10600], "color": [128, 255, 255]},
+            "surprised": {"velocities": [20, 5, 5, 10, 10, 1, 1], "target_factors": [1.0, 1.0, 0.0, 0.489, 0.486, 0.0, 0.0], "idle_ranges": [50, 1, 1, 10, 10, 10, 10], "intervals": [500, 1000, 1000, 500, 500, 10500, 10600], "color": [255, 255, 0]},
+            "curious": {"velocities": [10, 1, 1, 5, 1, 1, 1], "target_factors": [0.865, 0.375, 0.25, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [100, 5, 5, 50, 10, 10, 10], "intervals": [5000, 1000, 1000, 2000, 10400, 10500, 10600], "color": [255, 128, 0]},
+            "bored": {"velocities": [5, 1, 1, 1, 1, 1, 1], "target_factors": [0.865, 1.0, 1.0, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [100, 5, 5, 20, 10, 10, 10], "intervals": [5000, 1000, 1000, 2000, 10400, 10500, 10600], "color": [128, 0, 255]},
+            "fearful": {"velocities": [10, 3, 3, 10, 10, 1, 1], "target_factors": [0.854, 1.0, 0.0, 0.5, 0.486, 0.0, 0.0], "idle_ranges": [100, 2, 2, 40, 30, 10, 10], "intervals": [1000, 1000, 1000, 1000, 1000, 10500, 10600], "color": [255, 0, 0]},
+            "hopeful": {"velocities": [20, 1, 1, 10, 1, 1, 1], "target_factors": [0.47, 0.475, 0.075, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [200, 5, 3, 50, 10, 10, 10], "intervals": [5000, 1000, 1000, 500, 10400, 10500, 10600], "color": [128, 128, 255]},
+            "embarrassed": {"velocities": [5, 1, 1, 5, 1, 1, 1], "target_factors": [0.491, 1.0, 0.0, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [300, 5, 3, 50, 10, 10, 10], "intervals": [5000, 1000, 1000, 1000, 10400, 10500, 10600], "color": [255, 0, 255]},
+            "frustrated": {"velocities": [5, 1, 1, 5, 1, 1, 1], "target_factors": [0.032, 0.25, 0.75, 0.5, 0.5, 0.0, 0.0], "idle_ranges": [10, 5, 3, 10, 10, 10, 10], "intervals": [5000, 1000, 1000, 1000, 1000, 1000, 1000], "color": [255, 0, 0]},
+            "proud": {"velocities": [10, 1, 1, 10, 1, 5, 5], "target_factors": [0.865, 0.15, 0.0, 0.489, 0.043, 1.0, 0.0], "idle_ranges": [100, 5, 1, 40, 3, 10, 10], "intervals": [2000, 1000, 5000, 3000, 5000, 2000, 2000], "color": [255, 255, 0]},
+            "nostalgic": {"velocities": [10, 1, 1, 5, 1, 1, 1], "target_factors": [0.865, 0.375, 0.25, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [100, 5, 5, 50, 10, 10, 10], "intervals": [5000, 1000, 1000, 2000, 10400, 10500, 10600], "color": [0, 0, 64]},
+            "relieved": {"velocities": [10, 1, 1, 10, 1, 5, 5], "target_factors": [0.865, 0.15, 0.0, 0.489, 0.043, 1.0, 0.0], "idle_ranges": [100, 5, 1, 40, 3, 10, 10], "intervals": [2000, 1000, 5000, 3000, 5000, 2000, 2000], "color": [0, 0, 160]},
+            "grateful": {"velocities": [10, 1, 1, 10, 1, 5, 5], "target_factors": [0.865, 0.15, 0.0, 0.489, 0.043, 1.0, 0.0], "idle_ranges": [100, 5, 1, 40, 3, 10, 10], "intervals": [2000, 1000, 5000, 3000, 5000, 2000, 2000], "color": [0, 255, 255]},
+            "shy": {"velocities": [5, 1, 1, 5, 1, 1, 1], "target_factors": [0.49, 1.0, 0.0, 0.5, 0.0, 0.0, 0.0], "idle_ranges": [300, 5, 3, 50, 10, 10, 10], "intervals": [5000, 1000, 1000, 1000, 10400, 10500, 10600], "color": [255, 0, 255]},
+            "disappointed": {"velocities": [2, 1, 1, 1, 1, 1, 1], "target_factors": [0.45, 1.0, 0.8, 0.5, 0.529, 0.0, 0.0], "idle_ranges": [100, 5, 5, 20, 10, 10, 10], "intervals": [5000, 1000, 1000, 2000, 1000, 1000, 1000], "color": [255, 255, 0]},
+            "jealous": {"velocities": [2, 10, 10, 5, 5, 5, 5], "target_factors": [0.16, 0.325, 0.625, 0.489, 0.486, 0.5, 0.0], "idle_ranges": [100, 2, 2, 40, 3, 10, 10], "intervals": [2000, 5000, 5000, 5000, 5000, 2000, 2000], "color": [128, 0, 255]}
+        }
 
     def print_servo_status(self):
         """Print the status of each servo in a formatted table with improved alignment."""
