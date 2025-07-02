@@ -4,15 +4,11 @@ import openai
 import json
 import yaml
 import re
-
 import os
 import logging
 import requests
 import time
 import asyncio
-
-PUNCT_RE = re.compile(r'[.!?]\s+')
-ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
@@ -47,7 +43,6 @@ logging.basicConfig(level=logging.WARN)
 class TextToSpeech:
     def _load_config(self) -> None:
         """Load voice settings from configuration file."""
-
         config_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "config",
@@ -55,7 +50,6 @@ class TextToSpeech:
         )
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
-
         tts_config = config.get("tts", {})
         self.api_key = config["secrets"]["elevenlabs_api_key"]
         self.voice_id = tts_config.get("voice_id", "4Jtuv4wBvd95o1hzNloV")
@@ -68,7 +62,6 @@ class TextToSpeech:
         )
         self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
-
 
     """Minimal wrapper around the ElevenLabs API for speech synthesis."""
     def __init__(self):
@@ -120,6 +113,10 @@ class TextToSpeech:
             except Exception as e:
                 logging.error(f"Error deleting audio file: {e}")
         record_timing("tts_play", play_start)
+
+
+PUNCT_RE = re.compile(r'[.!?]\s+')
+ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 # =================== LLM Client ===================
 # This class is responsible for interacting with the OpenAI API
@@ -186,7 +183,7 @@ class GPTClient:
                     scan = m.end()
                     continue
                 sent = buf[: m.end()].strip()
-                buf = buf[m.end() :].lstrip()
+                buf = buf[m.end():].lstrip()
                 scan = 0
                 end_time = time.time()
                 yield sent, sentence_start or end_time, end_time
@@ -254,17 +251,17 @@ class GPTClient:
 
         start_time = time.time()
         tools = build_tools()
-        #remove the first system message from conversation and replace with a new one
+        # Remove the first system message from conversation and replace with a new one
         temp_conversation = conversation.copy()
         temp_conversation[0] = {
             "role": "system",
             "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. look at earlier conversation to see if the information is there already. like for example dont call get joke, if there is already a joke fresh in memory. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE. NEVER summarize data."
         }
-        #pop message 1
+        # Pop message 1
         temp_conversation.pop(1)
-        #remove all the messages from assistant
+        # Remove all the messages from assistant
         temp_conversation = [msg for msg in temp_conversation if msg["role"] != "assistant"]
-        #add one shot example after the first system message
+        # Add one shot example after the first system message
         temp_conversation.insert(1, {
             "role": "user",
             "content": "hello mister!"
@@ -285,8 +282,8 @@ class GPTClient:
         record_timing("llm_get_workflow", start_time)
         choice = completion.output
         results = []
-        if completion.output[0].type == "web_search_call":
-            #add content of completion.output[1]
+        if completion.output and hasattr(completion.output[0], 'type') and completion.output[0].type == "web_search_call":
+            # Add content of completion.output[1]
             for item in completion.output[1].content:
                 results.append({
                     "arguments": {"text": item.text},
@@ -295,8 +292,7 @@ class GPTClient:
                 })
 
         for msg in choice:
-            if msg.type == "function_call":
-                #print("function_call")
+            if hasattr(msg, 'type') and msg.type == "function_call":
                 if hasattr(msg, "arguments"):
                     results.append({
                         "arguments": json.loads(msg.arguments),
@@ -321,8 +317,6 @@ if "search_context_size" in web_search_config:
     web_search_tool["search_context_size"] = web_search_config["search_context_size"]
 
 tts_engine = TextToSpeech()
-
-#tools = build_tools()
 
 class Functions:
     """Container for tool implementations invoked by GPT."""
