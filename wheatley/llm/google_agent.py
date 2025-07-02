@@ -113,6 +113,7 @@ class GoogleCalendarManager:
             for ev in cal_events:
                 print(f"  • {ev['start']} — {ev['summary']}")
 
+
 # implement placeholder google functions
 GOOGLE_TOOLS = [
     {
@@ -206,13 +207,13 @@ class GoogleAgent:
             parallel_tool_calls=False
         )
         choice = completion.output
-        print(f"LLM chose:")
+        print("LLM chose:")
         for msg in choice:
             if msg.type == "function_call":
                 print(f"  Tool: {msg.name}")
                 print(f"  Arguments: {msg.arguments}")
                 print(f"  Call ID: {getattr(msg, 'call_id', None)}")
-        print("--- End Google Agent Decision Trace ---\n")
+        print(f"--- End Google Agent Decision Trace ---\n")
         # Dispatch the chosen tool
         for msg in choice:
             if msg.type == "function_call":
@@ -246,4 +247,3 @@ class GoogleAgent:
 
     def print_upcoming_events(self, days=7):
         self.calendar_manager.print_upcoming_events(days)
-
