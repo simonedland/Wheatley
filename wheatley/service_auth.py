@@ -29,6 +29,7 @@ SERVICE_STATUS: Dict[str, bool] = {}
 GOOGLE_AGENT: GoogleAgent | None = None
 SPOTIFY_AGENT: SpotifyAgent | None = None
 
+
 def _load_config() -> Dict[str, Dict[str, str]]:
     """Return YAML configuration dictionary."""
     base_dir = os.path.dirname(__file__)
@@ -68,7 +69,6 @@ def _check_elevenlabs(api_key: str) -> bool:
 
 def authenticate_services() -> Dict[str, bool]:
     """Attempt to authenticate with all external services and print results."""
-
     global GOOGLE_AGENT, SPOTIFY_AGENT
     statuses: Dict[str, bool] = {}
     config = _load_config()

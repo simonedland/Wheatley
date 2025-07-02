@@ -27,6 +27,7 @@ RECORDING_COLOR = (0, 255, 0)       # green
 PROCESSING_COLOR = (255, 165, 0)    # orange
 PAUSED_COLOR = (255, 0, 0)          # red
 
+
 class SpeechToTextEngine:
     """High-level speech-to-text engine with optional hardware integration."""
 
@@ -140,11 +141,11 @@ class SpeechToTextEngine:
     # Listening control helpers
     # ------------------------------------------------------------------
     def pause_listening(self):
-        """Pause any ongoing listening/transcription."""
+        """Pause any ongoing listening or transcription."""
         if not self._pause_event.is_set():
             self._pause_event.set()
             self._stop_event.set()
-            if self._listening:  # If the system is currently listening, update the state
+            if self._listening:
                 self._listening = False
                 print("[STT] Not listening")
             print("[STT] Listening paused.")
@@ -157,11 +158,9 @@ class SpeechToTextEngine:
             print("[STT] Listening resumed.")
 
     def is_paused(self):
+        """Return True if listening is paused, False otherwise."""
         return self._pause_event.is_set()
 
-
-
-    # Legacy methods for backward compatibility
     def record_until_silent(self, max_wait_seconds=None):
         """Record audio until silence is detected.
 
@@ -177,12 +176,11 @@ class SpeechToTextEngine:
         self._audio = pyaudio.PyAudio()
         try:
             self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
-        except:
+        except Exception:
             try:
                 self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=1)
-            except:
+            except Exception:
                 self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
-        
         frames = []
         silent_frames = 0
         recording = False
@@ -242,7 +240,7 @@ class SpeechToTextEngine:
         return wav_filename
 
     def transcribe(self, filename):
-        """Transcribe audio file using OpenAI Whisper"""
+        """Transcribe audio file using OpenAI Whisper."""
         start_time = time.time()
         with open(filename, "rb") as audio_file:
             transcription_result = openai.audio.transcriptions.create(
@@ -253,7 +251,7 @@ class SpeechToTextEngine:
         return transcription_result.text
 
     def record_and_transcribe(self, max_wait_seconds=None):
-        """Record audio and transcribe using traditional Whisper API"""
+        """Record audio and transcribe using traditional Whisper API."""
         start_time = time.time()
         wav_file = self.record_until_silent(max_wait_seconds)
         if not wav_file:
@@ -296,13 +294,12 @@ class SpeechToTextEngine:
             keywords = ["computer", "jarvis"]
         if sensitivities is None:
             sensitivities = [0.5] * len(keywords)
-        
         try:
             self._porcupine = pvporcupine.create(
                 access_key=access_key,
                 keyword_paths=["stt/wheatley.ppn"]
             )
-        except:
+        except Exception:
             self._porcupine = pvporcupine.create(
                 access_key=access_key,
                 keywords=keywords,
@@ -335,10 +332,8 @@ class SpeechToTextEngine:
                     detected_index = keyword_index
                     break
                 # Status update every 10 seconds
-                # Periodic status updates so the user knows we're alive
                 if time.time() % 10 < 0.03:
                     print("[Hotword] Still listening...")
-
         except KeyboardInterrupt:
             print("[Hotword] Listener interrupted.")
         finally:
@@ -352,17 +347,12 @@ class SpeechToTextEngine:
             if self._listening:
                 self._listening = False
                 print("[STT] Not listening")
-            # Reflect current state on the microphone LED
             self._update_mic_led(PAUSED_COLOR)
         record_timing("stt_listen_hotword", start_time)
         return detected_index
 
-
     def get_voice_input(self):
-        """
-        Waits for hotword, then records and transcribes speech.
-        Returns the transcribed text, or empty string if nothing detected.
-        """
+        """Wait for hotword, then record and transcribe speech. Return transcribed text or empty string if nothing detected."""
         idx = self.listen_for_hotword()
         if idx is None:
             return ""
@@ -393,9 +383,7 @@ class SpeechToTextEngine:
             print(f"[Hotword] Listener error: {e}")
 
     def cleanup(self):
-        """
-        Cleanup any open audio streams, PyAudio instances, and Porcupine resources.
-        """
+        """Clean up any open audio streams, PyAudio instances, and Porcupine resources."""
         self._stop_event.set()
         if self._stream is not None:
             try:
@@ -417,6 +405,7 @@ class SpeechToTextEngine:
                 pass
             self._porcupine = None
         self._update_mic_led(PAUSED_COLOR)
+
 
 if __name__ == "__main__":
     # Basic manual test when running this module directly

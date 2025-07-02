@@ -1,26 +1,32 @@
 """Basic unit tests for main assistant functionalities: LLM and TTS."""
 
-import sys
 import os
-
 import unittest
-
 from llm.llm_client import GPTClient
 from tts.tts_engine import TextToSpeechEngine
 
-# NEW: Custom base test case for colored output
+
 class ColorfulTestCase(unittest.TestCase):
+    """Custom base test case for colored output."""
+
     def assertEqual(self, first, second, msg=None):
+        """Assert that two values are equal."""
         super().assertEqual(first, second, msg)
-    
+
     def assertIn(self, member, container, msg=None):
+        """Assert that member is in container."""
         super().assertIn(member, container, msg)
-    
+
     def assertIsInstance(self, obj, cls, msg=None):
+        """Assert that object is instance of class."""
         super().assertIsInstance(obj, cls, msg)
 
+
 class TestLLMFunctionality(ColorfulTestCase):
+    """Test LLM functionality using GPTClient."""
+
     def test_get_text(self):
+        """Test that GPTClient.get_text returns a non-empty string."""
         print("[TestLLMFunctionality] Starting test_get_text...")
         client = GPTClient()
         conversation = [{"role": "user", "content": "Greet me"}]
@@ -35,8 +41,12 @@ class TestLLMFunctionality(ColorfulTestCase):
         self.assertTrue(len(result.strip()) > 0, "LLM get_text should return non-empty text")
         print("[TestLLMFunctionality] test_get_text completed successfully.")
 
+
 class TestTTSFunctionality(ColorfulTestCase):
+    """Test TTS functionality using TextToSpeechEngine."""
+
     def test_generate_and_play(self):
+        """Test that generate_and_play_advanced works and cleans up temp files."""
         print("[TestTTSFunctionality] Starting test_generate_and_play...")
         engine = TextToSpeechEngine()
         try:
@@ -52,6 +62,7 @@ class TestTTSFunctionality(ColorfulTestCase):
             print(f"[TestTTSFunctionality] Temp files after TTS: {temp_files}")
             self.assertEqual(len(temp_files), 0, "Temporary audio files were not cleaned up")
         print("[TestTTSFunctionality] test_generate_and_play completed successfully.")
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
