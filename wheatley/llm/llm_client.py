@@ -8,14 +8,10 @@ import os
 import logging
 import requests
 import time
-import asyncio
-
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 import tempfile
-
-#from local file google_agent import GoogleCalendarManager
 try:
   from .google_agent import GoogleCalendarManager
 except ImportError:
