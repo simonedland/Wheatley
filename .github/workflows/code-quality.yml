@@ -7,10 +7,9 @@ on:
     branches: [main]
 
 permissions:
-  contents: read          # fetch repo
-  issues: write           # open / update GH issues
-  actions: read           # needed for upload-sarif
-  security-events: write  # upload SARIF to Code-Scanning
+  contents: read   # checkout
+  issues: write    # open / update GH issues
+  # (no actions/security-events scopes needed now)
 
 jobs:
   lint:
@@ -25,22 +24,21 @@ jobs:
         with:
           python-version: "3.x"
 
-      # ────── install tools ──────
-      - name: Install Flake8 + plugins (SARIF included)
+      - name: Install Flake8 + plugins
         run: |
           python -m pip install -U pip
-          # NOTE: correct SARIF plugin is **flake8-sarif**
           pip install \
             flake8 \
             flake8-bugbear \
             flake8-docstrings \
             pep8-naming \
             flake8-cognitive-complexity \
-            flake8-sarif               # ← fixed package name
+            flake8-sarif
           [ -f requirements.txt ] && pip install -r requirements.txt
 
-      # ────── primary lint (console annotations) ──────
-      - name: Run Flake8 (console annotations)
+      # ───────────────────────────────────────────────────────────
+      # Console annotations (problem-matcher)
+      - name: Run Flake8 → console
         id: flake8
         run: |
           flake8 . \
@@ -53,50 +51,46 @@ jobs:
           issues=$(grep -c '^::error' flake8-report.txt || true)
           echo "issue_count=$issues" >> "$GITHUB_OUTPUT"
 
-      # ────── second pass → SARIF (IDE / Code-Scanning) ──────
-      - name: Run Flake8 again → SARIF
-        env:
-          SARIF_FILE: flake8-results.sarif
+      # ───────────────────────────────────────────────────────────
+      # Generate SARIF (for developers to open locally)
+      - name: Run Flake8 → SARIF
         run: |
           flake8 . \
             --ignore=E501 \
             --max-complexity=10 \
             --max-cognitive-complexity=10 \
             --format sarif \
-            --output-file "$SARIF_FILE" || true
+            --output-file flake8-results.sarif || true
 
-          # Ensure file exists even if flake8 failed before creating it
-          if [ ! -f "$SARIF_FILE" ]; then
-            echo '{"version":"2.1.0","runs":[{"results":[],"tool":{"driver":{"name":"flake8"}}}]}' > "$SARIF_FILE"
-          fi
-
-      - name: Upload SARIF to GitHub Code-Scanning
-        if: always()                # run even on failure so alerts show up
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Upload SARIF & raw log as artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
         with:
-          sarif_file: flake8-results.sarif
+          name: flake8-results
+          path: |
+            flake8-results.sarif
+            flake8-report.txt
 
-      # ────── GitHub-Issue synchronisation (unchanged) ──────
+      # ───────────────────────────────────────────────────────────
+      # GitHub-issue sync  (unchanged)
       - name: Create or Update GitHub Issues per File
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          awk -F 'file=' '/^::error/ { split($2,a,","); print a[1] }' flake8-report.txt | sort -u > files_with_issues.txt
+          awk -F 'file=' '/^::error/ { split($2,a,","); print a[1] }' \
+            flake8-report.txt | sort -u > files_with_issues.txt
           while IFS= read -r file; do
             grep "file=$file," flake8-report.txt | head -n 100 > file-issues.txt
             [ -s file-issues.txt ] || continue
 
             ISSUE_TITLE="Code quality issues in $file"
             CURRENT_COUNT=$(wc -l < file-issues.txt)
-
-            {
-              echo "### 🚨 flake8 identified issues in $file (first 100 lines)"
+            { echo "### 🚨 flake8 issues in $file (first 100 lines)"
               echo '```'; cat file-issues.txt; echo '```'
               echo "Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               echo "Commit: ${{ github.sha }}"
-              echo "Error count: $CURRENT_COUNT"
-            } > issue_body.md
+              echo "Error count: $CURRENT_COUNT"; } > issue_body.md
 
             ISSUE_NUMBER=$(
               gh issue list --state open --search "$ISSUE_TITLE" --json number,title |
@@ -108,7 +102,7 @@ jobs:
                 jq -r '.comments | last | .body' 2>/dev/null |
                 grep -oE 'Error count: [0-9]+' | awk '{print $3}' || true
               )
-              [ "$CURRENT_COUNT" != "$LAST_COUNT" ] && \
+              [ "$CURRENT_COUNT" != "$LAST_COUNT" ] &&
                 gh issue comment "$ISSUE_NUMBER" --body-file issue_body.md || true
             else
               gh issue create --title "$ISSUE_TITLE" --body-file issue_body.md || true
@@ -127,7 +121,7 @@ jobs:
           while IFS=$'\t' read -r num title; do
             file=${title#Code quality issues in }
             if ! printf '%s\n' "${current_files[@]}" | grep -Fxq "$file"; then
-              gh issue comment "$num" --body "✅ All code quality issues in \`$file\` have been resolved. Closing."
+              gh issue comment "$num" --body "✅ All flake8 issues in \`$file\` resolved. Closing."
               gh issue close "$num"
             fi
           done < open_code_quality_issues.tsv
