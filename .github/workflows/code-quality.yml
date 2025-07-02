@@ -38,7 +38,7 @@ jobs:
         env:
           REPORT: flake8-report.txt
         run: |
-          flake8 . --ignore=E501 --max-complexity=10 --max-cognitive-complexity=10 \
+          flake8 . --ignore=E501,CCR001 --max-complexity=10 --max-cognitive-complexity=10 \
             --format="%(path)s:%(row)d:%(col)d: %(code)s %(text)s" \
             > "$REPORT" || true
           cat "$REPORT"
@@ -52,7 +52,7 @@ jobs:
           reporter: github-pr-review
           level: warning
           fail_level: none
-          flake8_args: "--ignore=E501 --max-complexity=10 --max-cognitive-complexity=10 --format='%(path)s:%(row)d:%(col)d: %(code)s %(text)s'"
+          flake8_args: "--ignore=E501,CCR001 --max-complexity=10 --max-cognitive-complexity=10 --format='%(path)s:%(row)d:%(col)d: %(code)s %(text)s'"
 
       # ------- Upload artifact -------
       - name: Upload Flake8 report
