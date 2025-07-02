@@ -10,7 +10,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-    
+
 
 class GoogleCalendarManager:
     """Wrapper for Google Calendar API interactions."""
@@ -20,12 +20,12 @@ class GoogleCalendarManager:
         config_path = os.path.join(base_dir, "config", "config.yaml")
         with open(config_path, "r") as f:
             return yaml.safe_load(f)
-    
+
     def __init__(self):
         try:
             self.creds = self.get_google_credentials()
             self.service = build("calendar", "v3", credentials=self.creds)
-        except Exception as e:
+        except Exception:
             print("❌ ERROR: Authentication failed for Google Calendar! Please check your credentials or login again.")
             raise
         config = self._load_config()
@@ -34,7 +34,6 @@ class GoogleCalendarManager:
     def get_google_credentials(self):
         try:
             cfg = self._load_config()
-            secs = cfg["secrets"]
 
             creds = None
             base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -43,16 +42,16 @@ class GoogleCalendarManager:
             if os.path.exists(token_path):
                 creds = Credentials.from_authorized_user_file(token_path, SCOPES)
 
-            #if not creds or not creds.valid:
-            #    if creds and creds.expired and creds.refresh_token:
-            #        try:
-            #            creds.refresh(Request())
+            # if not creds or not creds.valid:
+            #     if creds and creds.expired and creds.refresh_token:
+            #         try:
+            #             creds.refresh(Request())
 
             if creds is not None:
                 with open(token_path, "w") as f:
                     f.write(creds.to_json())
             return creds
-        except Exception as e:
+        except Exception:
             print("❌ ERROR: Authentication failed for Google Calendar! Please check your credentials or login again.")
             raise
 
@@ -116,7 +115,7 @@ class GoogleCalendarManager:
             for ev in cal_events:
                 print(f"  • {ev['start']} — {ev['summary']}")
 
-# imlpement placeholder google functions
+# implement placeholder google functions
 GOOGLE_TOOLS = [
     {
         "type": "function",
@@ -162,6 +161,7 @@ GOOGLE_TOOLS = [
     }
 ]
 
+
 class GoogleAgent:
     """LLM-driven assistant for interacting with Google services."""
     def _load_config(self):
@@ -170,7 +170,7 @@ class GoogleAgent:
         config_path = os.path.join(base_dir, "config", "config.yaml")
         with open(config_path, "r") as f:
             return yaml.safe_load(f)
-    
+
     def __init__(self):
         config = self._load_config()
         self.api_key = config["secrets"]["openai_api_key"]
@@ -208,7 +208,7 @@ class GoogleAgent:
             parallel_tool_calls=False
         )
         choice = completion.output
-        print(f"LLM chose:")
+        print("LLM chose:")
         for msg in choice:
             if msg.type == "function_call":
                 print(f"  Tool: {msg.name}")
@@ -221,7 +221,7 @@ class GoogleAgent:
                 func_name = msg.name
                 arguments = msg.arguments
                 return self.dispatch(func_name, arguments)
-            
+
         raise ValueError("No function call found in LLM response.")
 
     def dispatch(self, func_name, arguments):
