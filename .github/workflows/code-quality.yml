@@ -31,48 +31,57 @@ jobs:
       - name: Run flake8
         id: flake8
         run: |
-          flake8 . --exit-zero --ignore=E501 --format='::error file=%(path)s,line=%(row)d,col=%(col)d::%(code)s %(text)s' > flake8-report.txt
+          flake8 . --exit-zero --ignore=E501 \
+            --format='::error file=%(path)s,line=%(row)d,col=%(col)d::%(code)s %(text)s' \
+            > flake8-report.txt
           cat flake8-report.txt
           issues=$(grep -c '^::error' flake8-report.txt || true)
-          echo "issue_count=$issues" >> $GITHUB_OUTPUT
+          echo "issue_count=$issues" >> "$GITHUB_OUTPUT"
 
       - name: Create or Update GitHub Issues per File
         if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Group flake8 errors by file
-          awk -F 'file=' '/^::error/ { split($2, a, ","); print a[1] }' flake8-report.txt | sort | uniq > files_with_issues.txt
+          # Collect files that have flake8 errors
+          awk -F 'file=' '/^::error/ { split($2,a,","); print a[1] }' \
+            flake8-report.txt | sort -u > files_with_issues.txt
 
           while IFS= read -r file; do
-            # Extract issues for this file (limit to 100 lines)
+            # First 100 errors for that file
             grep "file=$file," flake8-report.txt | head -n 100 > file-issues.txt
-            if [ ! -s file-issues.txt ]; then continue; fi
+            [ -s file-issues.txt ] || continue
 
             ISSUE_TITLE="Code quality issues in $file"
             CURRENT_COUNT=$(wc -l < file-issues.txt)
-            # Build issue body in a file to avoid YAML/shell escaping issues
+
+            # --- build issue body safely ---
             {
               echo "### 🚨 flake8 identified issues in $file (showing first 100 lines):"
               echo '```'
               cat file-issues.txt
               echo '```'
-              echo "Full log is available in the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              echo "Full log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               echo "Commit: ${{ github.sha }}"
               echo "Error count: $CURRENT_COUNT"
             } > issue_body.md
+            # --------------------------------
 
-            # Find existing open issue for this file
-            ISSUE_NUMBER=$(gh issue list --state open --search "$ISSUE_TITLE" --json number,title | jq -r ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -n 1)
+            # Find existing issue (if any)
+            ISSUE_NUMBER=$(
+              gh issue list --state open --search "$ISSUE_TITLE" --json number,title |
+              jq -r '.[] | select(.title == "'"$ISSUE_TITLE"'") | .number' | head -n 1
+            )
 
             if [ -n "$ISSUE_NUMBER" ]; then
-              # Get the last error count from the last comment (if any)
-              LAST_COUNT=$(gh issue view "$ISSUE_NUMBER" --json comments | jq -r '.comments | last | .body' | grep -oE 'Error count: [0-9]+' | awk '{print $3}')
-              if [ "$CURRENT_COUNT" != "$LAST_COUNT" ]; then
+              LAST_COUNT=$(
+                gh issue view "$ISSUE_NUMBER" --json comments |
+                jq -r '.comments | last | .body' |
+                grep -oE 'Error count: [0-9]+' | awk '{print $3}'
+              )
+              [ "$CURRENT_COUNT" != "$LAST_COUNT" ] && \
                 gh issue comment "$ISSUE_NUMBER" --body-file issue_body.md
-              fi
             else
-              # Create a new issue
               gh issue create --title "$ISSUE_TITLE" --body-file issue_body.md
             fi
           done < files_with_issues.txt
@@ -82,19 +91,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # List all open issues with the code quality title pattern
-          gh issue list --state open --json number,title | jq -r '.[] | select(.title | startswith("Code quality issues in ")) | [.number, .title] | @tsv' > open_code_quality_issues.tsv
+          gh issue list --state open --json number,title |
+          jq -r '.[] | select(.title | startswith("Code quality issues in ")) | [.number,.title] | @tsv' \
+            > open_code_quality_issues.tsv
 
-          # Read files with current issues into an array
+          # Current files that still have issues
           mapfile -t current_files < files_with_issues.txt
 
           while IFS=$'\t' read -r issue_number issue_title; do
-            # Extract the file name from the issue title
             file_name=${issue_title#Code quality issues in }
-            # Check if the file is still in the current files with issues
             if ! printf '%s\n' "${current_files[@]}" | grep -Fxq "$file_name"; then
-              # Close the issue with a comment
-              gh issue comment "$issue_number" --body "✅ All code quality issues in $file_name have been resolved. Closing this issue."
+              gh issue comment "$issue_number" \
+                --body "✅ All code quality issues in \`$file_name\` have been resolved. Closing this issue."
               gh issue close "$issue_number"
             fi
           done < open_code_quality_issues.tsv
