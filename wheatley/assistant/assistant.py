@@ -5,6 +5,7 @@ import textwrap
 import yaml
 from datetime import datetime
 
+
 class ConversationManager:
     """Maintain a bounded conversation history for the assistant."""
     def __init__(self, max_memory=5):
@@ -15,7 +16,7 @@ class ConversationManager:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
         system_message = config.get("assistant", {}).get("system_message", "")
-        #replace the <current_time> in system message with the current time and day in week
+        # replace the <current_time> in system message with the current time and day in week
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         current_day = datetime.now().strftime("%A")
         system_message = system_message.replace("<current_time>", current_time)
@@ -70,20 +71,24 @@ class ConversationManager:
         assistant_color = "\033[93m"  # assistant
         reset_color = "\033[0m"
         max_width = 70
-        
+
         print(f"\n{debug_color}+------------------------ Conversation Memory ------------------------+{reset_color}")
         for idx, msg in enumerate(self.messages):
             role = msg["role"]
             content = msg["content"]
             if role == "system":
-                role_color = debug_color; prefix = f"[{idx}] {role}: "
+                role_color = debug_color
+                prefix = f"[{idx}] {role}: "
             elif role == "user":
-                role_color = user_color; prefix = f"[{idx}] {role}:      "
+                role_color = user_color
+                prefix = f"[{idx}] {role}:      "
             elif role == "assistant":
-                role_color = assistant_color; prefix = f"[{idx}] {role}: "
+                role_color = assistant_color
+                prefix = f"[{idx}] {role}: "
             else:
-                role_color = debug_color; prefix = f"[{idx}] {role}: "
-            wrapped = textwrap.wrap(content, width=max_width-len(prefix))
+                role_color = debug_color
+                prefix = f"[{idx}] {role}: "
+            wrapped = textwrap.wrap(content, width=max_width - len(prefix))
             if wrapped:
                 print(f"{role_color}{prefix}{wrapped[0]}{reset_color}")
                 for line in wrapped[1:]:
