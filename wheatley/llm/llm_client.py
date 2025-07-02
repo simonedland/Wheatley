@@ -13,16 +13,10 @@ from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 import tempfile
 try:
-  from .google_agent import GoogleCalendarManager
+    from .google_agent import GoogleCalendarManager
 except ImportError:
-  from google_agent import GoogleCalendarManager
+    from google_agent import GoogleCalendarManager
 
-try:
-    from .spotify_agent import SpotifyAgent
-except ImportError:
-    from spotify_agent import SpotifyAgent
-
-from .google_agent import GoogleAgent
 from .llm_client_utils import (
     get_city_coordinates,
     get_quote,
@@ -35,6 +29,7 @@ from .llm_client_utils import (
 from utils.timing_logger import record_timing
 
 logging.basicConfig(level=logging.WARN)
+
 
 class TextToSpeech:
     def _load_config(self) -> None:
@@ -410,29 +405,29 @@ class Functions:
                     # Handle case when no event queue is provided for the reminder.
                     results.append((func_name, "No event queue provided for reminder!"))
             elif func_name == "daily_summary":
-              user_request = "Get summary for today"
-              # Coordinates for Oslo
-              lat, lon = "59.9111", "10.7528"
+                user_request = "Get summary for today"
+                # Coordinates for Oslo
+                lat, lon = "59.9111", "10.7528"
 
-              # Retrieve weather with a one-day forecast.
-              weather_summary = self.get_weather(lat, lon, include_forecast=True, forecast_days=1)
-              
-              # Prepare arguments and dispatch the request to the Google Agent.
-              args = {"user_request": user_request, "arguments": {}}
-              google_response = self.google_agent.llm_decide_and_dispatch(user_request, args)
-              if isinstance(google_response, dict):
-                response = google_response.get("summary", "Nothing to summarize today.")
-              else:
-                response = google_response
-                if not response:
-                    response = "Nothing to summarize today."
+                # Retrieve weather with a one-day forecast.
+                weather_summary = self.get_weather(lat, lon, include_forecast=True, forecast_days=1)
 
-              # Append weather summary and a daily quote.
-              response_str = f"Google callendar summary:\n{response}"
-              response_str += f"\n\nWeather Summary for Oslo:\n{weather_summary}"
-              response_str += f"\n\nQuote of the Day: {get_quote()}"
+                # Prepare arguments and dispatch the request to the Google Agent.
+                args = {"user_request": user_request, "arguments": {}}
+                google_response = self.google_agent.llm_decide_and_dispatch(user_request, args)
+                if isinstance(google_response, dict):
+                    response = google_response.get("summary", "Nothing to summarize today.")
+                else:
+                    response = google_response
+                    if not response:
+                        response = "Nothing to summarize today."
 
-              results.append((func_name, response_str))
+                # Append weather summary and a daily quote.
+                response_str = f"Google callendar summary:\n{response}"
+                response_str += f"\n\nWeather Summary for Oslo:\n{weather_summary}"
+                response_str += f"\n\nQuote of the Day: {get_quote()}"
+
+                results.append((func_name, response_str))
             elif func_name == "set_personality":
                 mode = item.get("arguments", {}).get("mode")
                 response = self.set_personality(mode)
