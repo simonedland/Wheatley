@@ -36,25 +36,38 @@ jobs:
           issues=$(grep -c '^::error' flake8-report.txt || true)
           echo "issue_count=$issues" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Issue if Problems Found
+      - name: Create or Update GitHub Issues per File
         if: steps.flake8.outputs.issue_count > 0 && github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ISSUE_TITLE="Code quality issues detected in commit ${{ github.sha }}"
+          # Group flake8 errors by file
+          awk -F 'file=' '/^::error/ { split($2, a, ","); print a[1] }' flake8-report.txt | sort | uniq > files_with_issues.txt
 
-          # Truncate the report to 100 lines to avoid excessively long issues
-          head -n 100 flake8-report.txt > limited-flake8-report.txt
+          while IFS= read -r file; do
+            # Extract issues for this file (limit to 100 lines)
+            grep "file=$file," flake8-report.txt | head -n 100 > file-issues.txt
+            if [ ! -s file-issues.txt ]; then continue; fi
 
-          # Build issue body
-          {
-            echo "### 🚨 flake8 identified issues (showing first 100 lines):"
-            echo '```'
-            cat limited-flake8-report.txt
-            echo '```'
-            echo "Full log is available in the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            echo "Commit: ${{ github.sha }}"
-          } > issue_body.md
+            ISSUE_TITLE="Code quality issues in $file"
+            # Build issue body in a file to avoid YAML/shell escaping issues
+            {
+              echo "### 🚨 flake8 identified issues in $file (showing first 100 lines):"
+              echo '```'
+              cat file-issues.txt
+              echo '```'
+              echo "Full log is available in the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              echo "Commit: ${{ github.sha }}"
+            } > issue_body.md
 
-          # Create GitHub issue using the issue_body.md file
-          gh issue create --title "$ISSUE_TITLE" --body-file issue_body.md
+            # Find existing open issue for this file
+            ISSUE_NUMBER=$(gh issue list --state open --search "$ISSUE_TITLE" --json number,title | jq -r ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -n 1)
+
+            if [ -n "$ISSUE_NUMBER" ]; then
+              # Update the existing issue
+              gh issue comment "$ISSUE_NUMBER" --body-file issue_body.md
+            else
+              # Create a new issue
+              gh issue create --title "$ISSUE_TITLE" --body-file issue_body.md
+            fi
+          done < files_with_issues.txt
