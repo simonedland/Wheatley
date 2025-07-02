@@ -1,3 +1,7 @@
+"""
+Module for streaming LLM output to TTS with live table UI and concurrent workers.
+"""
+
 ###############################################################################
 # llm_tts_stream_live_table.py  —  concurrent-workers edition
 ###############################################################################
@@ -56,6 +60,9 @@ COL = dict(
 
 
 def render(rows: List[Dict]):
+    """
+    Render the current rows in the live table using Rich if available.
+    """
     if not USE_RICH:
         return
     tbl = Table(show_header=True, expand=True)
@@ -88,12 +95,17 @@ rows: List[Dict] = []
 
 
 def add_row(idx: float, txt=""):
+    """
+    Add a new row to the live table state and render it.
+    """
     rows.append(dict(idx=idx, text=txt, phase="build", status="building"))
     render(rows)
 
-
 def set_phase(idx: float, phase: str, txt: Optional[str] = None,
               status: Optional[str] = None):
+    """
+    Update the phase and status of a row in the live table and render it.
+    """
     r = next(r for r in rows if r["idx"] == idx)
     if txt is not None:
         r["text"] = txt
@@ -112,8 +124,11 @@ def set_phase(idx: float, phase: str, txt: Optional[str] = None,
 
 
 # ───────── BLOCKING HELPERS ────────────────────────────────────────────────
-def http_tts(text, prev, nxt, idx):
-    """ElevenLabs POST with previous/next text and retry/back-off."""
+def http_tts(text, previous_text, next_text, idx):
+    """
+    Perform Elevenlabs POST with previous/next text and retry/back-off.
+    TODO: Refactor to reduce cognitive complexity.
+    """
     def _post() -> requests.Response:
         return requests.post(
             API_URL,
@@ -122,8 +137,8 @@ def http_tts(text, prev, nxt, idx):
             json={
                 "text": text,
                 "model_id": MODEL_ID,
-                "previous_text": prev or None,
-                "next_text": nxt or None
+                "previous_text": previous_text or None,
+                "next_text": next_text or None
             },
             timeout=60
         )
@@ -164,8 +179,10 @@ def http_tts(text, prev, nxt, idx):
             backoff = min(backoff * 2, 32)
             attempt += 1
 
-
 def play_mp3(data: bytes | None, idx: float):
+    """
+    Play MP3 audio data for the given index and update the live table.
+    """
     if data is None:
         return
     set_phase(idx, "play")
@@ -176,6 +193,9 @@ def play_mp3(data: bytes | None, idx: float):
 
 # ───────── 1) GPT TOKEN PRODUCER THREAD ────────────────────────────────────
 def gpt_thread(prompt: str, q: asyncio.Queue, loop):
+    """
+    Produce GPT tokens in a separate thread, split into sentences, and queue them.
+    """
     buf = ""
     tmp = ""
     last = time.time()
@@ -219,6 +239,10 @@ def gpt_thread(prompt: str, q: asyncio.Queue, loop):
 
 # ───────── 2) CONCURRENT TTS DISPATCHER (LIMITED BY SEMAPHORE) ─────────────
 async def tts_dispatch(sq: asyncio.Queue, aq: asyncio.Queue, pool):
+    """
+    Dispatch TTS requests concurrently, limited by semaphore, and queue audio results.
+    TODO: Refactor to reduce cognitive complexity.
+    """
     loop = asyncio.get_running_loop()
     sem = asyncio.Semaphore(MAX_TTS_WORKERS)
     prev_text = ""
@@ -246,6 +270,9 @@ async def tts_dispatch(sq: asyncio.Queue, aq: asyncio.Queue, pool):
 
 # ───────── 3) PLAYBACK SEQUENCER ───────────────────────────────────────────
 async def sequencer(aq: asyncio.Queue):
+    """
+    Sequence and play audio clips in order as they become available.
+    """
     loop = asyncio.get_running_loop()
     heap = {}
     expect = 0.0
@@ -261,6 +288,9 @@ async def sequencer(aq: asyncio.Queue):
 
 # ───────── ORCHESTRATOR ────────────────────────────────────────────────────
 async def chat(prompt: str):
+    """
+    Orchestrate the GPT-to-TTS pipeline: produce, dispatch, and play audio.
+    """
     q_sent = asyncio.Queue(QUEUE_MAXSIZE)
     q_audio = asyncio.Queue(QUEUE_MAXSIZE)
     threading.Thread(
