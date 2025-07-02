@@ -112,7 +112,7 @@ def set_phase(idx: float, phase: str, txt: Optional[str] = None,
 
 
 # ───────── BLOCKING HELPERS ────────────────────────────────────────────────
-def http_tts(text: str, prev: str, nxt: str, idx: float) -> bytes | None:
+def http_tts(text, prev, nxt, idx):
     """ElevenLabs POST with previous/next text and retry/back-off."""
     def _post() -> requests.Response:
         return requests.post(
