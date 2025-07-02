@@ -68,21 +68,21 @@ jobs:
             # --------------------------------
 
             # Find existing issue (if any)
-            ISSUE_NUMBER=$(
-              gh issue list --state open --search "$ISSUE_TITLE" --json number,title |
+            ISSUE_NUMBER=$(\
+              gh issue list --state open --search "$ISSUE_TITLE" --json number,title |\
               jq -r '.[] | select(.title == "'"$ISSUE_TITLE"'") | .number' | head -n 1
             )
 
             if [ -n "$ISSUE_NUMBER" ]; then
-              LAST_COUNT=$(
-                gh issue view "$ISSUE_NUMBER" --json comments |
-                jq -r '.comments | last | .body' |
-                grep -oE 'Error count: [0-9]+' | awk '{print $3}'
+              LAST_COUNT=$(\
+                gh issue view "$ISSUE_NUMBER" --json comments 2>/dev/null |\
+                jq -r '.comments | last | .body' 2>/dev/null |\
+                grep -oE 'Error count: [0-9]+' | awk '{print $3}' || true
               )
               [ "$CURRENT_COUNT" != "$LAST_COUNT" ] && \
-                gh issue comment "$ISSUE_NUMBER" --body-file issue_body.md
+                gh issue comment "$ISSUE_NUMBER" --body-file issue_body.md || true
             else
-              gh issue create --title "$ISSUE_TITLE" --body-file issue_body.md
+              gh issue create --title "$ISSUE_TITLE" --body-file issue_body.md || true
             fi
           done < files_with_issues.txt
 
