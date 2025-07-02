@@ -50,6 +50,7 @@ jobs:
             if [ ! -s file-issues.txt ]; then continue; fi
 
             ISSUE_TITLE="Code quality issues in $file"
+            CURRENT_COUNT=$(wc -l < file-issues.txt)
             # Build issue body in a file to avoid YAML/shell escaping issues
             {
               echo "### 🚨 flake8 identified issues in $file (showing first 100 lines):"
@@ -58,14 +59,18 @@ jobs:
               echo '```'
               echo "Full log is available in the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               echo "Commit: ${{ github.sha }}"
+              echo "Error count: $CURRENT_COUNT"
             } > issue_body.md
 
             # Find existing open issue for this file
             ISSUE_NUMBER=$(gh issue list --state open --search "$ISSUE_TITLE" --json number,title | jq -r ".[] | select(.title == \"$ISSUE_TITLE\") | .number" | head -n 1)
 
             if [ -n "$ISSUE_NUMBER" ]; then
-              # Always update the existing issue
-              gh issue comment "$ISSUE_NUMBER" --body-file issue_body.md
+              # Get the last error count from the last comment (if any)
+              LAST_COUNT=$(gh issue view "$ISSUE_NUMBER" --json comments | jq -r '.comments | last | .body' | grep -oE 'Error count: [0-9]+' | awk '{print $3}')
+              if [ "$CURRENT_COUNT" != "$LAST_COUNT" ]; then
+                gh issue comment "$ISSUE_NUMBER" --body-file issue_body.md
+              fi
             else
               # Create a new issue
               gh issue create --title "$ISSUE_TITLE" --body-file issue_body.md
