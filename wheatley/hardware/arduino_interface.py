@@ -2,8 +2,10 @@
 
 
 class ArduinoInterface:
+    """Interface for communicating with Arduino-based servo hardware and managing servo animations."""
 
     def __init__(self, port, baud_rate=115200, dry_run=False):
+        """Initialize the ArduinoInterface with serial port, baud rate, and dry run mode."""
         self.port = port
         self.baud_rate = baud_rate
         self.serial_connection = None
@@ -194,7 +196,7 @@ class Servo:
         name=None,
         interval=2000,
     ):
-        """Store servo parameters and defaults."""
+        """Initialize a Servo with its parameters and defaults."""
         self.servo_id = servo_id
         self.current_angle = initial_angle
         self.velocity = velocity
@@ -273,7 +275,7 @@ class ServoController:
         print("-" * 80)
 
     def set_emotion(self, emotion):
-        """Adjust each servo based on the desired emotion's standby animation"""
+        """Adjust each servo based on the desired emotion's standby animation."""
         if emotion not in self.emotion_animations:
             print(f"Emotion '{emotion}' not supported. Using 'neutral'.")
             emotion = 'neutral'
@@ -285,7 +287,7 @@ class ServoController:
         intervals = params['intervals']
         # Compute each servo's target angle relative to its individual range,
         # and update its idle_range accordingly.
-        for servo, factor, velocity, idle, interval in zip(self.servos, target_factors, velocities, idle_ranges_config, intervals):
+        for servo, factor, velocity, idle, _interval in zip(self.servos, target_factors, velocities, idle_ranges_config, intervals):
             servo.velocity = velocity
             servo.idle_range = idle
             target_angle = servo.min_angle + factor * (servo.max_angle - servo.min_angle)
@@ -293,6 +295,7 @@ class ServoController:
         return params
 
     def get_led_color(self, emotion):
+        """Get the LED color tuple (r, g, b) for the given emotion, scaled for brightness."""
         color = self.emotion_animations.get(emotion, {}).get("color", (255, 255, 255))
         # Scale each channel down by dividing by 5 (e.g., 255 -> 51, 128 -> 25, etc.)
         if isinstance(color, (list, tuple)) and len(color) == 3:
