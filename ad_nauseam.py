@@ -21,6 +21,7 @@ from tqdm import tqdm
 # Configuration helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_config():
     """Load YAML config from fixed path inside the repo."""
     cfg_path = os.path.join("Wheatley", "config", "config.yaml")
@@ -93,9 +94,9 @@ class LLMClient:
             return resp.output_text.strip()
         if hasattr(resp, "output"):
             itm = resp.output[0]
-            for field in ("text", "content"):
-                if hasattr(itm, field):
-                    val = getattr(itm, field)
+            for attr in ("text", "content"):
+                if hasattr(itm, attr):
+                    val = getattr(itm, attr)
                     if isinstance(val, str):
                         return val.strip()
         if hasattr(resp, "choices"):
@@ -155,7 +156,7 @@ class Summariser:
                 print(f"[INFO] Summarising file: {file}")
             text = file.read_text(encoding="utf-8", errors="ignore")
             summary = self.llm.summarise(text, str(file), dry_run=self.dry_run)
-            by_dir.setdefault(file.parent, []).append(f"### {file}\n{summary}\n")
+            by_dir.setdefault(file.parent, []).append("### {}\n{}\n".format(file, summary))
             if self.verbose:
                 print(f"[INFO] Summary for {file} complete.")
 

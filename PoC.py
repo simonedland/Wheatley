@@ -54,6 +54,7 @@ COL = dict(
     err="bright_red"
 )
 
+
 def render(rows: List[Dict]):
     if not USE_RICH:
         return
@@ -69,6 +70,7 @@ def render(rows: List[Dict]):
         )
     live.update(tbl, refresh=True)
 
+
 for lib in ("openai", "urllib3", "httpx"):
     logging.getLogger(lib).setLevel(logging.INFO)
 
@@ -79,6 +81,7 @@ XI_KEY = cfg["secrets"]["elevenlabs_api_key"]
 
 API_URL = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
 HEADERS = {"xi-api-key": XI_KEY, "Content-Type": "application/json"}
+
 
 # ───────── LIVE-TABLE STATE ────────────────────────────────────────────────
 rows: List[Dict] = []
@@ -105,6 +108,7 @@ def set_phase(idx: float, phase: str, txt: Optional[str] = None,
         err="ERROR"
     )[phase]
     render(rows)
+
 
 # ───────── BLOCKING HELPERS ────────────────────────────────────────────────
 def http_tts(text: str, prev: str, nxt: str, idx: float) -> bytes | None:

@@ -5,6 +5,7 @@ import sys
 import os
 import time
 
+
 def install_requirements():
     # Path to the requirements file inside the Wheatley project folder
     req_file = os.path.join(os.path.dirname(__file__), "wheatley", "requirements.txt")
@@ -34,6 +35,7 @@ def install_requirements():
             sys.exit(1)
         time.sleep(0.1)  # Slight delay for visibility of progress update
     print("\nAll prerequisites installed successfully.")
+
 
 if __name__ == "__main__":
     install_requirements()
