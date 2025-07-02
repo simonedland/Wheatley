@@ -120,9 +120,7 @@ class DirectoryCrawler:
             p
             for p in self.root.rglob("*")
             if (
-                p.is_file() and
-                p.suffix in self.extensions and
-                ".venv" not in p.parts
+                p.is_file() and p.suffix in self.extensions and ".venv" not in p.parts
             )
         ]
 
