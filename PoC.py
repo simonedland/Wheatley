@@ -86,6 +86,7 @@ HEADERS = {"xi-api-key": XI_KEY, "Content-Type": "application/json"}
 # ───────── LIVE-TABLE STATE ────────────────────────────────────────────────
 rows: List[Dict] = []
 
+
 def add_row(idx: float, txt=""):
     rows.append(dict(idx=idx, text=txt, phase="build", status="building"))
     render(rows)
