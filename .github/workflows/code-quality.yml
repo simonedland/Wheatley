@@ -8,8 +8,7 @@ on:
 
 permissions:
   contents: read   # checkout
-  issues: write    # open / update GH issues
-  # (no actions/security-events scopes needed now)
+  issues: write    # open / update GitHub issues
 
 jobs:
   lint:
@@ -24,6 +23,7 @@ jobs:
         with:
           python-version: "3.x"
 
+      # ────────── install tools ──────────
       - name: Install Flake8 + plugins
         run: |
           python -m pip install -U pip
@@ -36,8 +36,7 @@ jobs:
             flake8-sarif
           [ -f requirements.txt ] && pip install -r requirements.txt
 
-      # ───────────────────────────────────────────────────────────
-      # Console annotations (problem-matcher)
+      # ────────── primary lint (console annotations) ──────────
       - name: Run Flake8 → console
         id: flake8
         run: |
@@ -51,8 +50,7 @@ jobs:
           issues=$(grep -c '^::error' flake8-report.txt || true)
           echo "issue_count=$issues" >> "$GITHUB_OUTPUT"
 
-      # ───────────────────────────────────────────────────────────
-      # Generate SARIF (for developers to open locally)
+      # ────────── generate SARIF (optional local viewing) ──────────
       - name: Run Flake8 → SARIF
         run: |
           flake8 . \
@@ -62,17 +60,17 @@ jobs:
             --format sarif \
             --output-file flake8-results.sarif || true
 
-      - name: Upload SARIF & raw log as artifacts
+      # ────────── upload artifacts with v4 action ──────────
+      - name: Upload SARIF & raw log
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4   # ← updated to v4
         with:
           name: flake8-results
           path: |
             flake8-results.sarif
             flake8-report.txt
 
-      # ───────────────────────────────────────────────────────────
-      # GitHub-issue sync  (unchanged)
+      # ────────── GitHub-issue synchronisation ──────────
       - name: Create or Update GitHub Issues per File
         if: github.event_name == 'push'
         env:
@@ -114,9 +112,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh issue list --state open --json number,title |
+          gh issue list --state open --json number,title | \
           jq -r '.[] | select(.title | startswith("Code quality issues in ")) | [.number,.title] | @tsv' \
             > open_code_quality_issues.tsv
+
           mapfile -t current_files < files_with_issues.txt
           while IFS=$'\t' read -r num title; do
             file=${title#Code quality issues in }
