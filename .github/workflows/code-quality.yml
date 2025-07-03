@@ -2,9 +2,9 @@ name: Python Code Quality Check
 
 on:
   push:
-    branches: [main]
+    branches: [main, test]
   pull_request:
-    branches: [main]
+    branches: [main, test]
 
 permissions:
   contents: read
@@ -14,47 +14,65 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
+
     steps:
+      # 1 ─ Check out code
       - uses: actions/checkout@v4
 
+      # 2 ─ Set up Python
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
+      # 3 ─ Install flake8 and project requirements
       - name: Install Flake8 & plugins
         run: |
           python -m pip install -U pip
           pip install "flake8<7" flake8-bugbear flake8-docstrings \
                       pep8-naming flake8-cognitive-complexity
+          # Optional project deps (won’t fail the run)
           if [ -f requirements.txt ]; then
             if ! pip install -r requirements.txt; then
               echo "::warning::requirements.txt install failed; continuing lint."
             fi
           fi
 
-      # ------- Run Flake8 & save plain report -------
+      # 4 ─ Run flake8 and save a plain-text report
       - name: Run Flake8 (raw report)
         id: flake8
         env:
           REPORT: flake8-report.txt
         run: |
-          flake8 . --ignore=E501,CCR001 --max-complexity=10 --max-cognitive-complexity=10 \
+          # We capture the exit code but don’t let it fail *this* step
+          flake8 . \
+            --ignore=E501,CCR001 \
+            --max-complexity=10 \
+            --max-cognitive-complexity=10 \
             --format="%(path)s:%(row)d:%(col)d: %(code)s %(text)s" \
             > "$REPORT" || true
           cat "$REPORT"
           echo "issue_count=$(wc -l < "$REPORT")" >> "$GITHUB_OUTPUT"
 
-      # ------- Inline annotations on PRs -------
+      # 5 ─ **Hard gate**: fail the job if issues remain and the PR targets main
+      - name: Fail if flake8 issues are present
+        if: github.event_name == 'pull_request' &&
+            github.event.pull_request.base.ref == 'main' &&
+            steps.flake8.outputs.issue_count != '0'
+        run: |
+          echo "::error file=flake8-report.txt,line=1::flake8 found ${{ steps.flake8.outputs.issue_count }} issue(s)."
+          exit 1
+
+      # 6 ─ Optional: inline PR annotations (doesn’t affect pass/fail)
       - name: Annotate PR with Flake8 (reviewdog)
         if: github.event_name == 'pull_request'
         uses: reviewdog/action-flake8@v3
         with:
           reporter: github-pr-review
-          level: warning
+          level: warning            # only warns; step #5 is the hard gate
           fail_level: none
-          flake8_args: "--ignore=E501,CCR001 --max-complexity=10 --max-cognitive-complexity=10 --format='%(path)s:%(row)d:%(col)d: %(code)s %(text)s'"
+          flake8_args: "--ignore=E501,CCR001 --max-complexity=10 --max-cognitive-complexity=10"
 
-      # ------- Upload artifact -------
+      # 7 ─ Upload the report as an artifact
       - name: Upload Flake8 report
         if: always()
         uses: actions/upload-artifact@v4
@@ -63,7 +81,7 @@ jobs:
           path: flake8-report.txt
           if-no-files-found: warn
 
-      # ------- Issue sync on pushes -------
+      # 8 ─ Sync lint issues → GitHub Issues (unchanged)
       - name: Create / update “code quality” issues
         if: github.event_name == 'push'
         env:
