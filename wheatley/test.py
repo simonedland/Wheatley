@@ -9,15 +9,15 @@ from tts.tts_engine import TextToSpeechEngine
 class ColorfulTestCase(unittest.TestCase):
     """Custom base test case for colored output."""
 
-    def assertEqual(self, first, second, msg=None):
+    def assert_equal(self, first, second, msg=None):
         """Assert that two values are equal."""
         super().assertEqual(first, second, msg)
 
-    def assertIn(self, member, container, msg=None):
+    def assert_in(self, member, container, msg=None):
         """Assert that member is in container."""
         super().assertIn(member, container, msg)
 
-    def assertIsInstance(self, obj, cls, msg=None):
+    def assert_is_instance(self, obj, cls, msg=None):
         """Assert that object is instance of class."""
         super().assertIsInstance(obj, cls, msg)
 
