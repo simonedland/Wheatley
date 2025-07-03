@@ -519,18 +519,18 @@ class Functions:
         import asyncio
         from datetime import datetime
         try:
-            from ..main import Event as MainEvent
+            from ..main import Event as main_event
         except Exception:
             try:
-                from main import Event as MainEvent
+                from main import Event as main_event
             except Exception:
-                MainEvent = None
+                main_event = None
 
         async def timer_task():
             await asyncio.sleep(duration)
-            if MainEvent is None:
+            if main_event is None:
                 return
-            timer_event = MainEvent(
+            timer_event = main_event(
                 source="timer",
                 payload=reason,
                 metadata={
@@ -564,16 +564,16 @@ class Functions:
         return "memory updated" if success else "memory index out of range"
 
     def get_advice(self):
-      """Return a random piece of advice from the API Ninjas service."""
-      config = _load_config()
-      api_key = config["secrets"].get("api_ninjas_api_key", "")
-      headers = {"X-Api-Key": api_key}
-      response = requests.get("https://api.api-ninjas.com/v1/advice", headers=headers)
-      data = response.json()
-      # print(f"Data: {data}")
-      advice = None
-      advice = data.get("advice")
-      return f"Give the following advice: {advice}"
+        """Return a random piece of advice from the API Ninjas service."""
+        config = _load_config()
+        api_key = config["secrets"].get("api_ninjas_api_key", "")
+        headers = {"X-Api-Key": api_key}
+        response = requests.get("https://api.api-ninjas.com/v1/advice", headers=headers)
+        data = response.json()
+        # print(f"Data: {data}")
+        advice = None
+        advice = data.get("advice")
+        return f"Give the following advice: {advice}"
 
     def set_reminder(self, time_str, reason=None, event_queue=None):
         """
@@ -582,6 +582,7 @@ class Functions:
         :param reason: The reason or label for the reminder (optional).
         :param event_queue: The event queue to put the reminder event into (optional).
         """
+
         import asyncio
         from datetime import datetime, timedelta
         import re
@@ -611,15 +612,15 @@ class Functions:
         async def reminder_task():
             await asyncio.sleep(delay)
             try:
-                from ..main import Event as MainEvent
+                from ..main import Event as main_event
             except Exception:
                 try:
-                    from main import Event as MainEvent
+                    from main import Event as main_event
                 except Exception:
-                    MainEvent = None
-            if MainEvent is None:
+                    main_event = None
+            if main_event is None:
                 return
-            reminder_event = MainEvent(
+            reminder_event = main_event(
                 source="reminder",
                 payload=reason or time_str,
                 metadata={
@@ -662,9 +663,9 @@ class Functions:
 
 if __name__ == "__main__":
     manager = GoogleCalendarManager()
-    
+
     # Print calendars
     manager.print_calendars()
-    
+
     # Print upcoming events
     manager.print_upcoming_events()
