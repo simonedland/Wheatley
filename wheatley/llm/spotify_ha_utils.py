@@ -1,6 +1,7 @@
 """
-spotify_ha_utils.py – v5.3
+spotify_ha_utils.py – v5.3.
 ==========================
+
 Adds `search_and_queue_track()` plus all previous features:
 • pretty CLI demo (Rich optional) with ETA,
 • auto artist selection,
@@ -12,7 +13,7 @@ from __future__ import annotations
 import random
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List  # Removed Optional (F401)
 
 import spotipy
 import yaml
@@ -31,12 +32,13 @@ _READ = (
     "user-read-playback-state user-read-currently-playing user-read-recently-played"
 )
 _WRITE = (
-    _READ
-    + " user-modify-playback-state playlist-modify-public playlist-modify-private"
+    _READ +
+    " user-modify-playback-state playlist-modify-public playlist-modify-private"
 )
 
 
 def _load_cfg(path: str | Path | None = None):
+    """Load configuration from YAML file."""
     base = Path(__file__).resolve().parent.parent
     cfg_path = Path(path) if path else base / "config" / "config.yaml"
     with open(cfg_path, encoding="utf-8") as fh:
@@ -57,6 +59,7 @@ class SpotifyHA:  # ────────────────────
         redirect_uri: str = "http://127.0.0.1:5000/callback",
         open_browser: bool = False,
     ):
+        """Initialize SpotifyHA with authentication and configuration."""
         try:
             cfg = _load_cfg(config_path)["secrets"]
             self._sp = spotipy.Spotify(
@@ -68,12 +71,13 @@ class SpotifyHA:  # ────────────────────
                     open_browser=open_browser,
                 )
             )
-        except Exception as e:
+        except Exception:
             print("❌ ERROR: Authentication failed for Spotify! Please check your credentials or login again.")
             raise
 
     @classmethod
     def get_default(cls):
+        """Get or create the default SpotifyHA instance."""
         if cls._default is None:
             cls._default = cls()
         return cls._default
@@ -81,6 +85,7 @@ class SpotifyHA:  # ────────────────────
     # ── tiny helpers ──────────────────────────────────────────────────
     @staticmethod
     def _flat(track: Dict[str, Any] | None):
+        """Flatten track dictionary for easier access."""
         if not track:
             return None
         alb = track["album"]
@@ -96,31 +101,38 @@ class SpotifyHA:  # ────────────────────
 
     @staticmethod
     def _ms_to_mmss(ms: int):
+        """Convert milliseconds to mm:ss or h:mm:ss format."""
         m, s = divmod(ms // 1000, 60)
         h, m = divmod(m, 60)
         return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
 
     @classmethod
     def _fmt_track(cls, t: Dict[str, Any] | None):
+        """Format track for display."""
         return "∅" if t is None else f"{t['name']} – {t['artists']}  ({cls._ms_to_mmss(t['duration_ms'])})"
 
     # ── playback – read ───────────────────────────────────────────────
     def get_current_playback(self):
+        """Get current playback information."""
         return self._sp.current_playback()
 
     def get_current_track(self, *, simple: bool = True):
+        """Get the currently playing track."""
         pb = self.get_current_playback()
         return self._flat(pb["item"]) if pb and pb.get("item") and simple else pb
 
     def is_playing(self):
+        """Check if playback is currently active."""
         pb = self.get_current_playback()
         return bool(pb and pb.get("is_playing"))
 
     def get_queue(self, *, simple: bool = True):
+        """Get the current playback queue."""
         q = self._sp.queue().get("queue", [])
         return [self._flat(t) for t in q] if simple else q
 
     def _queue_wait_times(self):
+        """Calculate wait times for each track in the queue."""
         pb = self.get_current_playback()
         rem_ms = (
             pb["item"]["duration_ms"] - pb.get("progress_ms", 0)
@@ -135,13 +147,16 @@ class SpotifyHA:  # ────────────────────
 
     # ── device helpers ────────────────────────────────────────────────
     def list_devices(self):
+        """List available Spotify devices."""
         return self._sp.devices()["devices"]
 
     def get_active_device(self):
+        """Get the currently active device."""
         pb = self.get_current_playback()
         return pb.get("device") if pb else None
 
     def _with_device(self, device_id: str | None):
+        """Return the given device_id or the active device id."""
         if device_id:
             return device_id
         dev = self.get_active_device()
@@ -151,18 +166,23 @@ class SpotifyHA:  # ────────────────────
 
     # ── playback – control ────────────────────────────────────────────
     def play(self, device_id: str | None = None):
+        """Start playback on the specified or active device."""
         self._sp.start_playback(device_id=self._with_device(device_id))
 
     def pause(self, device_id: str | None = None):
+        """Pause playback on the specified or active device."""
         self._sp.pause_playback(device_id=self._with_device(device_id))
 
     def skip_next(self, device_id: str | None = None):
+        """Skip to the next track on the specified or active device."""
         self._sp.next_track(device_id=self._with_device(device_id))
 
     def toggle_play_pause(self, device_id: str | None = None):
+        """Toggle play/pause on the specified or active device."""
         (self.pause if self.is_playing() else self.play)(device_id)
 
     def transfer_playback(self, device_id: str, *, force_play: bool = True):
+        """Transfer playback to a different device."""
         self._sp.transfer_playback(device_id, force_play=force_play)
 
     def start_playback(
@@ -174,6 +194,7 @@ class SpotifyHA:  # ────────────────────
         offset: Dict[str, Any] | None = None,
         position_ms: int | None = None,
     ):
+        """Start playback with optional context, uris, offset, and position."""
         self._sp.start_playback(
             device_id=self._with_device(device_id),
             context_uri=context_uri,
@@ -184,8 +205,8 @@ class SpotifyHA:  # ────────────────────
 
     # ── search & queue helpers ────────────────────────────────────────
     def search_tracks(self, query: str, *, limit: int = 10, simple: bool = True):
+        """Search for tracks matching the query."""
         items = self._sp.search(q=query, type="track", limit=limit)["tracks"]["items"]
-        #return nicely formated track description and action
         return [self._flat(t) for t in items] if simple else items
 
     def add_to_queue(
@@ -197,6 +218,7 @@ class SpotifyHA:  # ────────────────────
         retries: int = 2,
         delay: float = 0.5,
     ):
+        """Add a track to the queue, optionally verifying it appears."""
         self._sp.add_to_queue(uri, device_id=self._with_device(device_id))
         if verify:
             for _ in range(retries + 1):
@@ -225,6 +247,7 @@ class SpotifyHA:  # ────────────────────
 
     # ── queue removal (precise) ───────────────────────────────────────
     def remove_from_queue(self, pos: int = 1):
+        """Remove a track from the queue at the given position."""
         queue = self.get_queue(simple=True)
         if not 1 <= pos <= len(queue):
             return None
@@ -240,6 +263,7 @@ class SpotifyHA:  # ────────────────────
     # ── artist helper (auto pick) ─────────────────────────────────────
     @staticmethod
     def _best_artist(artists: list[Dict[str, Any]], query: str):
+        """Select the best matching artist from a list."""
         if not artists:
             return None
         q = query.lower()
@@ -258,6 +282,7 @@ class SpotifyHA:  # ────────────────────
         add: bool = True,
         simple: bool = True,
     ):
+        """Queue the top track for a given artist."""
         artists = self._sp.search(q=artist_name, type="artist", limit=10)["artists"][
             "items"
         ]
@@ -273,6 +298,7 @@ class SpotifyHA:  # ────────────────────
         return self._flat(track) if simple else track
 
     def get_recently_played(self, *, limit: int = 20, simple: bool = True):
+        """Get recently played tracks."""
         items = self._sp.current_user_recently_played(limit=limit)["items"]
         tracks = [it["track"] for it in items]
         return [self._flat(t) for t in tracks] if simple else tracks
@@ -294,6 +320,7 @@ class SpotifyHA:  # ────────────────────
 
     # ── CLI demo remains unchanged (rich table) ────────────────────────
     def demo(self, artist: str = "Kaizers"):
+        """Run a CLI demo showing queue and ETA for a given artist."""
         track = self.artist_top_track(artist, pick_random=True, add=True)
         queue_eta = self._queue_wait_times()
 

@@ -9,6 +9,8 @@ Adds tools:
 • transfer_playback      – switch playback to a specific device.
 • play_album_by_name     – play an entire album by name (optional artist/device)
 All previous tools remain.
+
+This module provides a Spotify agent with LLM-powered tool selection and playback control.
 """
 
 from __future__ import annotations
@@ -160,6 +162,8 @@ SPOTIFY_TOOLS = [
 
 # ── SpotifyAgent class ────────────────────────────────────────────────
 class SpotifyAgent:
+    """SpotifyAgent provides an interface to interact with Spotify using LLM tool selection and playback control."""
+
     @staticmethod
     def _load_config():
         base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -167,10 +171,11 @@ class SpotifyAgent:
             return yaml.safe_load(fh)
 
     def __init__(self):
+        """Initialize the SpotifyAgent, loading configuration and authenticating with Spotify."""
         try:
             cfg = self._load_config()
             self.spotify = SpotifyHA.get_default()
-        except Exception as e:
+        except Exception:
             print("❌ ERROR: Authentication failed for Spotify! Please check your credentials or login again.")
             raise
         openai.api_key = cfg["secrets"]["openai_api_key"]
@@ -179,6 +184,7 @@ class SpotifyAgent:
 
     # ── dispatch mapping ──────────────────────────────────────────────
     def _dispatch(self, name: str, arguments: Dict[str, Any]):
+        """Dispatch the tool call to the appropriate SpotifyHA method."""
         print(f"dispatching {name} with {arguments}")
         if isinstance(arguments, str):
             try:
@@ -200,7 +206,7 @@ class SpotifyAgent:
             q = self.spotify._queue_wait_times()[:queue_lim]
             lines = []
             if q:
-                #currently playing track
+                # currently playing track
                 current_track = self.spotify.get_current_track(simple=True)
                 if current_track:
                     lines.append(f"Now playing '{current_track.get('name')}' by {current_track.get('artists')} from the album '{current_track.get('album')}'.")
@@ -245,15 +251,15 @@ class SpotifyAgent:
         if name == "list_devices":
             devices = self.spotify.list_devices()
             if not devices:
-              return "No available devices."
+                return "No available devices."
             pretty_lines = []
-            #add "available devices" header
+            # add "available devices" header
             pretty_lines.append("Available devices:")
             for idx, device in enumerate(devices, start=1):
-              pretty_lines.append(f"Device {idx}:")
-              for key, value in device.items():
-                pretty_lines.append(f"  {key}: {value}")
-              pretty_lines.append("")  # add a blank line after each device
+                pretty_lines.append(f"Device {idx}:")
+                for key, value in device.items():
+                    pretty_lines.append(f"  {key}: {value}")
+                pretty_lines.append("")  # add a blank line after each device
             return "\n".join(pretty_lines) + "\n"
 
         if name == "transfer_playback":
@@ -276,10 +282,11 @@ class SpotifyAgent:
 
     # ── main interface ────────────────────────────────────────────────
     def llm_decide_and_dispatch(self, user_request: str, arguments: Dict[str, Any] | None = None):
+        """Given a user request, select and dispatch the appropriate tool using the LLM."""
         now = datetime.now()
         tool_list = "\n".join(f"- {t['name']}: {t['description']}" for t in self.tools)
 
-        #user request and arguments are passed to the LLM
+        # user request and arguments are passed to the LLM
         if arguments:
             user_request = f"{user_request} {json.dumps(arguments)}"
 
@@ -313,6 +320,7 @@ class SpotifyAgent:
 
 
 def _pretty(obj):
+    """Pretty-print the result of a SpotifyAgent operation."""
     if obj is None:
         print("could not find anything")
         return

@@ -8,6 +8,7 @@ from datetime import datetime
 
 class ConversationManager:
     """Maintain a bounded conversation history for the assistant."""
+
     def __init__(self, max_memory=5):
         """Create a conversation buffer with ``max_memory`` user/assistant turns."""
 
@@ -33,7 +34,6 @@ class ConversationManager:
 
     def add_text_to_conversation(self, role, text):
         """Append ``text`` from ``role`` to the conversation history."""
-
         # Refresh system message with current time and day
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:
@@ -52,7 +52,6 @@ class ConversationManager:
 
     def update_memory(self, memory_text: str) -> None:
         """Set or replace the long term memory message."""
-
         if len(self.messages) < 2:
             self.messages.insert(1, {"role": "system", "content": memory_text})
         else:
@@ -60,12 +59,10 @@ class ConversationManager:
 
     def get_conversation(self):
         """Return the current conversation as a list of message dicts."""
-
         return self.messages
 
     def print_memory(self):
         """Pretty-print the conversation buffer for debugging."""
-
         debug_color = "\033[94m"      # system
         user_color = "\033[92m"       # user
         assistant_color = "\033[93m"  # assistant

@@ -9,17 +9,13 @@ import os
 import logging
 import requests
 import time
-import asyncio
-
-PUNCT_RE = re.compile(r'[.!?]\s+')
-ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 import tempfile
 
-#from local file google_agent import GoogleCalendarManager
+# from local file google_agent import GoogleCalendarManager
 try:
   from .google_agent import GoogleCalendarManager
 except ImportError:
@@ -43,6 +39,9 @@ from .llm_client_utils import (
 from utils.timing_logger import record_timing
 
 logging.basicConfig(level=logging.WARN)
+
+PUNCT_RE = re.compile(r'[.!?]\s+')
+ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 class TextToSpeech:
     def _load_config(self) -> None:
@@ -126,9 +125,9 @@ class TextToSpeech:
 
 class GPTClient:
     """Wrapper for OpenAI chat interactions tailored for Wheatley."""
+
     def __init__(self, model="gpt-4o-mini"):
         """Create client using ``model`` and configuration secrets."""
-
         config = _load_config()
         self.api_key = config["secrets"]["openai_api_key"]
         self.model = model
@@ -145,7 +144,6 @@ class GPTClient:
 
     def get_text(self, conversation):
         """Return the assistant's textual reply for ``conversation``."""
-
         start_time = time.time()
         completion = openai.responses.create(
             model=self.model,
@@ -197,7 +195,6 @@ class GPTClient:
 
     def reply_with_animation(self, conversation):
         """Ask GPT to select an animation based on the conversation."""
-
         start_time = time.time()
         # Compose context about emotion counter for the LLM
         if self.emotion_counter:
@@ -251,7 +248,6 @@ class GPTClient:
         
     def get_workflow(self, conversation):
         """Return a list of tool calls suggested by GPT."""
-
         start_time = time.time()
         tools = build_tools()
         #remove the first system message from conversation and replace with a new one
@@ -343,7 +339,6 @@ class Functions:
 
     def execute_workflow(self, workflow, event_queue=None):
         """Run each tool in ``workflow`` and return their results."""
-
         results = []
         for item in workflow:
             func_name = item.get("name")
@@ -463,7 +458,6 @@ class Functions:
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):
         """Retrieve weather information from the Open-Meteo API."""
-
         base_url = (
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat}&longitude={lon}"
@@ -575,7 +569,6 @@ class Functions:
 
     def get_advice(self):
       """Return a random piece of advice from the API Ninjas service."""
-
       config = _load_config()
       api_key = config["secrets"].get("api_ninjas_api_key", "")
       headers = {"X-Api-Key": api_key}
@@ -646,7 +639,6 @@ class Functions:
 
     def set_personality(self, mode: str) -> str:
         """Switch the assistant personality and update TTS settings."""
-
         base_dir = os.path.dirname(os.path.dirname(__file__))
         config_path = os.path.join(base_dir, "config", "config.yaml")
         with open(config_path, "r", encoding="utf-8") as f:
