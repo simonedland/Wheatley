@@ -451,8 +451,10 @@ class Functions:
                 results.append((func_name, response))
         return results
 
-    def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):
+    def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=None, temperature_unit="celsius", wind_speed_unit="kmh"):
         """Retrieve weather information from the Open-Meteo API."""
+        if extra_hourly is None:
+            extra_hourly = ["temperature_2m", "weathercode"]
         base_url = (
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat}&longitude={lon}"
@@ -518,18 +520,18 @@ class Functions:
         import asyncio
         from datetime import datetime
         try:
-            from ..main import Event as mainEvent
+            from ..main import Event as main_event
         except Exception:
             try:
-                from main import Event as mainEvent
+                from main import Event as main_event
             except Exception:
-                mainEvent = None
+                main_event = None
 
         async def timer_task():
             await asyncio.sleep(duration)
-            if mainEvent is None:
+            if main_event is None:
                 return
-            timer_event = mainEvent(
+            timer_event = main_event(
                 source="timer",
                 payload=reason,
                 metadata={
@@ -576,7 +578,9 @@ class Functions:
 
     def set_reminder(self, time_str, reason=None, event_queue=None):
         """
-        Schedule a reminder for a specific clock time. When the time is reached, an event will be triggered in the assistant's event queue.
+        Schedule a reminder for a specific clock time.
+
+        When the time is reached, an event will be triggered in the assistant's event queue.
         :param time_str: The target time for the reminder, e.g., '07:00', '19:30', or '7am'.
         :param reason: The reason or label for the reminder (optional).
         :param event_queue: The event queue to put the reminder event into (optional).
@@ -611,15 +615,15 @@ class Functions:
             """Async task to wait for the reminder time and post an event."""
             await asyncio.sleep(delay)
             try:
-                from ..main import Event as mainEvent
+                from ..main import Event as main_event
             except Exception:
                 try:
-                    from main import Event as mainEvent
+                    from main import Event as main_event
                 except Exception:
-                    mainEvent = None
-            if mainEvent is None:
+                    main_event = None
+            if main_event is None:
                 return
-            reminder_event = mainEvent(
+            reminder_event = main_event(
                 source="reminder",
                 payload=reason or time_str,
                 metadata={
