@@ -520,18 +520,18 @@ class Functions:
         import asyncio
         from datetime import datetime
         try:
-            from ..main import Event as main_event
+            from ..main import Event as Event
         except Exception:
             try:
-                from main import Event as main_event
+                from main import Event as Event
             except Exception:
-                main_event = None
+                Event = None
 
         async def timer_task():
             await asyncio.sleep(duration)
-            if main_event is None:
+            if Event is None:
                 return
-            timer_event = main_event(
+            timer_event = Event(
                 source="timer",
                 payload=reason,
                 metadata={
@@ -615,15 +615,15 @@ class Functions:
             """Async task to wait for the reminder time and post an event."""
             await asyncio.sleep(delay)
             try:
-                from ..main import Event as main_event
+                from ..main import Event as Event
             except Exception:
                 try:
-                    from main import Event as main_event
+                    from main import Event as Event
                 except Exception:
-                    main_event = None
-            if main_event is None:
+                    Event = None
+            if Event is None:
                 return
-            reminder_event = main_event(
+            reminder_event = Event(
                 source="reminder",
                 payload=reason or time_str,
                 metadata={
