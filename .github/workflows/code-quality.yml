@@ -16,34 +16,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1 ─ Check out code
+      # ───────────────────────────── 1. Checkout ──────────────────────────────
       - uses: actions/checkout@v4
 
-      # 2 ─ Set up Python
+      # ──────────────────────────── 2. Python setup ───────────────────────────
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-      # 3 ─ Install flake8 and project requirements
+      # ─────────────────────── 3. Install flake8 & deps ───────────────────────
       - name: Install Flake8 & plugins
         run: |
           python -m pip install -U pip
           pip install "flake8<7" flake8-bugbear flake8-docstrings \
                       pep8-naming flake8-cognitive-complexity
-          # Optional project deps (won’t fail the run)
           if [ -f requirements.txt ]; then
             if ! pip install -r requirements.txt; then
               echo "::warning::requirements.txt install failed; continuing lint."
             fi
           fi
 
-      # 4 ─ Run flake8 and save a plain-text report
+      # ─────────────── 4. Run flake8 & store a plain-text report ──────────────
       - name: Run Flake8 (raw report)
         id: flake8
         env:
           REPORT: flake8-report.txt
         run: |
-          # We capture the exit code but don’t let it fail *this* step
           flake8 . \
             --ignore=E501,CCR001 \
             --max-complexity=10 \
@@ -53,7 +51,7 @@ jobs:
           cat "$REPORT"
           echo "issue_count=$(wc -l < "$REPORT")" >> "$GITHUB_OUTPUT"
 
-      # 5 ─ **Hard gate**: fail the job if issues remain and the PR targets main
+      # ───────────── 5. Hard-gate: block PRs *into main* if lint fails ─────────
       - name: Fail if flake8 issues are present
         if: github.event_name == 'pull_request' &&
             github.event.pull_request.base.ref == 'main' &&
@@ -62,17 +60,17 @@ jobs:
           echo "::error file=flake8-report.txt,line=1::flake8 found ${{ steps.flake8.outputs.issue_count }} issue(s)."
           exit 1
 
-      # 6 ─ Optional: inline PR annotations (doesn’t affect pass/fail)
+      # ─────────────────────── 6. Inline PR annotations ───────────────────────
       - name: Annotate PR with Flake8 (reviewdog)
         if: github.event_name == 'pull_request'
         uses: reviewdog/action-flake8@v3
         with:
           reporter: github-pr-review
-          level: warning            # only warns; step #5 is the hard gate
+          level: warning
           fail_level: none
           flake8_args: "--ignore=E501,CCR001 --max-complexity=10 --max-cognitive-complexity=10"
 
-      # 7 ─ Upload the report as an artifact
+      # ───────────────────────── 7. Upload report artefact ─────────────────────
       - name: Upload Flake8 report
         if: always()
         uses: actions/upload-artifact@v4
@@ -81,47 +79,69 @@ jobs:
           path: flake8-report.txt
           if-no-files-found: warn
 
-      # 8 ─ Sync lint issues → GitHub Issues (unchanged)
-      - name: Create / update “code quality” issues
-        if: github.event_name == 'push'
+      # ───── 8. Create / update “code-quality” issues (push *and* PR) ─────────
+      - name: Create / update code-quality issues
+        if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Branch name: head ref for PRs, ref_name for pushes
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          LABELS="code-quality,branch:${BRANCH//\//-}"
+
           cut -d':' -f1 flake8-report.txt | sort -u > files_with_issues.txt
+
           while IFS= read -r file; do
             grep "^$file:" flake8-report.txt | head -n 100 > file-issues.txt
             [ -s file-issues.txt ] || continue
+
             ISSUE_TITLE="Code quality issues in $file"
             CURRENT_COUNT=$(wc -l < file-issues.txt)
-            { echo "### 🚨 flake8 issues in $file (first 100 lines)"
+
+            { echo "### 🚨 flake8 issues in \`$file\` (first 100)"
               echo '```'; cat file-issues.txt; echo '```'
-              echo "Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-              echo "Commit: ${{ github.sha }}"
-              echo "Error count: $CURRENT_COUNT"; } > issue_body.md
-            ISSUE_NUM=$(gh issue list --state open --search "$ISSUE_TITLE" \
-                        --json number,title | jq -r '.[]|select(.title=="'"$ISSUE_TITLE"'")|.number' | head -n1)
+              echo "Branch : \`$BRANCH\`"
+              echo "Run    : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              echo "Commit : ${{ github.sha }}"
+              echo "Errors : $CURRENT_COUNT"; } > issue_body.md
+
+            ISSUE_NUM=$(gh issue list --state open \
+                        --label "$LABELS" \
+                        --search "$ISSUE_TITLE" \
+                        --json number,title | jq -r '.[0].number')
+
             if [ -n "$ISSUE_NUM" ]; then
-              LAST=$(gh issue view "$ISSUE_NUM" --json comments | \
-                     jq -r '.comments|last|.body' | grep -oE 'Error count: [0-9]+' | awk '{print $3}' || true)
-              [ "$CURRENT_COUNT" != "$LAST" ] &&
-                gh issue comment "$ISSUE_NUM" --body-file issue_body.md || true
+              LAST=$(gh issue view "$ISSUE_NUM" --json comments |
+                     jq -r '.comments|last|.body' |
+                     grep -oE 'Errors : [0-9]+' | awk '{print $3}' || echo "")
+              if [ "$CURRENT_COUNT" != "$LAST" ]; then
+                gh issue comment "$ISSUE_NUM" --body-file issue_body.md
+              fi
             else
-              gh issue create --title "$ISSUE_TITLE" --body-file issue_body.md || true
+              gh issue create --title "$ISSUE_TITLE" \
+                              --body-file issue_body.md \
+                              --label "$LABELS"
             fi
           done < files_with_issues.txt
 
+      # ───── 9. Close code-quality issues when file is clean (push & PR) ──────
       - name: Close resolved code-quality issues
-        if: steps.flake8.outputs.issue_count >= 0 && github.event_name == 'push'
+        if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh issue list --state open --json number,title | \
-          jq -r '.[]|select(.title|startswith("Code quality issues in "))|[.number,.title]|@tsv' > open.tsv
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          LABEL="branch:${BRANCH//\//-}"
+
+          gh issue list --state open --label "$LABEL" --json number,title \
+            | jq -r '.[]|[.number,.title]|@tsv' > open.tsv
+
           mapfile -t current_files < <(cut -d':' -f1 flake8-report.txt | sort -u)
+
           while IFS=$'\t' read -r num title; do
             file=${title#Code quality issues in }
             if ! printf '%s\n' "${current_files[@]}" | grep -Fxq "$file"; then
-              gh issue comment "$num" --body "✅ All flake8 issues in \`$file\` resolved. Closing."
+              gh issue comment "$num" --body "✅ All flake8 issues in \`$file\` resolved on branch \`$BRANCH\`. Closing."
               gh issue close "$num"
             fi
           done < open.tsv
