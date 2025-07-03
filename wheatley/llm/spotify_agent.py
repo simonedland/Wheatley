@@ -1,7 +1,5 @@
 """
-spotify_agent.py
-================
-Adds tools:
+Adds tools.
 • search_tracks          – return top N song matches.
 • queue_track_by_name    – find a song by text and queue it.
 • get_recently_played    – latest listening history.

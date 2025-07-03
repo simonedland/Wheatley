@@ -203,7 +203,7 @@ class GoogleAgent:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_request}
         ]
-        print(f"\n--- Google Agent Decision Trace ---")
+        print("\n--- Google Agent Decision Trace ---")
         print(f"User: {user_request}")
         print(f"Prompt to LLM: {prompt}")
         completion = openai.responses.create(
@@ -220,7 +220,7 @@ class GoogleAgent:
                 print(f"  Tool: {msg.name}")
                 print(f"  Arguments: {msg.arguments}")
                 print(f"  Call ID: {getattr(msg, 'call_id', None)}")
-        print(f"--- End Google Agent Decision Trace ---\n")
+        print("--- End Google Agent Decision Trace ---\n")
         # Dispatch the chosen tool
         for msg in choice:
             if msg.type == "function_call":

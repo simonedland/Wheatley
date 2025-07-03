@@ -11,7 +11,6 @@ class ConversationManager:
 
     def __init__(self, max_memory=5):
         """Create a conversation buffer with ``max_memory`` user/assistant turns."""
-
         # Load system message from config
         config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
         with open(config_path, "r") as f:

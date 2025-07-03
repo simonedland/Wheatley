@@ -86,6 +86,7 @@ def get_city_coordinates(city):
         return f"Coordinates for {city}: Latitude {lat}, Longitude {lon}."
     return f"No data available for {city}."
 
+
 set_animation_tool = [
     {
         "type": "function",

@@ -33,7 +33,7 @@ def _load_config():
 @dataclass
 class Config:
     """Configuration for the LLM summarizer."""
-    
+
     model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4.1"))
     temperature: float = 0.3
     # Only Python and Arduino files now
