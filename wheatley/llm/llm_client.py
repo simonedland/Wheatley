@@ -529,12 +529,10 @@ class Functions:
             try:
                 from main import Event
             except Exception:
-                Event = None
+                return
 
         async def timer_task():
             await asyncio.sleep(duration)
-            if Event is None:
-                return
             timer_event = Event(
                 source="timer",
                 payload=reason,
@@ -624,9 +622,7 @@ class Functions:
                 try:
                     from main import Event
                 except Exception:
-                    Event = None
-            if Event is None:
-                return
+                    return
             reminder_event = Event(
                 source="reminder",
                 payload=reason or time_str,
