@@ -85,7 +85,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Branch name: head ref for PRs, ref_name for pushes
           BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           LABELS="code-quality,branch:${BRANCH//\//-}"
 
@@ -108,7 +107,8 @@ jobs:
             ISSUE_NUM=$(gh issue list --state open \
                         --label "$LABELS" \
                         --search "$ISSUE_TITLE" \
-                        --json number,title | jq -r '.[0].number')
+                        --json number,title \
+                        | jq -r '.[0].number // empty')   # ← fixed: empty instead of "null"
 
             if [ -n "$ISSUE_NUM" ]; then
               LAST=$(gh issue view "$ISSUE_NUM" --json comments |
@@ -124,7 +124,7 @@ jobs:
             fi
           done < files_with_issues.txt
 
-      # ───── 9. Close code-quality issues when file is clean (push & PR) ──────
+      # ─── 9. Close code-quality issues when file is clean (push & PR) ─────────
       - name: Close resolved code-quality issues
         if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
         env:
