@@ -42,8 +42,8 @@ class SpeechToTextEngine:
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = stt_config.get("channels", 1)
         self.RATE = stt_config.get("rate", 16000)  # 16kHz is optimal for Whisper
-        self.THRESHOLD = 1500 #stt_config.get("threshold", 1500)
-        self.SILENCE_LIMIT = 3 #stt_config.get("silence_limit", 2)
+        self.THRESHOLD = 1500  # stt_config.get("threshold", 1500)
+        self.SILENCE_LIMIT = 3  # stt_config.get("silence_limit", 2)
         self.arduino_interface = arduino_interface
         self._audio = None
         self._stream = None
@@ -88,7 +88,6 @@ class SpeechToTextEngine:
         speaks. The maximum amplitudes from both phases are averaged to derive
         the new threshold.
         """
-
         self._audio = pyaudio.PyAudio()
         stream = self._audio.open(
             format=self.FORMAT,
@@ -162,16 +161,7 @@ class SpeechToTextEngine:
         return self._pause_event.is_set()
 
     def record_until_silent(self, max_wait_seconds=None):
-        """Record audio until silence is detected.
-
-        Parameters
-        ----------
-        max_wait_seconds: float or None
-            Optional timeout. If no sound is detected within this many
-            seconds the method returns ``None`` and stops listening. This
-            allows callers to fall back to hotword detection after a period
-            of silence.
-        """
+        """Record audio until silence is detected."""
         start_time = time.time()
         self._audio = pyaudio.PyAudio()
         try:
