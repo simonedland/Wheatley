@@ -25,9 +25,9 @@ from elevenlabs import VoiceSettings
 
 class TextToSpeechEngine:
     """Interface to ElevenLabs TTS with persistent playback stream."""
+    
     def _load_config(self) -> None:
         """Load voice settings from configuration file."""
-
         config_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "config",
