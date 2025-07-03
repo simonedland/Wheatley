@@ -49,6 +49,7 @@ except ImportError:
 # ╔════════════ thin serial wrapper ════════════════════════════════════╗
 class SerialBackend:
     """Thin serial wrapper for communication with hardware."""
+
     def __init__(self, port, baud, dry):
         """Initialize SerialBackend."""
         self.port, self.baud, self.dry = port, baud, dry
@@ -97,6 +98,7 @@ class SerialBackend:
 # ╔════════════ GUI class ═══════════════════════════════════════════════╗
 class PuppetGUI(Tk):
     """Main GUI for controlling servos and LEDs."""
+
     def __init__(self, backend: SerialBackend):
         """Initialize the PuppetGUI."""
         super().__init__()
@@ -204,6 +206,7 @@ class PuppetGUI(Tk):
         canvas = tk.Canvas(holder, height=BAR_HEIGHT, background="#2d2d2d",
                            highlightthickness=0)
         canvas.grid(row=1, column=0, sticky="ew")
+
         def _entry(default, width, col):
             e = ttk.Entry(parent, width=width, justify="center")
             e.insert(0, default)
@@ -539,7 +542,7 @@ class PuppetGUI(Tk):
 
 
 def auto_port():
-    """Auto-detect the serial port."""
+    """Auto-detect and return the serial port."""
     if serial is None:
         return None
     from serial.tools import list_ports
@@ -549,7 +552,7 @@ def auto_port():
 
 
 def main():
-    """Main entry point for the script."""
+    """Parse arguments and run the main application."""
     ap = argparse.ArgumentParser()
     ap.add_argument("-p", "--port", help="Serial port (auto if omitted)")
     ap.add_argument("-b", "--baud", type=int, default=115200)
