@@ -63,4 +63,3 @@ def export_timings(path: str = "timings.json") -> None:
         data = list(timings)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-
