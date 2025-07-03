@@ -191,6 +191,20 @@ class GPTClient:
             end_time = time.time()
             yield buf.strip(), sentence_start or end_time, end_time
 
+    def update_last_mood_and_counter(self, animation):
+        """Update the last mood and emotion counter based on the selected animation."""
+        self.last_mood = animation
+        if animation in self.emotion_counter:
+            self.emotion_counter[animation] += 1
+        else:
+            self.emotion_counter[animation] = 1
+        # Save the updated emotion counter to the file
+        try:
+            with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "llm", "emotion_counter.json"), "w") as f:
+                json.dump(self.emotion_counter, f, indent=2)
+        except Exception as e:
+            logging.error(f"Failed to update emotion_counter.json: {e}")
+
     def reply_with_animation(self, conversation):
         """Ask GPT to select an animation based on the conversation."""
         start_time = time.time()
@@ -231,17 +245,7 @@ class GPTClient:
                 except Exception:
                     animation = ""
         if animation:
-            self.last_mood = animation  # Update last mood for next call
-            # Update emotion counter and persist
-            if animation in self.emotion_counter:
-                self.emotion_counter[animation] += 1
-            else:
-                self.emotion_counter[animation] = 1
-            try:
-                with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "llm", "emotion_counter.json"), "w") as f:
-                    json.dump(self.emotion_counter, f, indent=2)
-            except Exception as e:
-                logging.error(f"Failed to update emotion_counter.json: {e}")
+            self.update_last_mood_and_counter(animation)
         return animation
 
     def get_workflow(self, conversation):
@@ -520,10 +524,10 @@ class Functions:
         import asyncio
         from datetime import datetime
         try:
-            from ..main import Event as Event
+            from ..main import Event
         except Exception:
             try:
-                from main import Event as Event
+                from main import Event
             except Exception:
                 Event = None
 
@@ -615,10 +619,10 @@ class Functions:
             """Async task to wait for the reminder time and post an event."""
             await asyncio.sleep(delay)
             try:
-                from ..main import Event as Event
+                from ..main import Event
             except Exception:
                 try:
-                    from main import Event as Event
+                    from main import Event
                 except Exception:
                     Event = None
             if Event is None:
