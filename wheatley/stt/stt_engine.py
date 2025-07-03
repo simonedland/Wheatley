@@ -160,10 +160,8 @@ class SpeechToTextEngine:
         """Return True if listening is paused, False otherwise."""
         return self._pause_event.is_set()
 
-    def record_until_silent(self, max_wait_seconds=None):
-        """Record audio until silence is detected."""
-        start_time = time.time()
-        self._audio = pyaudio.PyAudio()
+    def connect_stream(self):
+        """Connect to the audio input stream, trying different devices if necessary."""
         try:
             self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
         except Exception:
@@ -171,6 +169,12 @@ class SpeechToTextEngine:
                 self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=1)
             except Exception:
                 self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
+
+    def record_until_silent(self, max_wait_seconds=None):
+        """Record audio until silence is detected."""
+        start_time = time.time()
+        self._audio = pyaudio.PyAudio()
+        self.connect_stream()
         frames = []
         silent_frames = 0
         recording = False
