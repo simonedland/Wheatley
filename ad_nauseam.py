@@ -32,6 +32,7 @@ def _load_config():
 
 @dataclass
 class Config:
+    """Configuration for the LLM summarizer."""
     model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4.1"))
     temperature: float = 0.3
     # Only Python and Arduino files now
@@ -217,20 +218,10 @@ class Summariser:
         for file in bar:
             summarise_file(file)
 
-        if self.verbose:
-            print("[INFO] Writing folder-level AI summaries...")
         self._write_folder_md(by_dir)
-        if self.verbose:
-            print("[INFO] Writing root-level AI overview...")
         overview = self._write_root_md(target_path, by_dir)
-        if self.verbose:
-            print("[INFO] Writing Mermaid graph of codebase structure for each directory...")
         self._write_graph_md_per_directory(by_dir)
-        if self.verbose:
-            print("[INFO] Writing root-level Mermaid overview...")
         self._write_root_mermaid_overview(target_path, files)
-        if self.verbose:
-            print("[INFO] Summarisation process complete.")
         return overview
 
     # ------------------------------------------------------------------
@@ -367,7 +358,7 @@ def _parse_args():
 
 
 def main():
-    """Main entry point for the summarizer CLI."""
+    """Run main entry point for the summarizer CLI."""
     args = _parse_args()
     Summariser(Config(), dry_run=args.dry_run, verbose=True).run(args.path)
 
