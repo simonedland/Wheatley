@@ -21,12 +21,6 @@ try:
 except ImportError:
   from google_agent import GoogleCalendarManager
 
-try:
-    from .spotify_agent import SpotifyAgent
-except ImportError:
-    from spotify_agent import SpotifyAgent
-
-from .google_agent import GoogleAgent
 from .llm_client_utils import (
     get_city_coordinates,
     get_quote,
@@ -68,7 +62,6 @@ class TextToSpeech:
         self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
 
-
     """Minimal wrapper around the ElevenLabs API for speech synthesis."""
     def __init__(self):
         """Initialise the ElevenLabs client using values from ``config.yaml``."""
@@ -78,6 +71,7 @@ class TextToSpeech:
         self.client = ElevenLabs(api_key=self.api_key)
     
     def elevenlabs_generate_audio(self, text):
+        """Generate audio from ``text`` using ElevenLabs TTS."""
         start_time = time.time()
         # Generates audio using ElevenLabs TTS with configured parameters
         audio = self.client.text_to_speech.convert(
@@ -95,6 +89,7 @@ class TextToSpeech:
         self._load_config()
     
     def generate_and_play_advanced(self, text):
+        """Generate and play audio from ``text`` using ElevenLabs TTS."""
         generate_start = time.time()
         self.reload_config()
         base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -119,6 +114,7 @@ class TextToSpeech:
             except Exception as e:
                 logging.error(f"Error deleting audio file: {e}")
         record_timing("tts_play", play_start)
+
 
 # =================== LLM Client ===================
 # This class is responsible for interacting with the OpenAI API
@@ -250,17 +246,17 @@ class GPTClient:
         """Return a list of tool calls suggested by GPT."""
         start_time = time.time()
         tools = build_tools()
-        #remove the first system message from conversation and replace with a new one
+        # remove the first system message from conversation and replace with a new one
         temp_conversation = conversation.copy()
         temp_conversation[0] = {
             "role": "system",
             "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. look at earlier conversation to see if the information is there already. like for example dont call get joke, if there is already a joke fresh in memory. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE. NEVER summarize data."
         }
-        #pop message 1
+        # pop message 1
         temp_conversation.pop(1)
-        #remove all the messages from assistant
+        # remove all the messages from assistant
         temp_conversation = [msg for msg in temp_conversation if msg["role"] != "assistant"]
-        #add one shot example after the first system message
+        # add one shot example after the first system message
         temp_conversation.insert(1, {
             "role": "user",
             "content": "hello mister!"
@@ -282,7 +278,7 @@ class GPTClient:
         choice = completion.output
         results = []
         if completion.output[0].type == "web_search_call":
-            #add content of completion.output[1]
+            # add content of completion.output[1]
             for item in completion.output[1].content:
                 results.append({
                     "arguments": {"text": item.text},
@@ -292,7 +288,7 @@ class GPTClient:
 
         for msg in choice:
             if msg.type == "function_call":
-                #print("function_call")
+                # print("function_call")
                 if hasattr(msg, "arguments"):
                     results.append({
                         "arguments": json.loads(msg.arguments),
@@ -307,6 +303,7 @@ class GPTClient:
                     })
         return results if results else None
 
+
 # Dynamically build the tools list to include web_search_preview preferences from config
 config = _load_config()
 web_search_config = config.get("web_search", {})
@@ -318,7 +315,7 @@ if "search_context_size" in web_search_config:
 
 tts_engine = TextToSpeech()
 
-#tools = build_tools()
+# tools = build_tools()
 
 class Functions:
     """Container for tool implementations invoked by GPT."""
@@ -452,8 +449,6 @@ class Functions:
                 data = args.get("data", {})
                 response = self.edit_long_term_memory(index, data)
                 results.append((func_name, response))
-
-            tool_elapsed = time.time() - tool_start
         return results
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=["temperature_2m", "weathercode"], temperature_unit="celsius", wind_speed_unit="kmh"):
@@ -574,7 +569,7 @@ class Functions:
       headers = {"X-Api-Key": api_key}
       response = requests.get("https://api.api-ninjas.com/v1/advice", headers=headers)
       data = response.json()
-      #print(f"Data: {data}")
+      # print(f"Data: {data}")
       advice = None
       advice = data.get("advice")
       return f"Give the following advice: {advice}"
