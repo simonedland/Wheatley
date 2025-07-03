@@ -25,7 +25,6 @@ from elevenlabs import VoiceSettings
 
 class TextToSpeechEngine:
     """Interface to ElevenLabs TTS with persistent playback stream."""
-
     def _load_config(self) -> None:
         """Load voice settings from configuration file."""
 
@@ -52,7 +51,6 @@ class TextToSpeechEngine:
 
     def __init__(self):
         """Initialise the TTS engine and load configuration."""
-
         self._load_config()
 
         # Silence noisy logging from the ElevenLabs library
@@ -84,7 +82,6 @@ class TextToSpeechEngine:
 
     def reload_config(self) -> None:
         """Reload TTS settings from ``config.yaml`` at runtime."""
-
         self._load_config()
 
     def elevenlabs_generate_audio_stream(self, text: str):
