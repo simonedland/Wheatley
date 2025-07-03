@@ -17,9 +17,9 @@ import tempfile
 
 # from local file google_agent import GoogleCalendarManager
 try:
-  from .google_agent import GoogleCalendarManager
+    from .google_agent import GoogleCalendarManager
 except ImportError:
-  from google_agent import GoogleCalendarManager
+    from google_agent import GoogleCalendarManager
 
 from .llm_client_utils import (
     get_city_coordinates,
@@ -37,10 +37,12 @@ logging.basicConfig(level=logging.WARN)
 PUNCT_RE = re.compile(r'[.!?]\s+')
 ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
+
 class TextToSpeech:
+    """Minimal wrapper around ElevenLabs TTS API for speech synthesis."""
+
     def _load_config(self) -> None:
         """Load voice settings from configuration file."""
-
         config_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "config",
@@ -69,7 +71,7 @@ class TextToSpeech:
         # Disable verbose logging from elevenlabs to remove INFO prints
         logging.getLogger("elevenlabs").setLevel(logging.WARNING)
         self.client = ElevenLabs(api_key=self.api_key)
-    
+
     def elevenlabs_generate_audio(self, text):
         """Generate audio from ``text`` using ElevenLabs TTS."""
         start_time = time.time()
@@ -83,11 +85,11 @@ class TextToSpeech:
         )
         record_timing("tts_generate_audio", start_time)
         return audio
-    
+
     def reload_config(self) -> None:
         """Reload TTS settings from ``config.yaml`` at runtime."""
         self._load_config()
-    
+
     def generate_and_play_advanced(self, text):
         """Generate and play audio from ``text`` using ElevenLabs TTS."""
         generate_start = time.time()
@@ -180,7 +182,7 @@ class GPTClient:
                     scan = m.end()
                     continue
                 sent = buf[: m.end()].strip()
-                buf = buf[m.end() :].lstrip()
+                buf = buf[m.end():].lstrip()
                 scan = 0
                 end_time = time.time()
                 yield sent, sentence_start or end_time, end_time
@@ -241,7 +243,7 @@ class GPTClient:
             except Exception as e:
                 logging.error(f"Failed to update emotion_counter.json: {e}")
         return animation
-        
+
     def get_workflow(self, conversation):
         """Return a list of tool calls suggested by GPT."""
         start_time = time.time()
@@ -314,8 +316,8 @@ if "search_context_size" in web_search_config:
     web_search_tool["search_context_size"] = web_search_config["search_context_size"]
 
 tts_engine = TextToSpeech()
-
 # tools = build_tools()
+
 
 class Functions:
     """Container for tool implementations invoked by GPT."""
@@ -332,7 +334,6 @@ class Functions:
         self.google_agent = GOOGLE_AGENT if SERVICE_STATUS.get("google") else None
         self.spotify_agent = SPOTIFY_AGENT if SERVICE_STATUS.get("spotify") else None
         self.memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json")
-        
 
     def execute_workflow(self, workflow, event_queue=None):
         """Run each tool in ``workflow`` and return their results."""
@@ -412,29 +413,29 @@ class Functions:
                     # Handle case when no event queue is provided for the reminder.
                     results.append((func_name, "No event queue provided for reminder!"))
             elif func_name == "daily_summary":
-              user_request = "Get summary for today"
-              # Coordinates for Oslo
-              lat, lon = "59.9111", "10.7528"
+                user_request = "Get summary for today"
+                # Coordinates for Oslo
+                lat, lon = "59.9111", "10.7528"
 
-              # Retrieve weather with a one-day forecast.
-              weather_summary = self.get_weather(lat, lon, include_forecast=True, forecast_days=1)
-              
-              # Prepare arguments and dispatch the request to the Google Agent.
-              args = {"user_request": user_request, "arguments": {}}
-              google_response = self.google_agent.llm_decide_and_dispatch(user_request, args)
-              if isinstance(google_response, dict):
-                response = google_response.get("summary", "Nothing to summarize today.")
-              else:
-                response = google_response
-                if not response:
-                    response = "Nothing to summarize today."
+                # Retrieve weather with a one-day forecast.
+                weather_summary = self.get_weather(lat, lon, include_forecast=True, forecast_days=1)
 
-              # Append weather summary and a daily quote.
-              response_str = f"Google callendar summary:\n{response}"
-              response_str += f"\n\nWeather Summary for Oslo:\n{weather_summary}"
-              response_str += f"\n\nQuote of the Day: {get_quote()}"
+                # Prepare arguments and dispatch the request to the Google Agent.
+                args = {"user_request": user_request, "arguments": {}}
+                google_response = self.google_agent.llm_decide_and_dispatch(user_request, args)
+                if isinstance(google_response, dict):
+                    response = google_response.get("summary", "Nothing to summarize today.")
+                else:
+                    response = google_response
+                    if not response:
+                        response = "Nothing to summarize today."
 
-              results.append((func_name, response_str))
+                # Append weather summary and a daily quote.
+                response_str = f"Google callendar summary:\n{response}"
+                response_str += f"\n\nWeather Summary for Oslo:\n{weather_summary}"
+                response_str += f"\n\nQuote of the Day: {get_quote()}"
+
+                results.append((func_name, response_str))
             elif func_name == "set_personality":
                 mode = item.get("arguments", {}).get("mode")
                 response = self.set_personality(mode)
