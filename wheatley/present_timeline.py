@@ -15,9 +15,9 @@ import datetime as dt
 import tkinter as tk
 from tkinter import ttk, filedialog
 from collections import defaultdict
-
+import re
 import matplotlib
-matplotlib.use("TkAgg")                     # Tk backend for embedding
+matplotlib.use("TkAgg")  # Tk backend for embedding
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -25,6 +25,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def load_timings(path: str = "timings.json"):
+    """Load timing data from a JSON file."""
     if not os.path.exists(path):
         return []
     with open(path, "r", encoding="utf-8") as f:
@@ -32,7 +33,7 @@ def load_timings(path: str = "timings.json"):
 
 
 def load_logs(path: str = "assistant.log"):
-    import re
+    """Load log events from a log file."""
     if not os.path.exists(path):
         return []
     line_re = re.compile(
@@ -54,9 +55,11 @@ def load_logs(path: str = "assistant.log"):
 
 # ── GUI ────────────────────────────────────────────────────────────────────
 class TimelineGUI(tk.Tk):
-    ZOOM_STEP = 0.8            # 0.8 → zoom in 20 %, 1/0.8 zoom out
+    """Main GUI application for displaying timeline and timing insights."""
+    ZOOM_STEP = 0.8  # 0.8 → zoom in 20 %, 1/0.8 zoom out
 
     def __init__(self):
+        """Initialize the TimelineGUI window and widgets."""
         super().__init__()
         self.title("Timeline & Timing Insights")
         self.geometry("1000x700")
@@ -71,6 +74,7 @@ class TimelineGUI(tk.Tk):
 
     # ── layout ─────────────────────────────────────────────────────────
     def _make_widgets(self):
+        """Create and layout the main widgets."""
         top = ttk.Frame(self)
         top.pack(side=tk.TOP, fill=tk.X, padx=8, pady=4)
 
@@ -97,6 +101,7 @@ class TimelineGUI(tk.Tk):
 
     # ── file pickers ──────────────────────────────────────────────────
     def _pick_timing(self):
+        """Open a file dialog to select a timing JSON file."""
         path = filedialog.askopenfilename(
             title="Select Timing JSON", filetypes=[("JSON", "*.json")]
         )
@@ -105,6 +110,7 @@ class TimelineGUI(tk.Tk):
             self._reload_everything()
 
     def _pick_log(self):
+        """Open a file dialog to select a log file."""
         path = filedialog.askopenfilename(
             title="Select Log File",
             filetypes=[("Log", "*.log"), ("All files", "*.*")]
@@ -115,6 +121,7 @@ class TimelineGUI(tk.Tk):
 
     # ── data / refresh ────────────────────────────────────────────────
     def _reload_everything(self):
+        """Reload timing and log data and update all views."""
         self.timings = load_timings(self.timing_file)
         self.logs    = load_logs(self.log_file)
         self._draw_timeline()
@@ -123,6 +130,7 @@ class TimelineGUI(tk.Tk):
 
     # ── plots ─────────────────────────────────────────────────────────
     def _draw_timeline(self):
+        """Draw the timeline Gantt chart."""
         for w in self.tab_timeline.winfo_children():
             w.destroy()
 
@@ -171,7 +179,7 @@ class TimelineGUI(tk.Tk):
         ax.legend(handles, unique_labels, title="Functionality", bbox_to_anchor=(1.05, 1), loc='upper left')
 
         # Annotate each bar with its duration in seconds
-        for i, (start, width, label) in enumerate(zip(starts_num, widths, labels)):
+        for i, (start, width, _label) in enumerate(zip(starts_num, widths, labels)):
             duration_sec = width * 86400
             ax.text(start + width, i, f"{duration_sec:.2f}s", va='center', ha='left', fontsize=9, color='black', fontweight='bold')
 
@@ -215,6 +223,7 @@ class TimelineGUI(tk.Tk):
 
     # ------------------------------------------------------------------
     def _draw_summary(self):
+        """Draw the average time per functionality bar chart."""
         for w in self.tab_summary.winfo_children():
             w.destroy()
 
@@ -252,6 +261,7 @@ class TimelineGUI(tk.Tk):
 
     # ------------------------------------------------------------------
     def _show_logs(self):
+        """Display the loaded logs in the text widget."""
         self.log_txt.delete(1.0, tk.END)
         if not self.logs:
             self.log_txt.insert(tk.END, "No log data.\n")
