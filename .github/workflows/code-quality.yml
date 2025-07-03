@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ───────────────────────────── 1. Checkout ──────────────────────────────
+      # ─────────────────────────── 1. Checkout code ───────────────────────────
       - uses: actions/checkout@v4
 
-      # ──────────────────────────── 2. Python setup ───────────────────────────
+      # ─────────────────────────── 2. Python setup ────────────────────────────
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
@@ -79,14 +79,21 @@ jobs:
           path: flake8-report.txt
           if-no-files-found: warn
 
-      # ───── 8. Create / update “code-quality” issues (push *and* PR) ─────────
+      # ───── 8. Create / update “code-quality” issues (main & test only) ──────
       - name: Create / update code-quality issues
         if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          LABELS="code-quality,branch:${BRANCH//\//-}"
+          # Use the **target** branch of the PR, or the push branch
+          BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
+          LABELS="code-quality,branch:${BRANCH}"
+
+          # Only proceed for main or test
+          if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "test" ]; then
+            echo "Skipping issue creation for branch '$BRANCH'"
+            exit 0
+          fi
 
           cut -d':' -f1 flake8-report.txt | sort -u > files_with_issues.txt
 
@@ -108,7 +115,7 @@ jobs:
                         --label "$LABELS" \
                         --search "$ISSUE_TITLE" \
                         --json number,title \
-                        | jq -r '.[0].number // empty')   # ← fixed: empty instead of "null"
+                        | jq -r '.[0].number // empty')
 
             if [ -n "$ISSUE_NUM" ]; then
               LAST=$(gh issue view "$ISSUE_NUM" --json comments |
@@ -124,14 +131,20 @@ jobs:
             fi
           done < files_with_issues.txt
 
-      # ─── 9. Close code-quality issues when file is clean (push & PR) ─────────
+      # ─── 9. Close code-quality issues when file is clean (main & test only) ──
       - name: Close resolved code-quality issues
         if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-          LABEL="branch:${BRANCH//\//-}"
+          BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
+
+          if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "test" ]; then
+            echo "Skipping issue closure for branch '$BRANCH'"
+            exit 0
+          fi
+
+          LABEL="branch:${BRANCH}"
 
           gh issue list --state open --label "$LABEL" --json number,title \
             | jq -r '.[]|[.number,.title]|@tsv' > open.tsv
