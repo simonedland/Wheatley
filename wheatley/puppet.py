@@ -530,7 +530,7 @@ class PuppetGUI(Tk):
                 self._draw_band(sid)
 
     def _pump(self):
-        """Main event loop for processing serial queues."""
+        """Run event loop for processing serial queues."""
         while not self.backend.tx_q.empty():
             self._msg("→ " + self.backend.tx_q.get_nowait())
         while not self.backend.rx_q.empty():
@@ -552,7 +552,7 @@ def auto_port():
 
 
 def main():
-    """Parse arguments and run the main application."""
+    """Run the main application."""
     ap = argparse.ArgumentParser()
     ap.add_argument("-p", "--port", help="Serial port (auto if omitted)")
     ap.add_argument("-b", "--baud", type=int, default=115200)
