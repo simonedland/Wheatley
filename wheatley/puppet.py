@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 servo_puppet.py – GUI for OpenRB-150 / Core-2
 rev 12.3 · 2025-06-06
@@ -10,7 +9,13 @@ rev 12.3 · 2025-06-06
 • All previous features (idle band, presets, LED, limit-lock) unchanged.
 """
 
-import argparse, json, queue, re, sys, threading, time
+import argparse
+import json
+import queue
+import re
+import sys
+import threading
+import time
 import tkinter as tk
 from functools import partial
 from tkinter import (
@@ -23,7 +28,7 @@ from tkinter import ttk
 SERVO_NAMES = ("lens", "eyelid1", "eyelid2",
                "eyeX", "eyeY", "handle1", "handle2")
 DEFAULT_MIN = [0, 180, 140, 130, 140, -60, -60]
-DEFAULT_MAX = [0, 220, 180, 220, 210,  60,  60]
+DEFAULT_MAX = [0, 220, 180, 220, 210, 60, 60]
 ACCENT      = "#00c3ff"
 BAR_COLOR   = "#00c851"
 DOT_COLOR   = "#ff4040"
