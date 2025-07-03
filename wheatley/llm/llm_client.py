@@ -340,7 +340,6 @@ class Functions:
         results = []
         for item in workflow:
             func_name = item.get("name")
-            tool_start = time.time()
             if self.tts_enabled and func_name != "write_long_term_memory":
                 conversation = [
                     {"role": "system", "content": "Act as Wheatley from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
@@ -367,7 +366,7 @@ class Functions:
             elif func_name == "set_timer":
                 if event_queue is not None:
                     duration = item.get("arguments", {}).get("duration")
-                    reason = item.get("arguments", {}).get("reason", f"Timer expired!")
+                    reason = item.get("arguments", {}).get("reason", "Timer expired!")
                     self._schedule_timer_event(duration, reason, event_queue)
                     results.append((func_name, f"Timer set for {duration} seconds. Reason: {reason}"))
                 else:
@@ -519,18 +518,18 @@ class Functions:
         import asyncio
         from datetime import datetime
         try:
-            from ..main import Event as main_event
+            from ..main import Event as mainEvent
         except Exception:
             try:
-                from main import Event as main_event
+                from main import Event as mainEvent
             except Exception:
-                main_event = None
+                mainEvent = None
 
         async def timer_task():
             await asyncio.sleep(duration)
-            if main_event is None:
+            if mainEvent is None:
                 return
-            timer_event = main_event(
+            timer_event = mainEvent(
                 source="timer",
                 payload=reason,
                 metadata={
@@ -582,12 +581,10 @@ class Functions:
         :param reason: The reason or label for the reminder (optional).
         :param event_queue: The event queue to put the reminder event into (optional).
         """
-
         import asyncio
         from datetime import datetime, timedelta
         import re
-        
-        # Parse the time string (supports 'HH:MM', 'H:MM', '7am', '7pm', etc.)
+
         now = datetime.now()
         match = re.match(r"(\d{1,2}):(\d{2})", time_str)
         if match:
@@ -609,18 +606,20 @@ class Functions:
         if target < now:
             target += timedelta(days=1)  # Schedule for next day if time has passed
         delay = (target - now).total_seconds()
+
         async def reminder_task():
+            """Async task to wait for the reminder time and post an event."""
             await asyncio.sleep(delay)
             try:
-                from ..main import Event as main_event
+                from ..main import Event as mainEvent
             except Exception:
                 try:
-                    from main import Event as main_event
+                    from main import Event as mainEvent
                 except Exception:
-                    main_event = None
-            if main_event is None:
+                    mainEvent = None
+            if mainEvent is None:
                 return
-            reminder_event = main_event(
+            reminder_event = mainEvent(
                 source="reminder",
                 payload=reason or time_str,
                 metadata={
