@@ -7,6 +7,7 @@ import time
 
 
 def install_requirements():
+    """Install packages listed in requirements.txt with progress output."""
     # Path to the requirements file inside the Wheatley project folder
     req_file = os.path.join(os.path.dirname(__file__), "wheatley", "requirements.txt")
     if not os.path.exists(req_file):
