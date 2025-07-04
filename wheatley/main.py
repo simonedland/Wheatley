@@ -12,10 +12,11 @@ import logging  # For logging events and timings
 import time  # For timing actions
 import asyncio  # For async event loop
 from dataclasses import dataclass  # For Event container
-from typing import Dict, Any, Optional  # For type hints
+from typing import Any, List, Tuple, Dict, Optional  # For type hints
 from datetime import datetime  # For timestamps
 import sys
 import atexit
+from queue import Queue
 
 # =================== Imports: Third-Party Libraries ===================
 import yaml  # For reading YAML config files
@@ -387,167 +388,230 @@ async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue
     return hotword_task
 
 
-# =================== Streaming Assistant Reply (Advanced) ===================
-# Stream GPT reply and play TTS while generating.
-async def stream_assistant_reply(manager, gpt_client, tts_engine, last_input_type, stt_engine, queue, hotword_task, stt_enabled, arduino_interface):
+async def stream_assistant_reply(                           # C901 ≈ 4 now
+    manager,
+    gpt_client,
+    tts_engine,
+    last_input_type,
+    stt_engine,
+    queue,
+    hotword_task,
+    stt_enabled: bool,
+    arduino_interface,
+) -> Tuple[str, Any, asyncio.Task]:
     """
-    Stream GPT reply and play TTS while generating.
-    
-    Streams sentences from the LLM, generates TTS audio for each sentence in parallel,
-    and plays them in order, while handling hotword detection and follow-up.
+    Stream GPT-generated sentences → TTS → audio output,
+    then hand control back to the hot-word listener.
     """
-    stream_start_time = time.time()
-    record_timing("streaming_start", stream_start_time)
-    print(f"[Stream] Starting streaming with {MAX_TTS_WORKERS} TTS workers")
+    cfg = _prepare_stream(stt_enabled, stt_engine, hotword_task)
+    cfg['tts_engine'] = tts_engine
+    ctx = _make_context(cfg, manager)
+    ctx.play_executor.submit(_playback_worker, ctx.playback_q, ctx.cfg["tts_engine"])
+    ctx.sentence_q.ctx = ctx
+    # Start the sentence producer in a thread (it will launch TTS jobs)
+    producer_thread = threading.Thread(
+        target=_sentence_producer,
+        args=(gpt_client, manager, ctx.loop, ctx.sentence_q),
+        daemon=True,
+    )
+    producer_thread.start()
 
-    if hotword_task:
-        hotword_task.cancel()
-        await asyncio.gather(hotword_task, return_exceptions=True)
-        hotword_task = None
+    # Only need the sequencer now
+    await _sequencer(ctx)
 
-    if stt_enabled:
-        stt_engine.pause_listening()
-        print("[STT] Hotword listener paused.")
-
-    sentences: list[str] = []
-    sentence_queue: asyncio.Queue = asyncio.Queue(QUEUE_MAXSIZE)
-    audio_queue: asyncio.Queue = asyncio.Queue(QUEUE_MAXSIZE)
-    loop = asyncio.get_running_loop()
-    config = load_config()
-    xi_key = config["secrets"]["elevenlabs_api_key"]
-    voice_id = config["tts"].get("voice_id", "4Jtuv4wBvd95o1hzNloV")
-    model_id = config["tts"].get("model_id", "eleven_flash_v2_5")
-    output_format = config["tts"].get("output_format", "mp3_22050_32")
-    api_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-    headers = {"xi-api-key": xi_key, "Content-Type": "application/json"}
-
-    def fetch_tts_clip(text, previous_sentence, next_sentence, sentence_index):
-        # Synchronously call ElevenLabs TTS API for a text segment.
-        # Retries with exponential backoff on failure.
-        # Returns MP3 bytes or None on failure.
-        def _post():
-            return requests.post(
-                api_url,
-                headers=headers,
-                params={"output_format": output_format},
-                json={
-                    "text": text,
-                    "model_id": model_id,
-                    "previous_text": previous_sentence or None,
-                    "next_text": next_sentence or None,
-                },
-                timeout=60,
-            )
-
-        attempt, backoff = 1, 1
-        while attempt <= MAX_ATTEMPTS:
-            try:
-                tts_start = time.time()
-                resp = _post()
-                resp.raise_for_status()
-                record_timing("tts_clip_generated", tts_start)
-                return resp.content
-            except Exception:
-                if attempt == MAX_ATTEMPTS:
-                    return None
-                time.sleep(backoff + random.uniform(0, 0.5))
-                backoff = min(backoff * 2, 32)
-                attempt += 1
-
-    def play_mp3_bytes(audio_bytes, sentence_index):
-        # Play MP3 audio bytes using the TTS engine.
-        # Logs timing and playback events.
-        if audio_bytes is None:
-            return
-        play_start = time.time()
-        print(f"[Player] Playing clip {sentence_index}")
-        tts_engine.play_mp3_bytes(audio_bytes)
-        record_timing("tts_clip_played", play_start)
-        print(f"[Player] Finished clip {sentence_index}")
-
-    def producer():
-        """Stream sentences from GPT and enqueue them for TTS."""
-        sentence_index = 0.0
-        for sentence, start_timestamp, _ in gpt_client.sentence_stream(manager.get_conversation()):
-            sentences.append(sentence)
-            print(f"[Producer] Sentence {sentence_index}: {sentence}")
-            record_timing("sentence_created", start_timestamp)
-            asyncio.run_coroutine_threadsafe(sentence_queue.put((sentence_index, sentence)), loop)
-            sentence_index += 1.0
-        asyncio.run_coroutine_threadsafe(sentence_queue.put(None), loop)
-
-    threading.Thread(target=producer, daemon=True).start()
-
-    async def tts_dispatch(text_queue, audio_queue, thread_pool):
-        """Generate TTS clips concurrently and enqueue them for playback."""
-        dispatch_loop = asyncio.get_running_loop()
-        semaphore = asyncio.Semaphore(MAX_TTS_WORKERS)
-        previous_sentence = ""
-        pending_tasks = []
-
-        async def handle(sentence_index, current_sentence, next_sentence, previous_sentence_val):
-            """Run a single TTS job."""
-            async with semaphore:
-                print(f"[TTS] Generating clip {sentence_index}")
-                audio_bytes = await asyncio.wrap_future(
-                    dispatch_loop.run_in_executor(thread_pool, fetch_tts_clip, current_sentence, previous_sentence_val, next_sentence, sentence_index)
-                )
-                tts_clip_end = time.time()
-                await audio_queue.put((sentence_index, audio_bytes))
-                record_timing("tts_dispatch", tts_clip_end)
-                print(f"[TTS] Done clip {sentence_index}")
-
-        item = await text_queue.get()
-        while item:
-            sentence_index, current_sentence = item
-            next_item = await text_queue.get()
-            next_sentence = "" if next_item is None else next_item[1]
-            pending_tasks.append(
-                asyncio.create_task(handle(sentence_index, current_sentence, next_sentence, previous_sentence))
-            )
-            previous_sentence, item = current_sentence, next_item
-
-        await asyncio.gather(*pending_tasks)
-        await audio_queue.put((-1, b""))
-
-    async def sequencer(audio_queue):
-        """Play audio clips in the original sentence order."""
-        playback_loop, buffer, expected_index = asyncio.get_running_loop(), {}, 0.0
-        while True:
-            sentence_index, audio_bytes = await audio_queue.get()
-            if sentence_index == -1:
-                break
-            buffer[sentence_index] = audio_bytes
-            while expected_index in buffer:
-                await playback_loop.run_in_executor(None, play_mp3_bytes, buffer.pop(expected_index), expected_index)
-                expected_index += 1.0
-
-    with ThreadPoolExecutor(MAX_TTS_WORKERS) as thread_pool:
-        # Launch TTS generation and playback in parallel
-        dispatch_task = asyncio.create_task(tts_dispatch(sentence_queue, audio_queue, thread_pool))
-        seq_task = asyncio.create_task(sequencer(audio_queue))
-
-        # Wait until all sentences have been processed by the TTS dispatcher
-        await dispatch_task
-
-    gpt_text = " ".join(sentences)
-    manager.add_text_to_conversation("assistant", gpt_text)
-    manager.print_memory()
-    animation = gpt_client.reply_with_animation(manager.get_conversation())
-    arduino_interface.set_animation(animation)
-
-    # Wait for all audio to finish playing
-    await seq_task
-
-    stream_end_time = time.time()
-    record_timing("streaming_end", stream_end_time)
-
-    hotword_task = await handle_follow_up_after_stream(
+    gpt_text = _finalise_conversation(manager, ctx.sentences)
+    print(f"[Conversation] Full assistant reply: {gpt_text}")
+    animation = _handle_animation(gpt_client, manager, arduino_interface)
+    hotword_task = await _resume_hotword(
         last_input_type, stt_engine, queue, hotword_task, stt_enabled
     )
 
-    print("[Stream] Finished streaming")
+    _log_stream_done(ctx.timing)
     return gpt_text, animation, hotword_task
+
+
+# ────────────────────────────── DATA STRUCTS ──────────────────────────── #
+from dataclasses import dataclass, field
+
+@dataclass
+class _StreamContext:
+    sentences: list[str] = field(default_factory=list)
+    sentence_q: asyncio.Queue = field(default_factory=lambda: asyncio.Queue(QUEUE_MAXSIZE))
+    tts_futures: dict[float, asyncio.Future] = field(default_factory=dict)
+    playback_q: Queue = field(default_factory=lambda: Queue(QUEUE_MAXSIZE))
+    timing: dict = field(default_factory=dict)
+    loop: asyncio.AbstractEventLoop = field(default_factory=asyncio.get_running_loop)
+    tts_executor: ThreadPoolExecutor | None = None      # set in _make_context
+    play_executor: ThreadPoolExecutor | None = None     # ditto
+    cfg: dict = field(default_factory=dict)
+
+
+# ────────────────────────────── SET-UP HELPERS ────────────────────────── #
+
+def _prepare_stream(stt_enabled: bool, stt_engine, hotword_task):
+    """Pause hot-word + STT and return (possibly canceled) hotword_task."""
+    #record_timing("streaming_start")
+    if hotword_task:
+        hotword_task.cancel()
+    if stt_enabled:
+        stt_engine.pause_listening()
+    return {"hotword_task": hotword_task}
+
+
+def _make_context(cfg: dict, manager) -> _StreamContext:
+    conf = load_config()
+    ctx = _StreamContext(
+        cfg={
+            "api_url": f"https://api.elevenlabs.io/v1/text-to-speech/"
+                       f"{conf['tts'].get('voice_id', '4Jtuv4wBvd95o1hzNloV')}",
+            "api_key": conf["secrets"]["elevenlabs_api_key"],
+            "model":  conf["tts"].get("model_id", "eleven_flash_v2_5"),
+            "fmt":    conf["tts"].get("output_format", "mp3_22050_32"),
+            "tts_engine": cfg.get("tts_engine"),
+        }
+    )
+    # Thread pools -------------------------------------------------------
+    ctx.tts_executor  = ThreadPoolExecutor(max_workers=MAX_TTS_WORKERS, thread_name_prefix="TTS")
+    ctx.play_executor = ThreadPoolExecutor(max_workers=1,               thread_name_prefix="PLAY")  # 1 = sequential
+    return ctx
+
+def _playback_worker(q: Queue, tts_engine):
+    """Runs in its own thread; plays clips in FIFO order."""
+    while True:
+        idx, audio = q.get()
+        if idx is None:                      # sentinel ⇒ shutdown
+            break
+        if audio is None:
+            continue
+        start = time.time()
+        print(f"[Player] Playing clip {idx}")
+        tts_engine.play_mp3_bytes(audio)
+        record_timing("tts_clip_played", start)
+        print(f"[Player] Finished clip {idx}")
+
+
+# ────────────────────────────── PRODUCER ──────────────────────────────── #
+
+def _sentence_producer(gpt_client, manager, loop, q: asyncio.Queue) -> None:
+    """Stream sentences from GPT and push them to *q* from a thread. Also launch TTS jobs immediately."""
+    idx = 0.0
+    ctx = getattr(q, 'ctx', None)
+    for sentence, ts_start, _ in gpt_client.sentence_stream(manager.get_conversation()):
+        print(f"[Producer] Sentence {idx} created: {sentence}")
+        record_timing("sentence_created", ts_start)
+        if ctx is not None:
+            ctx.sentences.append(sentence)
+            # Launch TTS job immediately for maximal concurrency
+            fut = asyncio.run_coroutine_threadsafe(
+                _tts_job(idx, sentence, ctx, ctx.sentences), ctx.loop
+            )
+            ctx.tts_futures[idx] = fut
+        asyncio.run_coroutine_threadsafe(q.put((idx, sentence)), loop)
+        idx += 1
+    asyncio.run_coroutine_threadsafe(q.put(None), loop)    # sentinel
+
+async def _tts_job(idx, sent, ctx, sentences):
+    prev = sentences[int(idx-1)] if idx >= 1 else ""
+    nxt  = ""                                # still unknown at launch
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        ctx.tts_executor,
+        _fetch_tts_clip,
+        sent, prev, nxt, idx, ctx.cfg,
+    )
+
+def _fetch_tts_clip(
+    text: str, prev: str, nxt: str, idx: float, cfg: dict
+) -> bytes | None:
+    """Blocking call to ElevenLabs with retries."""
+    import requests
+
+    def _post():
+        return requests.post(
+            cfg["api_url"],
+            headers={"xi-api-key": cfg["api_key"], "Content-Type": "application/json"},
+            params={"output_format": cfg["fmt"]},
+            json={
+                "text": text,
+                "model_id": cfg["model"],
+                "previous_text": prev or None,
+                "next_text": nxt or None,
+            },
+            timeout=60,
+        )
+
+    attempt, backoff = 1, 1
+    while attempt <= MAX_ATTEMPTS:
+        try:
+            t0 = time.time()
+            resp = _post()
+            resp.raise_for_status()
+            record_timing("tts_clip_generated", t0)
+            return resp.content
+        except Exception:
+            if attempt == MAX_ATTEMPTS:
+                return None
+            time.sleep(backoff + random.uniform(0, 0.5))
+            backoff, attempt = min(backoff * 2, 32), attempt + 1
+
+
+# ────────────────────────────── SEQUENCER ──────────────────────────────── #
+
+async def _sequencer(ctx: _StreamContext) -> None:
+    """Deliver clips to the playback thread in original order."""
+    expected = 0.0
+    buffer: dict[float, bytes] = {}
+
+    while True:
+        item = await ctx.sentence_q.get()
+        if item is None:                             # producer sent sentinel
+            break
+        idx, _ = item
+        # Fetch the TTS result for this index
+        result = ctx.tts_futures.get(idx)
+        if result is None:
+            continue
+        try:
+            audio = await asyncio.wrap_future(result)   # wait only for TTS
+        except Exception as exc:
+            logging.error("TTS future %s failed: %s", idx, exc)
+            audio = None
+        buffer[idx] = audio
+
+        while expected in buffer:                    # maintain order
+            ctx.playback_q.put_nowait((expected, buffer.pop(expected)))
+            expected += 1.0
+
+    # flush any remainder, then signal playback worker to exit
+    for k in sorted(buffer):
+        ctx.playback_q.put_nowait((k, buffer[k]))
+    ctx.playback_q.put_nowait((None, None))          # sentinel
+
+
+# ────────────────────────────── TEAR-DOWN HELPERS ──────────────────────── #
+
+def _finalise_conversation(manager, sentences: List[str]) -> str:
+    gpt_text = " ".join(sentences)
+    manager.add_text_to_conversation("assistant", gpt_text)
+    manager.print_memory()
+    return gpt_text
+
+
+def _handle_animation(gpt_client, manager, arduino):
+    anim = gpt_client.reply_with_animation(manager.get_conversation())
+    arduino.set_animation(anim)
+    return anim
+
+
+async def _resume_hotword(last_in_type, stt_engine, q, hotword_task, stt_enabled):
+    return await handle_follow_up_after_stream(
+        last_in_type, stt_engine, q, hotword_task, stt_enabled
+    )
+
+
+def _log_stream_done(timing: dict) -> None:
+    #record_timing("streaming_end")
+    print("[Stream] Finished streaming")
 
 
 # =================== Main Async Conversation Loop ===================
