@@ -389,11 +389,10 @@ async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue
 
 # =================== Streaming Assistant Reply (Advanced) ===================
 # Stream GPT reply and play TTS while generating.
-async def stream_assistant_reply(
-    manager, gpt_client, tts_engine, last_input_type, stt_engine, queue, hotword_task, stt_enabled, arduino_interface
-):
+async def stream_assistant_reply(manager, gpt_client, tts_engine, last_input_type, stt_engine, queue, hotword_task, stt_enabled, arduino_interface):
     """
     Stream GPT reply and play TTS while generating.
+    
     Streams sentences from the LLM, generates TTS audio for each sentence in parallel,
     and plays them in order, while handling hotword detection and follow-up.
     """
@@ -553,7 +552,7 @@ async def stream_assistant_reply(
 
 # =================== Main Async Conversation Loop ===================
 async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
-    """Runs main asynchronous interaction loop handling user events, tool calls, and assistant responses."""
+    """Run the main asynchronous interaction loop handling user events, tool calls, and assistant responses."""
     queue: asyncio.Queue = asyncio.Queue()
 
     # Start background producers
@@ -653,7 +652,7 @@ def print_async_tasks():
         print(Fore.CYAN + Style.BRIGHT + "\nAsync Tasks:")
         for t in tasks:
             name = f"{Fore.YELLOW}{t['name']}{Style.RESET_ALL}"
-            state = f"{Fore.GREEN if t['state']=='PENDING' else Fore.RED}{t['state']}{Style.RESET_ALL}"
+            state = f"{Fore.GREEN if t['state'] == 'PENDING' else Fore.RED}{t['state']}{Style.RESET_ALL}"
             print(f"  {name} | {state} | {t['coro']} | {t['loc']}")
     else:
         print(Fore.CYAN + Style.BRIGHT + "No async tasks running." + Style.RESET_ALL)
