@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict
 
 import openai
 import yaml
@@ -168,6 +167,7 @@ _HANDLER_REGISTRY: dict[str, Callable[["SpotifyHA", Dict[str, Any], int], str]] 
 def handles(name: str) -> Callable:
     """Decorator that registers *func* as a handler for *name*."""
     def decorator(func: Callable[["SpotifyHA", Dict[str, Any], int], str]):
+        """Register a function as a handler for a specific tool name."""
         _HANDLER_REGISTRY[name] = func
         return func
     return decorator
@@ -247,8 +247,8 @@ class SpotifyAgent:
         lines.append("Upcoming Queue:")
         for idx, (track, eta) in enumerate(q, start=1):
             lines.append(
-                f"{idx}. {track.get('name','Unknown')} by {track.get('artists','Unknown')} "
-                f"from '{track.get('album','Unknown')}' "
+                f"{idx}. {track.get('name', 'Unknown')} by {track.get('artists', 'Unknown')} "
+                f"from '{track.get('album', 'Unknown')}' "
                 f"(ETA: {self.spotify._ms_to_mmss(eta)})"
             )
         return "\n".join(lines)
@@ -359,7 +359,6 @@ class SpotifyAgent:
 
 def _pretty(obj):
     """Pretty-print the result of a SpotifyAgent operation."""
-
     if isinstance(obj, dict) and {"name", "artists"} <= obj.keys():
         eta = obj.get("eta_hms")
         line = f"🎵  {obj['name']} – {obj['artists']}"
