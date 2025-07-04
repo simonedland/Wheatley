@@ -165,7 +165,13 @@ _HANDLER_REGISTRY: dict[str, Callable[["SpotifyHA", Dict[str, Any], int], str]] 
 
 
 def handles(name: str) -> Callable:
-    """Decorator that registers *func* as a handler for *name*."""
+    """
+    Register a function as a handler for a given name.
+
+    This decorator returns a new decorator that, when applied, registers the decorated
+    function in the handler registry under the provided name. Use it to quickly bind a
+    handler to a specific tool identifier.
+    """
     def decorator(func: Callable[["SpotifyHA", Dict[str, Any], int], str]):
         """Register a function as a handler for a specific tool name."""
         _HANDLER_REGISTRY[name] = func
