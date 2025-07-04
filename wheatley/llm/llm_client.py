@@ -329,6 +329,7 @@ tts_engine = TextToSpeech()
 _TIME_24H = re.compile(r"^(\d{1,2}):(\d{2})$")
 _TIME_AMPM = re.compile(r"^(\d{1,2})(am|pm)$", re.I)
 
+
 # --------------------------------------------------------------------------- #
 # Helper decorator                                                            #
 # --------------------------------------------------------------------------- #
@@ -671,7 +672,6 @@ class Functions:
         :param reason: The reason or label for the reminder (optional).
         :param event_queue: The event queue to put the reminder event into (optional).
         """
-
         now = datetime.now()
         match = re.match(r"(\d{1,2}):(\d{2})", time_str)
         if not match:
