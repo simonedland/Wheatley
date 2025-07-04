@@ -23,7 +23,7 @@ import yaml  # For reading YAML config files
 import openai  # For OpenAI API access
 from colorama import init, Fore, Style  # For colored terminal output
 import pathlib
-import threading
+import threading  # already imported, but safe to repeat
 from concurrent.futures import ThreadPoolExecutor
 import re
 import random
@@ -50,6 +50,7 @@ ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 MAX_TTS_WORKERS = 2
 QUEUE_MAXSIZE = 100
 MAX_ATTEMPTS = 6
+MAX_CHAIN_RETRY = 3
 
 # Robust logging setup: always log to file only
 log_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
@@ -222,12 +223,17 @@ class Event:
 
 
 # =================== Async Event Handling ===================
-async def user_input_producer(q: asyncio.Queue):
-    """Asynchronously read user text input and push Event objects to the queue."""
+async def user_input_producer(q: asyncio.Queue, input_allowed_event: asyncio.Event):
+    """Asynchronously read user text input and push Event objects to the queue. Waits for input_allowed_event to be set before pushing input."""
     loop = asyncio.get_event_loop()
     while True:
+        await input_allowed_event.wait()  # Block input if not allowed
         wait_start = time.time()
         text = await loop.run_in_executor(None, input, "You: ")
+        # Wait here if TTS is still playing (input_allowed_event not set)
+        print("Waiting for input to be allowed...")
+        while not input_allowed_event.is_set():
+            await input_allowed_event.wait()
         record_timing("await_user_input", wait_start)
         await q.put(Event("user", text.strip(), {"input_type": "text"}))
         if text.strip().lower() == "exit":
@@ -283,45 +289,88 @@ def process_event(event: Event, manager: ConversationManager, last_input: str):
     return False, last_input
 
 
-# =================== Tool Workflow Execution ===================
-# Execute tools suggested by the language model
-def run_tool_workflow(manager: ConversationManager, gpt_client: GPTClient, queue: asyncio.Queue):
-    """Get LLM-proposed workflow and execute the associated tools, updating conversation history."""
+def run_tool_workflow(
+    manager: "ConversationManager",
+    gpt_client: "GPTClient",
+    queue: asyncio.Queue,
+) -> None:
+    """
+    Ask GPT for a workflow, execute its tools, and add the results to the
+    conversation. Complexity is kept low by delegating to helpers.
+    """
+    for _ in range(MAX_CHAIN_RETRY):
+        workflow = _fetch_workflow(gpt_client, manager)
+        if not workflow:                      # None or empty list → done
+            return
+
+        _inject_context_from_search(workflow, manager)
+        _refresh_long_term_memory(manager)
+
+        try:
+            _execute_workflow(workflow, queue, manager)
+        except Exception as exc:
+            logging.error(f"Error executing workflow tools: {exc}")
+            return
+        # success → break retry loop
+        break
+
+
+# ────────────────────────────── Helpers ─────────────────────────────────── #
+
+def _fetch_workflow(gpt_client, manager) -> List[Dict[str, Any]]:
+    """Try up to MAX_CHAIN_RETRY times to get a workflow from GPT."""
     chain_retry = 0
-    while chain_retry < 3:
+    while chain_retry < MAX_CHAIN_RETRY:
         try:
-            workflow = gpt_client.get_workflow(manager.get_conversation())
-        except Exception as e:
-            logging.error(f"Error getting GPT workflow: {e}")
+            wf = gpt_client.get_workflow(manager.get_conversation())
+            return wf or []                    # normalise None → []
+        except Exception as exc:
+            logging.error(f"Error getting GPT workflow: {exc}")
             chain_retry += 1
-            continue
+    return []                                  # exhausted retries
 
-        if workflow:
-            for call in workflow:
-                print(f"Tool Name: {call.get('name', 'unknown')}")
-                print(f"Arguments: {call.get('arguments', {})}")
-            for item in workflow:
-                if item.get("name") == "web_search_call_result":
-                    context_text = item.get("arguments", {}).get("text", "")
-                    if context_text:
-                        manager.add_text_to_conversation("system", f"Info: {context_text}")
-            workflow = [item for item in workflow if item.get("name") != "web_search_call_result"]
 
-        # Always fetch memory before running tools and update memory message
-        mem_result = Functions().read_long_term_memory()
-        manager.update_memory(f"LONG TERM MEMORY:\n{mem_result}")
+def _inject_context_from_search(workflow, manager) -> None:
+    """
+    Move any `web_search_call_result` items into the conversation as system
+    context, then strip them from the workflow list in-place.
+    """
+    for item in list(workflow):                # iterate over a static copy
+        if item.get("name") == "web_search_call_result":
+            text = item.get("arguments", {}).get("text", "")
+            if text:
+                manager.add_text_to_conversation("system", f"Info: {text}")
+            workflow.remove(item)              # mutate original list
 
-        if not workflow:
-            return
 
-        try:
-            fn_results = Functions().execute_workflow(workflow, event_queue=queue) or []
-        except Exception as e:
-            logging.error(f"Error executing workflow tools: {e}")
-            return
-        for _, result in fn_results:
-            manager.add_text_to_conversation("system", str(result))
-        chain_retry += 1
+def _refresh_long_term_memory(manager) -> None:
+    mem = Functions().read_long_term_memory()
+    manager.update_memory(f"LONG TERM MEMORY:\n{mem}")
+
+
+def _execute_workflow(
+    workflow: List[Dict[str, Any]],
+    queue: asyncio.Queue,
+    manager,
+) -> None:
+    """
+    Run tools via Functions.execute_workflow and append their results to the
+    conversation history.
+    """
+    if not workflow:
+        return
+
+    # Pretty-print the proposed calls
+    for call in workflow:
+        print(f"Tool Name: {call.get('name', 'unknown')}")
+        print(f"Arguments: {call.get('arguments', {})}")
+
+    fn_results: List[Tuple[Dict[str, Any], Any]] = (
+        Functions().execute_workflow(workflow, event_queue=queue) or []
+    )
+
+    for _, result in fn_results:
+        manager.add_text_to_conversation("system", str(result))
 
 
 # =================== Assistant Reply Generation ===================
@@ -426,7 +475,7 @@ async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue
     return hotword_task
 
 
-async def stream_assistant_reply(                           # C901 ≈ 4 now
+async def stream_assistant_reply(
     manager,
     gpt_client,
     tts_engine,
@@ -436,6 +485,7 @@ async def stream_assistant_reply(                           # C901 ≈ 4 now
     hotword_task,
     stt_enabled: bool,
     arduino_interface,
+    playback_done_event=None,  # new argument
 ) -> Tuple[str, Any, asyncio.Task]:
     """
     Stream GPT-generated sentences → TTS → audio output.
@@ -445,7 +495,7 @@ async def stream_assistant_reply(                           # C901 ≈ 4 now
     cfg = _prepare_stream(stt_enabled, stt_engine, hotword_task)
     cfg['tts_engine'] = tts_engine
     ctx = _make_context(cfg, manager)
-    ctx.play_executor.submit(_playback_worker, ctx.playback_q, ctx.cfg["tts_engine"])
+    ctx.play_executor.submit(_playback_worker, ctx.playback_q, ctx.cfg["tts_engine"], playback_done_event)
     ctx.sentence_q.ctx = ctx
     # Start the sentence producer in a thread (it will launch TTS jobs)
     producer_thread = threading.Thread(
@@ -515,8 +565,8 @@ def _make_context(cfg: dict, manager) -> _StreamContext:
     return ctx
 
 
-def _playback_worker(q: Queue, tts_engine):
-    """Playback worker runs in its own thread; plays clips in FIFO order."""
+def _playback_worker(q: Queue, tts_engine, playback_done_event=None):
+    """Playback worker runs in its own thread; plays clips in FIFO order. Signals when done."""
     while True:
         idx, audio = q.get()
         if idx is None:                      # sentinel ⇒ shutdown
@@ -528,6 +578,9 @@ def _playback_worker(q: Queue, tts_engine):
         tts_engine.play_mp3_bytes(audio)
         record_timing("tts_clip_played", start)
         print(f"[Player] Finished clip {idx}")
+    if playback_done_event is not None:
+        if isinstance(playback_done_event, threading.Event):
+            playback_done_event.set()
 
 
 # ────────────────────────────── PRODUCER ──────────────────────────────── #
@@ -658,9 +711,11 @@ def _log_stream_done(timing: dict) -> None:
 async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
     """Run the main asynchronous interaction loop handling user events, tool calls, and assistant responses."""
     queue: asyncio.Queue = asyncio.Queue()
+    input_allowed_event = asyncio.Event()
+    input_allowed_event.set()  # Allow input initially
 
     # Start background producers
-    user_task = asyncio.create_task(user_input_producer(queue))
+    user_task = asyncio.create_task(user_input_producer(queue, input_allowed_event))
     hotword_task = (
         asyncio.create_task(stt_engine.hotword_listener(queue)) if stt_enabled else None
     )
@@ -682,6 +737,8 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             run_tool_workflow(manager, gpt_client, queue)
             try:
                 if tts_enabled:
+                    input_allowed_event.clear()  # Block input while TTS is playing
+                    playback_done_event = threading.Event()
                     gpt_text, animation, hotword_task = await stream_assistant_reply(
                         manager,
                         gpt_client,
@@ -692,11 +749,17 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                         hotword_task,
                         stt_enabled,
                         arduino_interface,
+                        playback_done_event=playback_done_event,
                     )
+                    # Wait for playback to finish before allowing input
+                    while not playback_done_event.is_set():
+                        await asyncio.sleep(0.2)
+                    input_allowed_event.set()  # Allow input after TTS is done
                 else:
                     gpt_text, animation = generate_assistant_reply(manager, gpt_client)
             except Exception as e:
                 logging.error(f"Error generating assistant reply: {e}")
+                input_allowed_event.set()  # Ensure input is not blocked on error
                 continue
 
             # The animation is applied during streaming so it matches the speech
