@@ -17,6 +17,7 @@ from datetime import datetime  # For timestamps
 import sys
 import atexit
 from queue import Queue
+import requests
 
 # =================== Imports: Third-Party Libraries ===================
 import yaml  # For reading YAML config files
@@ -24,10 +25,10 @@ import openai  # For OpenAI API access
 from colorama import init, Fore, Style  # For colored terminal output
 import pathlib
 import threading
-import requests
 from concurrent.futures import ThreadPoolExecutor
 import re
 import random
+from dataclasses import dataclass, field
 
 # =================== Imports: Local Modules ===================
 from hardware.arduino_interface import ArduinoInterface  # Arduino hardware interface
@@ -400,8 +401,9 @@ async def stream_assistant_reply(                           # C901 ≈ 4 now
     arduino_interface,
 ) -> Tuple[str, Any, asyncio.Task]:
     """
-    Stream GPT-generated sentences → TTS → audio output,
-    then hand control back to the hot-word listener.
+    Stream GPT-generated sentences → TTS → audio output.
+
+    It hands control back to the hot-word listener.
     """
     cfg = _prepare_stream(stt_enabled, stt_engine, hotword_task)
     cfg['tts_engine'] = tts_engine
@@ -431,7 +433,7 @@ async def stream_assistant_reply(                           # C901 ≈ 4 now
 
 
 # ────────────────────────────── DATA STRUCTS ──────────────────────────── #
-from dataclasses import dataclass, field
+
 
 @dataclass
 class _StreamContext:
@@ -450,7 +452,7 @@ class _StreamContext:
 
 def _prepare_stream(stt_enabled: bool, stt_engine, hotword_task):
     """Pause hot-word + STT and return (possibly canceled) hotword_task."""
-    #record_timing("streaming_start")
+    # record_timing("streaming_start")
     if hotword_task:
         hotword_task.cancel()
     if stt_enabled:
@@ -465,15 +467,16 @@ def _make_context(cfg: dict, manager) -> _StreamContext:
             "api_url": f"https://api.elevenlabs.io/v1/text-to-speech/"
                        f"{conf['tts'].get('voice_id', '4Jtuv4wBvd95o1hzNloV')}",
             "api_key": conf["secrets"]["elevenlabs_api_key"],
-            "model":  conf["tts"].get("model_id", "eleven_flash_v2_5"),
-            "fmt":    conf["tts"].get("output_format", "mp3_22050_32"),
+            "model": conf["tts"].get("model_id", "eleven_flash_v2_5"),
+            "fmt": conf["tts"].get("output_format", "mp3_22050_32"),
             "tts_engine": cfg.get("tts_engine"),
         }
     )
     # Thread pools -------------------------------------------------------
-    ctx.tts_executor  = ThreadPoolExecutor(max_workers=MAX_TTS_WORKERS, thread_name_prefix="TTS")
-    ctx.play_executor = ThreadPoolExecutor(max_workers=1,               thread_name_prefix="PLAY")  # 1 = sequential
+    ctx.tts_executor = ThreadPoolExecutor(max_workers=MAX_TTS_WORKERS, thread_name_prefix="TTS")
+    ctx.play_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="PLAY")  # 1 = sequential
     return ctx
+
 
 def _playback_worker(q: Queue, tts_engine):
     """Runs in its own thread; plays clips in FIFO order."""
@@ -491,7 +494,6 @@ def _playback_worker(q: Queue, tts_engine):
 
 
 # ────────────────────────────── PRODUCER ──────────────────────────────── #
-
 def _sentence_producer(gpt_client, manager, loop, q: asyncio.Queue) -> None:
     """Stream sentences from GPT and push them to *q* from a thread. Also launch TTS jobs immediately."""
     idx = 0.0
@@ -510,6 +512,7 @@ def _sentence_producer(gpt_client, manager, loop, q: asyncio.Queue) -> None:
         idx += 1
     asyncio.run_coroutine_threadsafe(q.put(None), loop)    # sentinel
 
+
 async def _tts_job(idx, sent, ctx, sentences):
     prev = sentences[int(idx-1)] if idx >= 1 else ""
     nxt  = ""                                # still unknown at launch
@@ -524,7 +527,6 @@ def _fetch_tts_clip(
     text: str, prev: str, nxt: str, idx: float, cfg: dict
 ) -> bytes | None:
     """Blocking call to ElevenLabs with retries."""
-    import requests
 
     def _post():
         return requests.post(
@@ -610,7 +612,7 @@ async def _resume_hotword(last_in_type, stt_engine, q, hotword_task, stt_enabled
 
 
 def _log_stream_done(timing: dict) -> None:
-    #record_timing("streaming_end")
+    # record_timing("streaming_end")
     print("[Stream] Finished streaming")
 
 
