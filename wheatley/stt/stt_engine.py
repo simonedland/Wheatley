@@ -160,10 +160,8 @@ class SpeechToTextEngine:
         """Return True if listening is paused, False otherwise."""
         return self._pause_event.is_set()
 
-    def record_until_silent(self, max_wait_seconds=None):
-        """Record audio until silence is detected."""
-        start_time = time.time()
-        self._audio = pyaudio.PyAudio()
+    def connect_stream(self):
+        """Connect to the audio input stream, trying different devices if necessary."""
         try:
             self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
         except Exception:
@@ -171,6 +169,12 @@ class SpeechToTextEngine:
                 self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=1)
             except Exception:
                 self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
+
+    def record_until_silent(self, max_wait_seconds=None):
+        """Record audio until silence is detected."""
+        start_time = time.time()
+        self._audio = pyaudio.PyAudio()
+        self.connect_stream()
         frames = []
         silent_frames = 0
         recording = False
@@ -252,6 +256,24 @@ class SpeechToTextEngine:
         record_timing("stt_record_and_transcribe", start_time)
         return text
 
+    def hotword_config(self, keywords=None, sensitivities=None):
+        """Return Porcupine configuration for given keywords."""
+        if keywords is None:
+            keywords = ["computer", "jarvis"]
+        if sensitivities is None:
+            sensitivities = [0.5] * len(keywords)
+        try:
+            self._porcupine = pvporcupine.create(
+                access_key=self.api_key,
+                keyword_paths=["stt/wheatley.ppn"]
+            )
+        except Exception:
+            self._porcupine = pvporcupine.create(
+                access_key=self.api_key,
+                keywords=keywords,
+                sensitivities=sensitivities
+            )
+
     def listen_for_hotword(self, access_key=None, keywords=None, sensitivities=None):
         """Block until one of ``keywords`` is heard.
 
@@ -280,21 +302,7 @@ class SpeechToTextEngine:
             print("Porcupine API key not found in config. Hotword detection disabled.")
             record_timing("stt_listen_hotword", start_time)
             return None
-        if keywords is None:
-            keywords = ["computer", "jarvis"]
-        if sensitivities is None:
-            sensitivities = [0.5] * len(keywords)
-        try:
-            self._porcupine = pvporcupine.create(
-                access_key=access_key,
-                keyword_paths=["stt/wheatley.ppn"]
-            )
-        except Exception:
-            self._porcupine = pvporcupine.create(
-                access_key=access_key,
-                keywords=keywords,
-                sensitivities=sensitivities
-            )
+        self.hotword_config(keywords, sensitivities)
         pa = pyaudio.PyAudio()
         self._audio = pa
         stream = pa.open(

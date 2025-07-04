@@ -41,19 +41,22 @@ WEATHER_CODE_DESCRIPTIONS = {
     99: "Thunderstorm with heavy hail (Central Europe only)"
 }
 
+
 def _load_config():
     """Return shared YAML configuration for LLM utilities."""
     base_dir = os.path.dirname(__file__)
     config_path = os.path.abspath(os.path.join(base_dir, "..", "config", "config.yaml"))
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
-    
+
+
 def get_joke():
     """Return a random joke string from the official joke API."""
     response = requests.get("https://official-joke-api.appspot.com/random_joke")
     data = response.json()
     joke = f"Joke provided: {data.get('setup')} - {data.get('punchline')}"
     return joke
+
 
 def get_quote():
     """Fetch a motivational quote from the API Ninjas service."""
@@ -66,6 +69,7 @@ def get_quote():
         item = data[0]
         return f"Tell the user: {item.get('quote', '')} — {item.get('author', '')}"
     return "No quote available."
+
 
 def get_city_coordinates(city):
     """Return latitude and longitude information for ``city``."""
@@ -81,6 +85,7 @@ def get_city_coordinates(city):
         lon = item.get("longitude")
         return f"Coordinates for {city}: Latitude {lat}, Longitude {lon}."
     return f"No data available for {city}."
+
 
 set_animation_tool = [
     {
@@ -101,7 +106,9 @@ set_animation_tool = [
     }
 ]
 
+
 def build_tools():
+    """Build and return a list of tools available to the LLM client."""
     config = _load_config()
     web_search_config = config.get("web_search", {})
     web_search_tool = {"type": "web_search_preview"}
@@ -123,7 +130,7 @@ def build_tools():
                     "latitude": {"type": "number"},
                     "longitude": {"type": "number"},
                     "include_forecast": {"type": "boolean"},
-                    "forecast_days": { "type": "integer", "minimum": 1, "maximum": 14, "default": 7, "description": "Number of days from the current day to include in the forecast (1-7)."},
+                    "forecast_days": {"type": "integer", "minimum": 1, "maximum": 14, "default": 7, "description": "Number of days from the current day to include in the forecast (1-7)."},
                     "extra_hourly": {
                         "type": "array",
                         "items": {"type": "string"}
@@ -309,5 +316,5 @@ def build_tools():
         tools = [t for t in tools if t.get("name") != "call_google_agent"]
     if not SERVICE_STATUS.get("spotify"):
         tools = [t for t in tools if t.get("name") != "call_spotify_agent"]
-    #print(tools)
+    # print(tools)
     return tools

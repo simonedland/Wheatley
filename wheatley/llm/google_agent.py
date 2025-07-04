@@ -14,6 +14,7 @@ SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
 class GoogleCalendarManager:
     """Wrapper for Google Calendar API interactions."""
+
     def _load_config(self):
         """Return YAML configuration dictionary."""
         base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -22,6 +23,7 @@ class GoogleCalendarManager:
             return yaml.safe_load(f)
 
     def __init__(self):
+        """Initialize Google Calendar manager with credentials and service."""
         try:
             self.creds = self.get_google_credentials()
             self.service = build("calendar", "v3", credentials=self.creds)
@@ -32,6 +34,7 @@ class GoogleCalendarManager:
         self.skip_calendars = set(config.get("skip_calendars", []))
 
     def get_google_credentials(self):
+        """Load or refresh Google Calendar API credentials."""
         try:
             creds = None
             base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -54,6 +57,7 @@ class GoogleCalendarManager:
             raise
 
     def list_calendars(self):
+        """List all calendars, excluding those in the skip list."""
         try:
             cal_list = self.service.calendarList().list().execute().get("items", [])
             calendars = [
@@ -67,6 +71,7 @@ class GoogleCalendarManager:
             return []
 
     def get_upcoming_events(self, days=7):
+        """Get upcoming events from all calendars for the next `days` days."""
         now = datetime.utcnow().isoformat() + "Z"
         future = (datetime.utcnow() + timedelta(days=days)).isoformat() + "Z"
         all_events = {}
@@ -96,12 +101,14 @@ class GoogleCalendarManager:
         return all_events
 
     def print_calendars(self):
+        """Print all calendars with their IDs."""
         calendars = self.list_calendars()
         print("Your calendars:")
         for cal in calendars:
             print(f"- {cal['summary']} (ID: {cal['id']})")
 
     def print_upcoming_events(self, days=7):
+        """Print upcoming events from all calendars for the next `days` days."""
         events = self.get_upcoming_events(days)
         if not events:
             print("No upcoming events found.")
@@ -163,6 +170,7 @@ GOOGLE_TOOLS = [
 
 class GoogleAgent:
     """LLM-driven assistant for interacting with Google services."""
+
     def _load_config(self):
         """Load project configuration YAML."""
         base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -171,6 +179,7 @@ class GoogleAgent:
             return yaml.safe_load(f)
 
     def __init__(self):
+        """Initialize Google Agent with API key and tools."""
         config = self._load_config()
         self.api_key = config["secrets"]["openai_api_key"]
         self.calendar_manager = GoogleCalendarManager()
@@ -179,9 +188,7 @@ class GoogleAgent:
         openai.api_key = self.api_key
 
     def llm_decide_and_dispatch(self, user_request: str, arguments: dict = None):
-        """
-        Use LLM to decide which Google tool to use based on the user request, then execute it.
-        """
+        """Use LLM to decide which Google tool to use based on the user request, then execute it."""
         from datetime import datetime
         now = datetime.now()
         tool_descriptions = "\n".join([
@@ -196,7 +203,7 @@ class GoogleAgent:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_request}
         ]
-        print(f"\n--- Google Agent Decision Trace ---")
+        print("\n--- Google Agent Decision Trace ---")
         print(f"User: {user_request}")
         print(f"Prompt to LLM: {prompt}")
         completion = openai.responses.create(
@@ -213,7 +220,7 @@ class GoogleAgent:
                 print(f"  Tool: {msg.name}")
                 print(f"  Arguments: {msg.arguments}")
                 print(f"  Call ID: {getattr(msg, 'call_id', None)}")
-        print(f"--- End Google Agent Decision Trace ---\n")
+        print("--- End Google Agent Decision Trace ---\n")
         # Dispatch the chosen tool
         for msg in choice:
             if msg.type == "function_call":
@@ -224,7 +231,7 @@ class GoogleAgent:
         raise ValueError("No function call found in LLM response.")
 
     def dispatch(self, func_name, arguments):
-        # Parse arguments if they are a JSON string
+        """Dispatch the function call to the appropriate Google tool."""
         if isinstance(arguments, str):
             try:
                 arguments = json.loads(arguments)
@@ -240,10 +247,13 @@ class GoogleAgent:
         raise NotImplementedError(f"Function {func_name} not implemented in GoogleAgent.")
 
     def get_google_calendar_events(self, days=7):
+        """Get upcoming events from Google Calendar for the next `days` days."""
         return self.calendar_manager.get_upcoming_events(days)
 
     def print_calendars(self):
+        """Print all Google Calendars."""
         self.calendar_manager.print_calendars()
 
     def print_upcoming_events(self, days=7):
+        """Print upcoming events from Google Calendar for the next `days` days."""
         self.calendar_manager.print_upcoming_events(days)
