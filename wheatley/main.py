@@ -121,8 +121,7 @@ def initialize_assistant(
     bool,
 ]:
     """
-    Initialise and return ConversationManager, GPTClient, optional STT/TTS engines,
-    Arduino interface and the final feature-flag booleans.
+    Initialise and return ConversationManager, GPTClient, optional STT/TTS engines, Arduino interface and the final feature-flag booleans.
 
     The function itself remains short; platform quirks and error handling are
     delegated to helpers.
@@ -294,10 +293,7 @@ def run_tool_workflow(
     gpt_client: "GPTClient",
     queue: asyncio.Queue,
 ) -> None:
-    """
-    Ask GPT for a workflow, execute its tools, and add the results to the
-    conversation. Complexity is kept low by delegating to helpers.
-    """
+    """Ask GPT for a workflow, execute its tools, and add the results to the conversation. Complexity is kept low by delegating to helpers."""
     for _ in range(MAX_CHAIN_RETRY):
         workflow = _fetch_workflow(gpt_client, manager)
         if not workflow:                      # None or empty list → done
@@ -331,10 +327,7 @@ def _fetch_workflow(gpt_client, manager) -> List[Dict[str, Any]]:
 
 
 def _inject_context_from_search(workflow, manager) -> None:
-    """
-    Move any `web_search_call_result` items into the conversation as system
-    context, then strip them from the workflow list in-place.
-    """
+    """Move any `web_search_call_result` items into the conversation as system context, then strip them from the workflow list in-place."""
     for item in list(workflow):                # iterate over a static copy
         if item.get("name") == "web_search_call_result":
             text = item.get("arguments", {}).get("text", "")
@@ -353,10 +346,7 @@ def _execute_workflow(
     queue: asyncio.Queue,
     manager,
 ) -> None:
-    """
-    Run tools via Functions.execute_workflow and append their results to the
-    conversation history.
-    """
+    """Run tools via Functions.execute_workflow and append their results to the conversation history."""
     if not workflow:
         return
 
