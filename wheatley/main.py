@@ -725,32 +725,27 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                 break
 
             run_tool_workflow(manager, gpt_client, queue)
-            try:
-                if tts_enabled:
-                    input_allowed_event.clear()  # Block input while TTS is playing
-                    playback_done_event = threading.Event()
-                    gpt_text, animation, hotword_task = await stream_assistant_reply(
-                        manager,
-                        gpt_client,
-                        tts_engine,
-                        last_input_type,
-                        stt_engine,
-                        queue,
-                        hotword_task,
-                        stt_enabled,
-                        arduino_interface,
-                        playback_done_event=playback_done_event,
-                    )
-                    # Wait for playback to finish before allowing input
-                    while not playback_done_event.is_set():
-                        await asyncio.sleep(0.2)
-                    input_allowed_event.set()  # Allow input after TTS is done
-                else:
-                    gpt_text, animation = generate_assistant_reply(manager, gpt_client)
-            except Exception as e:
-                logging.error(f"Error generating assistant reply: {e}")
-                input_allowed_event.set()  # Ensure input is not blocked on error
-                continue
+            if tts_enabled:
+                input_allowed_event.clear()  # Block input while TTS is playing
+                playback_done_event = threading.Event()
+                gpt_text, animation, hotword_task = await stream_assistant_reply(
+                    manager,
+                    gpt_client,
+                    tts_engine,
+                    last_input_type,
+                    stt_engine,
+                    queue,
+                    hotword_task,
+                    stt_enabled,
+                    arduino_interface,
+                    playback_done_event=playback_done_event,
+                )
+                # Wait for playback to finish before allowing input
+                while not playback_done_event.is_set():
+                    await asyncio.sleep(0.2)
+                input_allowed_event.set()  # Allow input after TTS is done
+            else:
+                gpt_text, animation = generate_assistant_reply(manager, gpt_client)
 
             # The animation is applied during streaming so it matches the speech
             print(f"[Animation chosen]: {animation}")
@@ -786,10 +781,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
         await asyncio.gather(*tasks, return_exceptions=True)
         # Cleanup STT engine if it has a cleanup method
         if hasattr(stt_engine, "cleanup"):
-            try:
-                stt_engine.cleanup()
-            except Exception as e:
-                print(f"[Shutdown] Error during stt_engine cleanup: {e}")
+            stt_engine.cleanup()
         print("👋 Exiting…")
 
 
