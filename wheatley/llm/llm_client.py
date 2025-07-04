@@ -10,6 +10,9 @@ import logging
 import requests
 import time
 
+import asyncio
+from datetime import datetime, timedelta
+
 from playsound import playsound
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
@@ -323,6 +326,8 @@ if "search_context_size" in web_search_config:
 
 tts_engine = TextToSpeech()
 
+_TIME_24H = re.compile(r"^(\d{1,2}):(\d{2})$")
+_TIME_AMPM = re.compile(r"^(\d{1,2})(am|pm)$", re.I)
 
 # --------------------------------------------------------------------------- #
 # Helper decorator                                                            #
@@ -631,6 +636,32 @@ class Functions:
         advice = data.get("advice")
         return f"Give the following advice: {advice}"
 
+    def _parse_time_string(self, time_str: str) -> Tuple[int, int]:
+        """
+        Return ``(hour, minute)`` from ``'07:30'`` or ``'7pm'``.
+
+        Raises:
+            ValueError: if *time_str* is not in a supported format.
+        """
+        if (m := _TIME_24H.match(time_str)):
+            return int(m.group(1)), int(m.group(2))
+
+        if (m := _TIME_AMPM.match(time_str)):
+            hour = int(m.group(1)) % 12
+            if m.group(2).lower() == "pm":
+                hour += 12
+            return hour, 0
+
+        raise ValueError(f"Invalid time format: {time_str!r}")
+
+    def _seconds_until(self, target_hour: int, target_min: int) -> float:
+        """Seconds from *now* until the next occurrence of *target_hour:target_min*."""
+        now = datetime.now()
+        target = now.replace(hour=target_hour, minute=target_min, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        return (target - now).total_seconds()
+
     def set_reminder(self, time_str, reason=None, event_queue=None):
         """
         Schedule a reminder for a specific clock time.
@@ -640,31 +671,18 @@ class Functions:
         :param reason: The reason or label for the reminder (optional).
         :param event_queue: The event queue to put the reminder event into (optional).
         """
-        import asyncio
-        from datetime import datetime, timedelta
-        import re
 
         now = datetime.now()
         match = re.match(r"(\d{1,2}):(\d{2})", time_str)
-        if match:
-            hour, minute = int(match.group(1)), int(match.group(2))
-        else:
-            # Try to parse '7am', '7pm', etc.
-            match = re.match(r"(\d{1,2})(am|pm)", time_str.lower())
-            if match:
-                hour = int(match.group(1))
-                if match.group(2) == 'pm' and hour != 12:
-                    hour += 12
-                elif match.group(2) == 'am' and hour == 12:
-                    hour = 0
-                minute = 0
-            else:
-                raise ValueError(f"Invalid time format: {time_str}")
+        if not match:
+            match = re.match(r"(\d{1,2})(am|pm)", time_str, re.I)
+        if not match:
+            raise ValueError(f"Invalid time format: {time_str!r}")
+        hour, minute = self._parse_time_string(time_str)
         # Calculate the target datetime
-        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if target < now:
-            target += timedelta(days=1)  # Schedule for next day if time has passed
-        delay = (target - now).total_seconds()
+        delay = self._seconds_until(hour, minute)
+        if delay < 0:
+            raise ValueError(f"Time {time_str} is in the past")
 
         async def reminder_task():
             """Async task to wait for the reminder time and post an event."""
