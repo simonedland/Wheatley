@@ -23,6 +23,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 
 matplotlib.use("TkAgg")  # Tk backend for embedding
 
+
 # ── helpers ────────────────────────────────────────────────────────────────
 def load_timings(path: str = "timings.json"):
     """Load timing data from a JSON file."""
