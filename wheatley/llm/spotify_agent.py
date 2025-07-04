@@ -1,5 +1,6 @@
 """
 Adds tools.
+
 • search_tracks          – return top N song matches.
 • queue_track_by_name    – find a song by text and queue it.
 • get_recently_played    – latest listening history.
@@ -20,6 +21,8 @@ from typing import Any, Dict
 
 import openai
 import yaml
+
+from typing import Any, Dict, Callable, List, Tuple
 
 try:
     from .spotify_ha_utils import SpotifyHA
@@ -158,6 +161,18 @@ SPOTIFY_TOOLS = [
     },
 ]
 
+
+_HANDLER_REGISTRY: dict[str, Callable[["SpotifyHA", Dict[str, Any], int], str]] = {}
+
+
+def handles(name: str) -> Callable:
+    """Decorator that registers *func* as a handler for *name*."""
+    def decorator(func: Callable[["SpotifyHA", Dict[str, Any], int], str]):
+        _HANDLER_REGISTRY[name] = func
+        return func
+    return decorator
+
+
 # ── SpotifyAgent class ────────────────────────────────────────────────
 class SpotifyAgent:
     """SpotifyAgent provides an interface to interact with Spotify using LLM tool selection and playback control."""
@@ -181,102 +196,127 @@ class SpotifyAgent:
         self.tools = SPOTIFY_TOOLS
 
     # ── dispatch mapping ──────────────────────────────────────────────
-    def _dispatch(self, name: str, arguments: Dict[str, Any]):
-        """Dispatch the tool call to the appropriate SpotifyHA method."""
-        print(f"dispatching {name} with {arguments}")
+    def _dispatch(self, name: str, arguments: Dict[str, Any] | str) -> str:
+        """Route a tool call to the correct @handles handler."""
+        args = self._coerce(arguments)
+        limit = int(args.get("limit", 10))
+
+        try:
+            return _HANDLER_REGISTRY[name](self, args, limit)   # ← one call
+        except KeyError as exc:
+            raise NotImplementedError(f"No handler for tool {name}") from exc
+
+    # ────────────── Utilities ────────────── #
+
+    @staticmethod
+    def _coerce(arguments: Dict[str, Any] | str | None) -> Dict[str, Any]:
         if isinstance(arguments, str):
             try:
-                arguments = json.loads(arguments)
+                return json.loads(arguments)
             except json.JSONDecodeError:
-                arguments = {}
+                return {}
+        return arguments or {}
 
-        # basic casts
-        limit = int(arguments.get("limit", 10)) if isinstance(arguments, dict) else 10
-
-        if name == "get_current_track":
-            track = self.spotify.get_current_track(simple=True)
-            if track:
-                return f"Now playing '{track.get('name')}' by {track.get('artists')} from the album '{track.get('album')}'."
+    # ────────────── Handlers (each gets its own decorator) ────────────── #
+    @handles("get_current_track")
+    def _get_current_track(self, _a: Dict[str, Any], _l: int) -> str:
+        track = self.spotify.get_current_track(simple=True)
+        if not track:
             return "No track is currently playing."
+        return (
+            f"Now playing '{track.get('name')}' by {track.get('artists')} "
+            f"from the album '{track.get('album')}'."
+        )
 
-        if name == "get_queue":
-            queue_lim = arguments.get("limit", 10)
-            q = self.spotify._queue_wait_times()[:queue_lim]
-            lines = []
-            if q:
-                # currently playing track
-                current_track = self.spotify.get_current_track(simple=True)
-                if current_track:
-                    lines.append(f"Now playing '{current_track.get('name')}' by {current_track.get('artists')} from the album '{current_track.get('album')}'.")
-                lines.append("Upcoming Queue:")
-                for idx, (track, eta) in enumerate(q, start=1):
-                    eta_str = self.spotify._ms_to_mmss(eta)
-                    name = track.get("name", "Unknown")
-                    artists = track.get("artists", "Unknown")
-                    album = track.get("album", "Unknown")
-                    lines.append(f"{idx}. {name} by {artists} from '{album}' (ETA: {eta_str})")
-            else:
-                lines.append("No upcoming tracks in the queue.")
-            return "\n".join(lines)
+    @handles("get_queue")
+    def _get_queue(self, args: Dict[str, Any], _l: int) -> str:
+        queue_lim = args.get("limit", 10)
+        q: List[Tuple[dict, int]] = self.spotify._queue_wait_times()[:queue_lim]
 
-        if name == "toggle_play_pause":
-            self.spotify.toggle_play_pause()
-            return "toggled play/pause"
+        if not q:
+            return "No upcoming tracks in the queue."
 
-        if name == "skip_next_track":
-            self.spotify.skip_next()
-            return "skipped to next track"
-
-        if name == "search_tracks":
-            return self.spotify.search_tracks(arguments["query"], limit=limit, simple=True)
-
-        if name == "queue_track_by_name":
-            return self.spotify.search_and_queue_track(arguments["query"], limit=limit)
-
-        if name == "queue_artist_top_track":
-            return self.spotify.artist_top_track(
-                arguments["artist_name"],
-                pick_random=arguments.get("random", True),
-                country="NO",
-                add=True,
-                simple=True,
+        lines: list[str] = []
+        current = self.spotify.get_current_track(simple=True)
+        if current:
+            lines.append(
+                f"Now playing '{current.get('name')}' by {current.get('artists')} "
+                f"from the album '{current.get('album')}'."
             )
 
-        if name == "remove_queue_item":
-            self.spotify.remove_from_queue(arguments["count"])
-            return f"{arguments['count']} queue item removed"
-
-        if name == "list_devices":
-            devices = self.spotify.list_devices()
-            if not devices:
-                return "No available devices."
-            pretty_lines = []
-            # add "available devices" header
-            pretty_lines.append("Available devices:")
-            for idx, device in enumerate(devices, start=1):
-                pretty_lines.append(f"Device {idx}:")
-                for key, value in device.items():
-                    pretty_lines.append(f"  {key}: {value}")
-                pretty_lines.append("")  # add a blank line after each device
-            return "\n".join(pretty_lines) + "\n"
-
-        if name == "transfer_playback":
-            self.spotify.transfer_playback(
-                arguments["device_id"], force_play=arguments.get("force_play", True)
+        lines.append("Upcoming Queue:")
+        for idx, (track, eta) in enumerate(q, start=1):
+            lines.append(
+                f"{idx}. {track.get('name','Unknown')} by {track.get('artists','Unknown')} "
+                f"from '{track.get('album','Unknown')}' "
+                f"(ETA: {self.spotify._ms_to_mmss(eta)})"
             )
-            return f"playback transferred to device {arguments['device_id']}"
+        return "\n".join(lines)
 
-        if name == "get_recently_played":
-            return self.spotify.get_recently_played(limit=limit, simple=True)
+    @handles("toggle_play_pause")
+    def _toggle_play_pause(self, _a: Dict[str, Any], _l: int) -> str:
+        self.spotify.toggle_play_pause()
+        return "toggled play/pause"
 
-        if name == "play_album_by_name":
-            return self.spotify.play_album_by_name(
-                arguments["album_name"],
-                artist=arguments.get("artist"),
-                device_id=arguments.get("device_id"),
-            )
+    @handles("skip_next_track")
+    def _skip_next_track(self, _a: Dict[str, Any], _l: int) -> str:
+        self.spotify.skip_next()
+        return "skipped to next track"
 
-        raise NotImplementedError(f"No handler for tool {name}")
+    @handles("search_tracks")
+    def _search_tracks(self, args: Dict[str, Any], limit: int) -> str:
+        return self.spotify.search_tracks(args["query"], limit=limit, simple=True)
+
+    @handles("queue_track_by_name")
+    def _queue_track_by_name(self, args: Dict[str, Any], limit: int) -> str:
+        return self.spotify.search_and_queue_track(args["query"], limit=limit)
+
+    @handles("queue_artist_top_track")
+    def _queue_artist_top_track(self, args: Dict[str, Any], _l: int) -> str:
+        return self.spotify.artist_top_track(
+            args["artist_name"],
+            pick_random=args.get("random", True),
+            country="NO",
+            add=True,
+            simple=True,
+        )
+
+    @handles("remove_queue_item")
+    def _remove_queue_item(self, args: Dict[str, Any], _l: int) -> str:
+        self.spotify.remove_from_queue(args["count"])
+        return f"{args['count']} queue item removed"
+
+    @handles("list_devices")
+    def _list_devices(self, _a: Dict[str, Any], _l: int) -> str:
+        devices = self.spotify.list_devices()
+        if not devices:
+            return "No available devices."
+
+        pretty: list[str] = ["Available devices:"]
+        for idx, device in enumerate(devices, start=1):
+            pretty.append(f"Device {idx}:")
+            pretty.extend(f"  {k}: {v}" for k, v in device.items())
+            pretty.append("")
+        return "\n".join(pretty) + "\n"
+
+    @handles("transfer_playback")
+    def _transfer_playback(self, args: Dict[str, Any], _l: int) -> str:
+        self.spotify.transfer_playback(
+            args["device_id"], force_play=args.get("force_play", True)
+        )
+        return f"playback transferred to device {args['device_id']}"
+
+    @handles("get_recently_played")
+    def _get_recently_played(self, _a: Dict[str, Any], limit: int) -> str:
+        return self.spotify.get_recently_played(limit=limit, simple=True)
+
+    @handles("play_album_by_name")
+    def _play_album_by_name(self, args: Dict[str, Any], _l: int) -> str:
+        return self.spotify.play_album_by_name(
+            args["album_name"],
+            artist=args.get("artist"),
+            device_id=args.get("device_id"),
+        )
 
     # ── main interface ────────────────────────────────────────────────
     def llm_decide_and_dispatch(self, user_request: str, arguments: Dict[str, Any] | None = None):
@@ -319,9 +359,6 @@ class SpotifyAgent:
 
 def _pretty(obj):
     """Pretty-print the result of a SpotifyAgent operation."""
-    if obj is None:
-        print("could not find anything")
-        return
 
     if isinstance(obj, dict) and {"name", "artists"} <= obj.keys():
         eta = obj.get("eta_hms")
