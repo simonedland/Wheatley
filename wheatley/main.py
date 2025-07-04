@@ -15,7 +15,6 @@ from dataclasses import dataclass  # For Event container
 from typing import Dict, Any, Optional  # For type hints
 from datetime import datetime  # For timestamps
 import sys
-import argparse
 import atexit
 
 # =================== Imports: Third-Party Libraries ===================
@@ -26,7 +25,6 @@ import pathlib
 import threading
 import requests
 from concurrent.futures import ThreadPoolExecutor
-import io
 import re
 import random
 
@@ -70,6 +68,7 @@ logging.getLogger("openai").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
+
 # =================== Configuration Loader ===================
 def load_config():
     """Load and return the YAML configuration as a dictionary from config/config.yaml."""
@@ -78,12 +77,13 @@ def load_config():
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
+
 # =================== Welcome Banner ===================
 def print_welcome():
     """Print a retro ASCII art welcome banner to the terminal."""
 
-    RESET = "\033[0m"
-    RETRO_COLOR = "\033[95m"
+    reset = "\033[0m"
+    retro_color = "\033[95m"
     print(r"""
 ⠀⠀⡀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠘⢿⣝⠛⠋⠉⠉⠉⣉⠩⠍⠉⣿⠿⡭⠉⠛⠃⠲⣞⣉⡙⠿⣇⠀⠀⠀
@@ -101,7 +101,8 @@ def print_welcome():
 ⠀⠀⠀⠀⠀⠉⠉⠉⠛⠻⢛⣿⣶⣶⡽⢤⡄⢛⢃⣒⢠⣿⣿⠟⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠁⠀⠁⠀⠀⠀⠀⠀
     """)
-    print(f"{RETRO_COLOR}Welcome to the AI Assistant!{RESET}")
+    print(f"{retro_color}Welcome to the AI Assistant!{reset}")
+
 
 # =================== Assistant Initialization ===================
 # Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
@@ -117,7 +118,7 @@ def initialize_assistant(config, *, stt_enabled: bool | None = None, tts_enabled
     max_memory = assistant_config.get("max_memory")  # Conversation memory size
     llm_config = config.get("llm")  # LLM config
     gpt_model = llm_config.get("model")  # LLM model name
-    
+
     # Initialize core components
     manager = ConversationManager(max_memory=max_memory)
     gpt_client = GPTClient(model=gpt_model)
@@ -126,7 +127,6 @@ def initialize_assistant(config, *, stt_enabled: bool | None = None, tts_enabled
     manager.update_memory(f"LONG TERM MEMORY:\n{initial_memory}")
     stt_engine = SpeechToTextEngine() if stt_enabled else None
     tts_engine = TextToSpeechEngine() if tts_enabled else None
-    import sys
     port = None
     dry_run = False
     # Detect available serial ports for Arduino (platform-specific)
@@ -165,9 +165,9 @@ def initialize_assistant(config, *, stt_enabled: bool | None = None, tts_enabled
         arduino_interface = ArduinoInterface(port="dryrun", dry_run=True)
         if stt_engine:
             stt_engine.arduino_interface = arduino_interface
-    elapsed = time.time() - start_time
     # Return all initialized components and feature flags
     return manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled
+
 
 # =================== Event Dataclass ===================
 @dataclass
@@ -183,6 +183,7 @@ class Event:
         meta = f" {self.metadata}" if self.metadata else ""
         ts = f" ({self.ts.isoformat()})" if self.ts else ""
         return f"[{self.source.upper()}] {self.payload}{meta}{ts}"
+
 
 # =================== Async Event Handling ===================
 async def user_input_producer(q: asyncio.Queue):
@@ -295,6 +296,7 @@ def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient
     animation = gpt_client.reply_with_animation(manager.get_conversation())
     return gpt_text, animation
 
+
 # =================== TTS and Follow-up Handling ===================
 # Play the assistant's speech and optionally capture a follow-up
 async def handle_tts_and_follow_up(gpt_text, last_input_type, tts_engine, stt_engine, event_queue, hotword_task, stt_enabled, tts_enabled):
@@ -348,6 +350,7 @@ async def handle_tts_and_follow_up(gpt_text, last_input_type, tts_engine, stt_en
 
     return hotword_task
 
+
 async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue, hotword_task, stt_enabled):
     """Handle follow-up voice recording after streaming TTS playback."""
     if not stt_enabled:
@@ -383,6 +386,7 @@ async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue
     hotword_task = asyncio.create_task(stt_engine.hotword_listener(event_queue))
     print("[STT] Hotword listener resumed.")
     return hotword_task
+
 
 # =================== Streaming Assistant Reply (Advanced) ===================
 # Stream GPT reply and play TTS while generating.
@@ -552,7 +556,6 @@ async def stream_assistant_reply(
 # =================== Main Async Conversation Loop ===================
 async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
     """Main asynchronous interaction loop handling user events, tool calls, and assistant responses."""
-    import sys
 
     queue: asyncio.Queue = asyncio.Queue()
 
@@ -615,7 +618,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                     stt_enabled,
                     tts_enabled,
                 )
-    
+
     except (asyncio.CancelledError, KeyboardInterrupt):
         print("\n[Main] KeyboardInterrupt or CancelledError received. Exiting...")
     finally:
@@ -637,6 +640,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
         print("👋 Exiting…")
         return
 
+
 def print_async_tasks():
     """Print a minimal list of currently running async tasks for debugging purposes."""
     tasks = []
@@ -657,6 +661,7 @@ def print_async_tasks():
             print(f"  {name} | {state} | {t['coro']} | {t['loc']}")
     else:
         print(Fore.CYAN + Style.BRIGHT + "No async tasks running." + Style.RESET_ALL)
+
 
 # =================== Main Code ===================
 def main():
@@ -707,7 +712,7 @@ def main():
         tts_engine.generate_and_play_advanced(gpt_text)
     else:
         print("Assistant:", gpt_text)
-    
+
     try:
         # Start the async event-based conversation loop
         asyncio.run(async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled))
@@ -719,7 +724,7 @@ def main():
             except Exception as e:
                 print(f"[Shutdown] Error during stt_engine cleanup: {e}")
         sys.exit(0)
-    
+
 
 if __name__ == "__main__":
     main()
