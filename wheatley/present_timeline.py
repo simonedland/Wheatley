@@ -17,11 +17,11 @@ from tkinter import ttk, filedialog
 from collections import defaultdict
 import re
 import matplotlib
-matplotlib.use("TkAgg")  # Tk backend for embedding
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
+matplotlib.use("TkAgg")  # Tk backend for embedding
 
 # ── helpers ────────────────────────────────────────────────────────────────
 def load_timings(path: str = "timings.json"):
