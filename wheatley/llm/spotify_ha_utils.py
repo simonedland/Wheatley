@@ -1,6 +1,5 @@
 """
 spotify_ha_utils.py – v5.3.
-==========================
 
 Adds `search_and_queue_track()` plus all previous features:
 • pretty CLI demo (Rich optional) with ETA,
@@ -32,8 +31,7 @@ _READ = (
     "user-read-playback-state user-read-currently-playing user-read-recently-played"
 )
 _WRITE = (
-    _READ +
-    " user-modify-playback-state playlist-modify-public playlist-modify-private"
+    _READ + " user-modify-playback-state playlist-modify-public playlist-modify-private"
 )
 
 
