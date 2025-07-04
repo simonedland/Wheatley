@@ -14,7 +14,7 @@ from playsound import playsound
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 import tempfile
-from typing import Any, Callable, Coroutine, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 import inspect
 
 # from local file google_agent import GoogleCalendarManager
@@ -322,7 +322,7 @@ if "search_context_size" in web_search_config:
     web_search_tool["search_context_size"] = web_search_config["search_context_size"]
 
 tts_engine = TextToSpeech()
-# tools = build_tools()
+
 
 # --------------------------------------------------------------------------- #
 # Helper decorator                                                            #
@@ -343,6 +343,7 @@ class Functions:
     # Construction / configuration
     # ───────────────────────────────────────────────────────────────────
     def __init__(self) -> None:
+        """Initialise the Functions container with all tools."""
         self.test = GPTClient()
         cfg = _load_config()
         self.tts_enabled = cfg["tts"]["enabled"]
@@ -355,9 +356,7 @@ class Functions:
         self.google_agent = GOOGLE_AGENT if SERVICE_STATUS.get("google") else None
         self.spotify_agent = SPOTIFY_AGENT if SERVICE_STATUS.get("spotify") else None
 
-        self.memory_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json"
-        )
+        self.memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json")
 
         # Build dispatch table from @tool-decorated methods
         # In other words, create a dictionary of everything that has the @tool decorator
@@ -388,7 +387,7 @@ class Functions:
             results.append((name, result))
 
         return results
-    
+
     # ───────────────────────────────────────────────────────────────────
     # Shared utilities
     # ───────────────────────────────────────────────────────────────────
@@ -519,7 +518,6 @@ class Functions:
     @tool("edit_long_term_memory")
     def _edit_ltm(self, args: Dict[str, Any], _q: Any | None) -> str:
         return self.edit_long_term_memory(args["index"], args.get("data", {}))
-    
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=None, temperature_unit="celsius", wind_speed_unit="kmh"):
         """Retrieve weather information from the Open-Meteo API."""
