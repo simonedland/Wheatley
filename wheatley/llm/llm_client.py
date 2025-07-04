@@ -14,6 +14,8 @@ from playsound import playsound
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 import tempfile
+from typing import Any, Callable, Coroutine, Dict, List, Tuple
+import inspect
 
 # from local file google_agent import GoogleCalendarManager
 try:
@@ -322,138 +324,202 @@ if "search_context_size" in web_search_config:
 tts_engine = TextToSpeech()
 # tools = build_tools()
 
+# --------------------------------------------------------------------------- #
+# Helper decorator                                                            #
+# --------------------------------------------------------------------------- #
+def tool(name: str) -> Callable[[Callable], Callable]:
+    """Register *func* under *name* in Functions._TOOLS."""
+    def decorator(func: Callable) -> Callable:
+        # We can't touch Functions._TOOLS yet (class not created), so stash name
+        func._tool_name = name  # type: ignore[attr-defined]
+        return func
+    return decorator
+
 
 class Functions:
     """Container for tool implementations invoked by GPT."""
 
-    def __init__(self):
-        """Initialise agents and read configuration."""
+    # ───────────────────────────────────────────────────────────────────
+    # Construction / configuration
+    # ───────────────────────────────────────────────────────────────────
+    def __init__(self) -> None:
         self.test = GPTClient()
-        config = _load_config()
+        cfg = _load_config()
+        self.tts_enabled = cfg["tts"]["enabled"]
+
+        # External agents (might be missing at runtime)
         try:
             from ..service_auth import SERVICE_STATUS, GOOGLE_AGENT, SPOTIFY_AGENT
-        except ImportError:  # fallback when executed without package context
+        except ImportError:
             from service_auth import SERVICE_STATUS, GOOGLE_AGENT, SPOTIFY_AGENT
-        self.tts_enabled = config["tts"]["enabled"]
         self.google_agent = GOOGLE_AGENT if SERVICE_STATUS.get("google") else None
         self.spotify_agent = SPOTIFY_AGENT if SERVICE_STATUS.get("spotify") else None
-        self.memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json")
 
-    def execute_workflow(self, workflow, event_queue=None):
-        """Run each tool in ``workflow`` and return their results."""
-        results = []
+        self.memory_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json"
+        )
+
+        # Build dispatch table from @tool-decorated methods
+        # In other words, create a dictionary of everything that has the @tool decorator
+        self._TOOLS: Dict[str, Callable[[Dict[str, Any], Any], Any]] = {}
+        for _, method in inspect.getmembers(self, predicate=inspect.ismethod):
+            name = getattr(method, "_tool_name", None)
+            if name:
+                self._TOOLS[name] = method
+
+    # ───────────────────────────────────────────────────────────────────
+    # Public API
+    # ───────────────────────────────────────────────────────────────────
+    def execute_workflow( self, workflow: List[Dict[str, Any]], event_queue: Any | None = None ) -> List[Tuple[str, Any]]:
+        """Run each tool in *workflow* and return (name, result) tuples."""
+        results: list[tuple[str, Any]] = []
+
         for item in workflow:
-            func_name = item.get("name")
-            if self.tts_enabled and func_name != "write_long_term_memory":
-                conversation = [
-                    {"role": "system", "content": "Act as Wheatley from portal 2. in 10 words summarize the function call as if you are doing what it says. always say numbers out in full. try to enterpet things yourself, so long and lat should be city names. try to be funny but also short. Do not give the result of the function, just explain what you are doing. for example: generating joke. or adding numbers"},
-                    {"role": "user", "content": f"Executing function: {func_name} with arguments: {item.get('arguments')}"}
-                ]
-                text = self.test.get_text(conversation)
-                tts_engine.generate_and_play_advanced(text)
-            if func_name == "call_google_agent":
-                if self.google_agent:
-                    user_request = item.get("arguments", {}).get("user_request", "")
-                    args = item.get("arguments", {}).get("arguments", {})
-                    response = self.google_agent.llm_decide_and_dispatch(user_request, args)
-                    results.append((func_name, response))
-                else:
-                    results.append((func_name, "Google service unavailable"))
-            elif func_name == "call_spotify_agent":
-                if self.spotify_agent:
-                    user_req = item.get("arguments", {}).get("user_request", "")
-                    args = item.get("arguments", {}).get("device_id", {})
-                    response = self.spotify_agent.llm_decide_and_dispatch(user_req, args)
-                    results.append((func_name, response))
-                else:
-                    results.append((func_name, "Spotify service unavailable"))
-            elif func_name == "set_timer":
-                if event_queue is not None:
-                    duration = item.get("arguments", {}).get("duration")
-                    reason = item.get("arguments", {}).get("reason", "Timer expired!")
-                    self._schedule_timer_event(duration, reason, event_queue)
-                    results.append((func_name, f"Timer set for {duration} seconds. Reason: {reason}"))
-                else:
-                    results.append((func_name, "No event queue provided for timer!"))
-            elif func_name == "get_weather":
-                get_weather_args = item.get("arguments")
-                latitude = get_weather_args.get("latitude")
-                longitude = get_weather_args.get("longitude")
-                include_forecast = get_weather_args.get("include_forecast", False)
-                forecast_days = get_weather_args.get("forecast_days", 7)
-                extra_hourly = get_weather_args.get("extra_hourly", ["temperature_2m", "weathercode"])
-                temperature_unit = get_weather_args.get("temperature_unit", "celsius")
-                wind_speed_unit = get_weather_args.get("wind_speed_unit", "kmh")
-                response = self.get_weather(latitude, longitude, include_forecast, forecast_days, extra_hourly, temperature_unit, wind_speed_unit)
-                results.append((func_name, response))
-            elif func_name == "test_function":
-                test_args = item.get("arguments")
-                test = test_args.get("test")
-                response = f"Test function executed with argument: {test}"
-                results.append((func_name, response))
-            elif func_name == "get_joke":
-                response = get_joke()
-                results.append((func_name, response))
-            elif func_name == "get_quote":
-                response = get_quote()
-                results.append((func_name, response))
-            elif func_name == "get_city_coordinates":
-                args = item.get("arguments")
-                city = args.get("city")
-                response = get_city_coordinates(city)
-                results.append((func_name, response))
-            elif func_name == "get_advice":
-                response = self.get_advice()
-                results.append((func_name, response))
-            elif func_name == "set_reminder":
-                if event_queue is not None:
-                    args = item.get("arguments", {})
-                    time_str = args.get("time")
-                    reason = args.get("reason", "Reminder!")
-                    self.set_reminder(time_str, reason, event_queue)
-                    results.append((func_name, f"Reminder set for {time_str}. Reason: {reason}"))
-                else:
-                    # Handle case when no event queue is provided for the reminder.
-                    results.append((func_name, "No event queue provided for reminder!"))
-            elif func_name == "daily_summary":
-                user_request = "Get summary for today"
-                # Coordinates for Oslo
-                lat, lon = "59.9111", "10.7528"
+            name = item.get("name")
+            args = item.get("arguments", {})
 
-                # Retrieve weather with a one-day forecast.
-                weather_summary = self.get_weather(lat, lon, include_forecast=True, forecast_days=1)
+            self._narrate(name, args)  # no branching inside
 
-                # Prepare arguments and dispatch the request to the Google Agent.
-                args = {"user_request": user_request, "arguments": {}}
-                google_response = self.google_agent.llm_decide_and_dispatch(user_request, args)
-                if isinstance(google_response, dict):
-                    response = google_response.get("summary", "Nothing to summarize today.")
-                else:
-                    response = google_response
-                    if not response:
-                        response = "Nothing to summarize today."
+            handler = self._TOOLS.get(name, self._unsupported)
+            try:
+                result = handler(args, event_queue)
+            except Exception as exc:  # noqa: BLE001
+                result = f"Error executing {name}: {exc}"
+            results.append((name, result))
 
-                # Append weather summary and a daily quote.
-                response_str = f"Google callendar summary:\n{response}"
-                response_str += f"\n\nWeather Summary for Oslo:\n{weather_summary}"
-                response_str += f"\n\nQuote of the Day: {get_quote()}"
-
-                results.append((func_name, response_str))
-            elif func_name == "set_personality":
-                mode = item.get("arguments", {}).get("mode")
-                response = self.set_personality(mode)
-                results.append((func_name, response))
-            elif func_name == "write_long_term_memory":
-                data = item.get("arguments", {}).get("data", {})
-                response = self.write_long_term_memory(data)
-                results.append((func_name, response))
-            elif func_name == "edit_long_term_memory":
-                args = item.get("arguments", {})
-                index = args.get("index")
-                data = args.get("data", {})
-                response = self.edit_long_term_memory(index, data)
-                results.append((func_name, response))
         return results
+    
+    # ───────────────────────────────────────────────────────────────────
+    # Shared utilities
+    # ───────────────────────────────────────────────────────────────────
+    def _narrate(self, func_name: str, args: Dict[str, Any]) -> None:
+        if not (self.tts_enabled and func_name != "write_long_term_memory"):
+            return
+        conversation = [
+            {
+                "role": "system",
+                "content": (
+                    "Act as Wheatley from Portal 2. In ten words explain the "
+                    "function call (spell numbers, map lat/lon to city names, "
+                    "funny, short). Do NOT leak results."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Executing function: {func_name} with arguments: {args}",
+            },
+        ]
+        text = self.test.get_text(conversation)
+
+        tts_engine.generate_and_play_advanced(text)
+
+    def _unsupported(
+        self, _args: Dict[str, Any], _queue: Any | None = None
+    ) -> str:
+        return "Unsupported function name"
+
+    # ───────────────────────────────────────────────────────────────────
+    # Tool handlers (one per @tool, KEEP THEM SMALL)
+    # ───────────────────────────────────────────────────────────────────
+    @tool("call_google_agent")
+    def _google(self, args: Dict[str, Any], _queue: Any | None) -> Any:
+        if not self.google_agent:
+            return "Google service unavailable"
+        return self.google_agent.llm_decide_and_dispatch(
+            args.get("user_request", ""), args.get("arguments", {})
+        )
+
+    @tool("call_spotify_agent")
+    def _spotify(self, args: Dict[str, Any], _queue: Any | None) -> Any:
+        if not self.spotify_agent:
+            return "Spotify service unavailable"
+        return self.spotify_agent.llm_decide_and_dispatch(
+            args.get("user_request", ""), args.get("device_id")
+        )
+
+    @tool("set_timer")
+    def _timer(self, args: Dict[str, Any], queue: Any | None) -> str:
+        if queue is None:
+            return "No event queue provided for timer!"
+        duration = args.get("duration")
+        reason = args.get("reason", "Timer expired!")
+        self._schedule_timer_event(duration, reason, queue)
+        return f"Timer set for {duration} s. Reason: {reason}"
+
+    @tool("get_weather")
+    def _weather(self, args: Dict[str, Any], _queue: Any | None) -> str:
+        return self.get_weather(
+            args["latitude"],
+            args["longitude"],
+            args.get("include_forecast", False),
+            args.get("forecast_days", 7),
+            args.get("extra_hourly", ["temperature_2m", "weathercode"]),
+            args.get("temperature_unit", "celsius"),
+            args.get("wind_speed_unit", "kmh"),
+        )
+
+    @tool("test_function")
+    def _test(self, args: Dict[str, Any], _queue: Any | None) -> str:
+        return f"Test function executed with argument: {args.get('test')}"
+
+    @tool("get_joke")
+    def _joke(self, _a: Dict[str, Any], _q: Any | None) -> str:
+        return get_joke()
+
+    @tool("get_quote")
+    def _quote(self, _a: Dict[str, Any], _q: Any | None) -> str:
+        return get_quote()
+
+    @tool("get_city_coordinates")
+    def _coords(self, args: Dict[str, Any], _queue: Any | None) -> Any:
+        return get_city_coordinates(args["city"])
+
+    @tool("get_advice")
+    def _advice(self, _a: Dict[str, Any], _q: Any | None) -> str:
+        return self.get_advice()
+
+    @tool("set_reminder")
+    def _reminder(self, args: Dict[str, Any], queue: Any | None) -> str:
+        if queue is None:
+            return "No event queue provided for reminder!"
+        self.set_reminder(args["time"], args.get("reason"), queue)
+        return f"Reminder set for {args['time']}. Reason: {args.get('reason', 'Reminder!')}"
+
+    @tool("daily_summary")
+    def _daily(self, _a: Dict[str, Any], _q: Any | None) -> str:
+        lat, lon = "59.9111", "10.7528"  # Oslo
+        weather = self.get_weather(lat, lon, include_forecast=True, forecast_days=1)
+
+        req = "Get summary for today"
+        g_res = (
+            self.google_agent.llm_decide_and_dispatch(req, {"user_request": req})
+            if self.google_agent
+            else {}
+        )
+        summary = (
+            g_res.get("summary")
+            if isinstance(g_res, dict)
+            else g_res or "Nothing to summarise today."
+        )
+
+        return (
+            f"Google calendar summary:\n{summary}"
+            f"\n\nWeather Summary for Oslo:\n{weather}"
+            f"\n\nQuote of the Day: {self.get_quote()}"
+        )
+
+    @tool("set_personality")
+    def _personality(self, args: Dict[str, Any], _q: Any | None) -> str:
+        return self.set_personality(args["mode"])
+
+    @tool("write_long_term_memory")
+    def _write_ltm(self, args: Dict[str, Any], _q: Any | None) -> str:
+        return self.write_long_term_memory(args.get("data", {}))
+
+    @tool("edit_long_term_memory")
+    def _edit_ltm(self, args: Dict[str, Any], _q: Any | None) -> str:
+        return self.edit_long_term_memory(args["index"], args.get("data", {}))
+    
 
     def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=None, temperature_unit="celsius", wind_speed_unit="kmh"):
         """Retrieve weather information from the Open-Meteo API."""
