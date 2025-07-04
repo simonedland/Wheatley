@@ -369,7 +369,7 @@ class Functions:
     # ───────────────────────────────────────────────────────────────────
     # Public API
     # ───────────────────────────────────────────────────────────────────
-    def execute_workflow( self, workflow: List[Dict[str, Any]], event_queue: Any | None = None ) -> List[Tuple[str, Any]]:
+    def execute_workflow(self, workflow: List[Dict[str, Any]], event_queue: Any | None = None) -> List[Tuple[str, Any]]:
         """Run each tool in *workflow* and return (name, result) tuples."""
         results: list[tuple[str, Any]] = []
 
@@ -534,54 +534,43 @@ class Functions:
         if include_forecast and extra_hourly:
             hourly_params = ",".join(extra_hourly)
             base_url += f"&hourly={hourly_params}"
-        try:
-            response = requests.get(base_url)
-            data = response.json()
-            cw = data.get("current_weather", {})
-            summary = (
-                f"Weather Details:\n"
-                f"Location: ({data.get('latitude')}, {data.get('longitude')})\n"
-                f"Temperature: {cw.get('temperature')}°C\n"
-                f"Time: {cw.get('time')}\n"
-                f"Elevation: {data.get('elevation')} m\n"
-                f"Timezone: {data.get('timezone')} ({data.get('timezone_abbreviation')})"
-            )
-            # Interpret the current weather code.
-            weather_code = cw.get("weathercode")
-            if weather_code is not None:
-                try:
-                    weather_code_int = int(weather_code)
-                except Exception:
-                    weather_code_int = None
-                if weather_code_int is not None:
-                    description = WEATHER_CODE_DESCRIPTIONS.get(weather_code_int, "Unknown weather condition")
-                    summary += f"\nWeather Condition: {description} (Code: {weather_code_int})"
-            # Process extended forecast if requested.
-            if include_forecast and extra_hourly:
-                hours_data = data.get("hourly", {})
-                times = hours_data.get("time", [])
-                forecast_summary = "\nExtended Forecast:\n"
-                for i, t in enumerate(times):
-                    line_info = [t]
-                    for var_name in extra_hourly:
-                        var_values = hours_data.get(var_name, [])
-                        if i < len(var_values):
-                            value = var_values[i]
-                            # If the variable is weathercode, interpret it.
-                            if var_name == "weathercode":
-                                try:
-                                    code_int = int(value)
-                                    desc = WEATHER_CODE_DESCRIPTIONS.get(code_int, "Unknown")
-                                    line_info.append(f"{var_name}={value} ({desc})")
-                                except Exception:
-                                    line_info.append(f"{var_name}={value}")
-                            else:
-                                line_info.append(f"{var_name}={value}")
-                    forecast_summary += ", ".join(line_info) + "\n"
-                summary += forecast_summary
-            return summary
-        except Exception as e:
-            return f"Error retrieving weather: {e}"
+        response = requests.get(base_url)
+        data = response.json()
+        cw = data.get("current_weather", {})
+        summary = (
+            f"Weather Details:\n"
+            f"Location: ({data.get('latitude')}, {data.get('longitude')})\n"
+            f"Temperature: {cw.get('temperature')}°C\n"
+            f"Time: {cw.get('time')}\n"
+            f"Elevation: {data.get('elevation')} m\n"
+            f"Timezone: {data.get('timezone')} ({data.get('timezone_abbreviation')})"
+        )
+        # Interpret the current weather code.
+        weather_code = cw.get("weathercode")
+        weather_code_int = int(weather_code)
+        description = WEATHER_CODE_DESCRIPTIONS.get(weather_code_int, "Unknown weather condition")
+        summary += f"\nWeather Condition: {description} (Code: {weather_code_int})"
+        # Process extended forecast if requested.
+        if include_forecast and extra_hourly:
+            hours_data = data.get("hourly", {})
+            times = hours_data.get("time", [])
+            forecast_summary = "\nExtended Forecast:\n"
+            for i, t in enumerate(times):
+                line_info = [t]
+                for var_name in extra_hourly:
+                    var_values = hours_data.get(var_name, [])
+                    if i < len(var_values):
+                        value = var_values[i]
+                        # If the variable is weathercode, interpret it.
+                        if var_name == "weathercode":
+                            code_int = int(value)
+                            desc = WEATHER_CODE_DESCRIPTIONS.get(code_int, "Unknown")
+                            line_info.append(f"{var_name}={value} ({desc})")
+                        else:
+                            line_info.append(f"{var_name}={value}")
+                forecast_summary += ", ".join(line_info) + "\n"
+            summary += forecast_summary
+        return summary
 
     def _schedule_timer_event(self, duration, reason, event_queue):
         """Schedule an async timer that posts an event when it expires. Minimal error handling, print when event is notified."""
