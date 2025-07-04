@@ -105,65 +105,103 @@ def print_welcome():
 
 # =================== Assistant Initialization ===================
 # Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
-def initialize_assistant(config, *, stt_enabled: bool | None = None, tts_enabled: bool | None = None):
-    """Initialise and return all major subsystems (LLM, TTS, STT, Arduino, etc)."""
-    if stt_enabled is None:
-        stt_enabled = config["stt"]["enabled"]  # Speech-to-text enabled
-    if tts_enabled is None:
-        tts_enabled = config["tts"]["enabled"]  # Text-to-speech enabled
-    assistant_config = config.get("app")  # App-specific config
-    max_memory = assistant_config.get("max_memory")  # Conversation memory size
-    llm_config = config.get("llm")  # LLM config
-    gpt_model = llm_config.get("model")  # LLM model name
+def initialize_assistant(
+    config: dict,
+    *,
+    stt_enabled: bool | None = None,
+    tts_enabled: bool | None = None,
+) -> Tuple[
+    "ConversationManager",
+    "GPTClient",
+    Optional["SpeechToTextEngine"],
+    Optional["TextToSpeechEngine"],
+    "ArduinoInterface",
+    bool,
+    bool,
+]:
+    """
+    Initialise and return ConversationManager, GPTClient, optional STT/TTS engines,
+    Arduino interface and the final feature-flag booleans.
 
-    # Initialize core components
-    manager = ConversationManager(max_memory=max_memory)
-    gpt_client = GPTClient(model=gpt_model)
-    # Fetch long term memory once at startup
-    initial_memory = Functions().read_long_term_memory()
-    manager.update_memory(f"LONG TERM MEMORY:\n{initial_memory}")
+    The function itself remains short; platform quirks and error handling are
+    delegated to helpers.
+    """
+    stt_enabled = config["stt"]["enabled"] if stt_enabled is None else stt_enabled
+    tts_enabled = config["tts"]["enabled"] if tts_enabled is None else tts_enabled
+
+    manager, gpt_client = _build_core(config)
     stt_engine = SpeechToTextEngine() if stt_enabled else None
     tts_engine = TextToSpeechEngine() if tts_enabled else None
-    port = None
-    dry_run = False
-    # Detect available serial ports for Arduino (platform-specific)
-    if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+
+    port, dry_run = _detect_serial_port()
+    arduino_interface = _init_arduino(port, dry_run, stt_engine)
+
+    return (
+        manager,
+        gpt_client,
+        stt_engine,
+        tts_engine,
+        arduino_interface,
+        stt_enabled,
+        tts_enabled,
+    )
+
+
+# ────────────────────────── PRIVATE HELPERS ──────────────────────────── #
+
+def _build_core(config):
+    """Conversation manager, GPT client and initial long-term memory."""
+    max_mem = config["app"].get("max_memory")
+    manager = ConversationManager(max_memory=max_mem)
+
+    gpt_model = config["llm"].get("model")
+    gpt_client = GPTClient(model=gpt_model)
+
+    initial_mem = Functions().read_long_term_memory()
+    manager.update_memory(f"LONG TERM MEMORY:\n{initial_mem}")
+    return manager, gpt_client
+
+
+def _detect_serial_port() -> tuple[str | None, bool]:
+    """Return (best_port, dry_run_flag) based on OS and availability."""
+    dry_run, port = False, None
+
+    if sys.platform.startswith(("linux", "darwin")):
         print("Available ports:")
         os.system("ls /dev/tty*")
         port = "/dev/ttyACM0"
+
     elif sys.platform.startswith("win"):
         from serial.tools import list_ports
+
         ports = list(list_ports.comports())
         print("Available ports:")
         for p in ports:
             print(p.device)
-        # Try to use COM7 if available, else use first available port
-        port = None
-        for p in ports:
-            if p.device == "COM7":
-                port = "COM7"
-        if not port:
-            print("No serial ports found. Running in dry run mode.")
-            dry_run = True
-    # Initialize Arduino interface with error handling
-    arduino_interface = None
-    if port and not dry_run:
-        try:
-            arduino_interface = ArduinoInterface(port=port)
-            arduino_interface.connect()
-            if stt_engine:
-                stt_engine.arduino_interface = arduino_interface
-        except Exception as e:
-            print(f"Could not connect to Arduino on {port}: {e}. Running in dry run mode.")
-            arduino_interface = ArduinoInterface(port=port, dry_run=True)
-            if stt_engine:
-                stt_engine.arduino_interface = arduino_interface
+
+        port = next((p.device for p in ports if p.device == "COM7"), None)
+        dry_run = not port
+        if dry_run:
+            print("No serial ports found. Running in dry-run mode.")
+
+    return port, dry_run
+
+
+def _init_arduino(port, dry_run, stt_engine):
+    """Create (or stub) ArduinoInterface and wire it to the STT engine."""
+    if not port or dry_run:
+        arduino = ArduinoInterface(port="dryrun", dry_run=True)
     else:
-        arduino_interface = ArduinoInterface(port="dryrun", dry_run=True)
-        if stt_engine:
-            stt_engine.arduino_interface = arduino_interface
-    # Return all initialized components and feature flags
-    return manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled
+        try:
+            arduino = ArduinoInterface(port=port)
+            arduino.connect()
+        except Exception as exc:  # pragma: no cover
+            print(f"Could not connect to Arduino on {port}: {exc}. Falling back to dry-run.")
+            arduino = ArduinoInterface(port=port, dry_run=True)
+
+    if stt_engine:
+        stt_engine.arduino_interface = arduino
+    return arduino
 
 
 # =================== Event Dataclass ===================
@@ -514,7 +552,7 @@ def _sentence_producer(gpt_client, manager, loop, q: asyncio.Queue) -> None:
 
 async def _tts_job(idx, sent, ctx, sentences):
     prev = sentences[int(idx - 1)] if idx >= 1 else ""
-    nxt  = ""                                # still unknown at launch
+    nxt = ""                                # still unknown at launch
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
         ctx.tts_executor,
