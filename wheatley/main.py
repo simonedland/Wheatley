@@ -72,7 +72,6 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 # =================== Configuration Loader ===================
 def load_config():
     """Load and return the YAML configuration as a dictionary from config/config.yaml."""
-
     config_path = os.path.join(os.path.dirname(__file__), "config", "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
@@ -81,7 +80,6 @@ def load_config():
 # =================== Welcome Banner ===================
 def print_welcome():
     """Print a retro ASCII art welcome banner to the terminal."""
-
     reset = "\033[0m"
     retro_color = "\033[95m"
     print(r"""
@@ -108,8 +106,6 @@ def print_welcome():
 # Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
 def initialize_assistant(config, *, stt_enabled: bool | None = None, tts_enabled: bool | None = None):
     """Initialise and return all major subsystems (LLM, TTS, STT, Arduino, etc)."""
-
-    start_time = time.time()  # Start timing initialization
     if stt_enabled is None:
         stt_enabled = config["stt"]["enabled"]  # Speech-to-text enabled
     if tts_enabled is None:
@@ -180,6 +176,7 @@ class Event:
     ts: Optional[datetime] = None
 
     def __str__(self):
+        """Return a string representation of the event."""
         meta = f" {self.metadata}" if self.metadata else ""
         ts = f" ({self.ts.isoformat()})" if self.ts else ""
         return f"[{self.source.upper()}] {self.payload}{meta}{ts}"
@@ -196,6 +193,8 @@ async def user_input_producer(q: asyncio.Queue):
         await q.put(Event("user", text.strip(), {"input_type": "text"}))
         if text.strip().lower() == "exit":
             break
+
+
 # Simple wrapper to print an event object
 def print_event(event: Event):
     """Print an Event object to stdout in a readable format."""
@@ -398,7 +397,6 @@ async def stream_assistant_reply(
     Streams sentences from the LLM, generates TTS audio for each sentence in parallel,
     and plays them in order, while handling hotword detection and follow-up.
     """
-
     stream_start_time = time.time()
     record_timing("streaming_start", stream_start_time)
     print(f"[Stream] Starting streaming with {MAX_TTS_WORKERS} TTS workers")
@@ -555,8 +553,7 @@ async def stream_assistant_reply(
 
 # =================== Main Async Conversation Loop ===================
 async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
-    """Main asynchronous interaction loop handling user events, tool calls, and assistant responses."""
-
+    """Runs main asynchronous interaction loop handling user events, tool calls, and assistant responses."""
     queue: asyncio.Queue = asyncio.Queue()
 
     # Start background producers
@@ -638,7 +635,6 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             except Exception as e:
                 print(f"[Shutdown] Error during stt_engine cleanup: {e}")
         print("👋 Exiting…")
-        return
 
 
 def print_async_tasks():
@@ -666,7 +662,6 @@ def print_async_tasks():
 # =================== Main Code ===================
 def main():
     """CLI entry point for launching the Wheatley assistant and starting the main event loop."""
-
     # --- Setup and configuration ---------------------------------------
     clear_timings()
     atexit.register(export_timings)
@@ -707,7 +702,7 @@ def main():
 
     animation = gpt_client.reply_with_animation(manager.get_conversation())
     arduino_interface.set_animation(animation)  # Set initial animation
-    
+
     if tts_enabled:
         tts_engine.generate_and_play_advanced(gpt_text)
     else:
