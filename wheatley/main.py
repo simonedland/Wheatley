@@ -11,7 +11,6 @@ import os  # For file and path operations
 import logging  # For logging events and timings
 import time  # For timing actions
 import asyncio  # For async event loop
-from dataclasses import dataclass  # For Event container
 from typing import Any, List, Tuple, Dict, Optional  # For type hints
 from datetime import datetime  # For timestamps
 import sys
@@ -479,7 +478,7 @@ def _make_context(cfg: dict, manager) -> _StreamContext:
 
 
 def _playback_worker(q: Queue, tts_engine):
-    """Runs in its own thread; plays clips in FIFO order."""
+    """Playback worker runs in its own thread; plays clips in FIFO order."""
     while True:
         idx, audio = q.get()
         if idx is None:                      # sentinel ⇒ shutdown
@@ -514,7 +513,7 @@ def _sentence_producer(gpt_client, manager, loop, q: asyncio.Queue) -> None:
 
 
 async def _tts_job(idx, sent, ctx, sentences):
-    prev = sentences[int(idx-1)] if idx >= 1 else ""
+    prev = sentences[int(idx - 1)] if idx >= 1 else ""
     nxt  = ""                                # still unknown at launch
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
@@ -522,6 +521,7 @@ async def _tts_job(idx, sent, ctx, sentences):
         _fetch_tts_clip,
         sent, prev, nxt, idx, ctx.cfg,
     )
+
 
 def _fetch_tts_clip(
     text: str, prev: str, nxt: str, idx: float, cfg: dict
