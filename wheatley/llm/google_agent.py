@@ -1,259 +1,276 @@
-"""Google Calendar integration helpers and LLM agent."""
+"""
+google_agent.py.
 
-import os
-import yaml
-import openai
+Google Calendar helpers + LLM-powered agent.
+Python ≥ 3.10 • google-api-python-client ≥ 2.116.0 • openai ≥ 1.15.0
+"""
+
+from __future__ import annotations
+
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import openai  # pip install --upgrade openai
+import yaml
+from google.auth.exceptions import RefreshError
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+# ────────────────────────────────────────────────────────────────────────────
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+TOKEN_FILE = CONFIG_DIR / "token.json"
+SECRET_FILE = CONFIG_DIR / "client_secret.json"
+CONFIG_FILE = CONFIG_DIR / "config.yaml"
 
 
+# ────────────────────────────────────────────────────────────────────────────
 class GoogleCalendarManager:
-    """Wrapper for Google Calendar API interactions."""
+    """Thin wrapper around Google Calendar REST v3."""
 
-    def _load_config(self):
-        """Return YAML configuration dictionary."""
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-        config_path = os.path.join(base_dir, "config", "config.yaml")
-        with open(config_path, "r") as f:
-            return yaml.safe_load(f)
+    @staticmethod
+    def _interactive_oauth_flow() -> Credentials:
+        """Run the OAuth flow to get credentials interactively."""
+        if not SECRET_FILE.exists():
+            raise FileNotFoundError(f"OAuth client secret missing: {SECRET_FILE}")
+        flow = InstalledAppFlow.from_client_secrets_file(SECRET_FILE, SCOPES)
+        # For headless servers use flow.run_console()
+        return flow.run_local_server(port=0, prompt="consent")
 
-    def __init__(self):
-        """Initialize Google Calendar manager with credentials and service."""
+    @staticmethod
+    def _store_token(creds: Credentials) -> None:
+        """Store the OAuth token to disk."""
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        TOKEN_FILE.write_text(creds.to_json())
+
+    def _get_google_credentials(self) -> Credentials:
+        """Get or refresh Google credentials."""
+        creds: Credentials | None = None
+
+        # 1 · Load previously saved token
+        if TOKEN_FILE.exists():
+            creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+
+        # 2 · Refresh if possible
+        if creds and creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+                print("✅ Token refreshed.")
+            except (RefreshError, Exception) as err:
+                print(f"🔄 Refresh failed ({err}); re-authenticating.")
+                creds = None
+
+        # 3 · Fall back to OAuth browser flow
+        if creds is None:
+            creds = self._interactive_oauth_flow()
+            print("✅ Obtained new credentials via OAuth.")
+
+        # 4 · Persist
+        self._store_token(creds)
+        return creds
+
+    def __init__(self) -> None:
+        """Initialize GoogleCalendarManager and load config."""
+        self.creds = self._get_google_credentials()
+        self.service = build("calendar", "v3", credentials=self.creds, cache_discovery=False)
+
+        with CONFIG_FILE.open() as f:
+            cfg = yaml.safe_load(f)
+        self.skip_calendars: set[str] = set(cfg.get("skip_calendars", []))
+
+    def list_calendars(self) -> list[dict[str, str]]:
+        """List available calendars, skipping those in config."""
         try:
-            self.creds = self.get_google_credentials()
-            self.service = build("calendar", "v3", credentials=self.creds)
-        except Exception:
-            print("❌ ERROR: Authentication failed for Google Calendar! Please check your credentials or login again.")
-            raise
-        config = self._load_config()
-        self.skip_calendars = set(config.get("skip_calendars", []))
-
-    def get_google_credentials(self):
-        """Load or refresh Google Calendar API credentials."""
-        try:
-            creds = None
-            base_dir = os.path.dirname(os.path.dirname(__file__))
-            token_path = os.path.join(base_dir, "config", "token.json")
-
-            if os.path.exists(token_path):
-                creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-
-            # if not creds or not creds.valid:
-            #     if creds and creds.expired and creds.refresh_token:
-            #         try:
-            #             creds.refresh(Request())
-
-            if creds is not None:
-                with open(token_path, "w") as f:
-                    f.write(creds.to_json())
-            return creds
-        except Exception:
-            print("❌ ERROR: Authentication failed for Google Calendar! Please check your credentials or login again.")
-            raise
-
-    def list_calendars(self):
-        """List all calendars, excluding those in the skip list."""
-        try:
-            cal_list = self.service.calendarList().list().execute().get("items", [])
-            calendars = [
+            items = self.service.calendarList().list().execute().get("items", [])
+            return [
                 {"id": cal["id"], "summary": cal.get("summary", "")}
-                for cal in cal_list
+                for cal in items
                 if cal["id"] not in self.skip_calendars
             ]
-            return calendars
         except HttpError as e:
             print(f"Failed to fetch calendars: {e}")
             return []
 
-    def get_upcoming_events(self, days=7):
-        """Get upcoming events from all calendars for the next `days` days."""
+    def get_upcoming_events(self, days: int = 7) -> dict[str, list[dict[str, str]]]:
+        """Get upcoming events for all calendars in the next `days` days."""
         now = datetime.utcnow().isoformat() + "Z"
         future = (datetime.utcnow() + timedelta(days=days)).isoformat() + "Z"
-        all_events = {}
+        out: dict[str, list[dict[str, str]]] = {}
 
-        calendars = self.list_calendars()
-        for cal in calendars:
+        for cal in self.list_calendars():
             try:
-                events = self.service.events().list(
-                    calendarId=cal["id"],
-                    timeMin=now,
-                    timeMax=future,
-                    singleEvents=True,
-                    orderBy="startTime"
-                ).execute().get("items", [])
+                events = (
+                    self.service.events()
+                    .list(
+                        calendarId=cal["id"],
+                        timeMin=now,
+                        timeMax=future,
+                        singleEvents=True,
+                        orderBy="startTime",
+                    )
+                    .execute()
+                    .get("items", [])
+                )
                 if events:
-                    all_events[cal["summary"]] = [
+                    out[cal["summary"]] = [
                         {
                             "start": ev.get("start", {}).get("dateTime") or ev.get("start", {}).get("date"),
-                            "summary": ev.get("summary", "(no title)")
+                            "summary": ev.get("summary", "(no title)"),
                         }
                         for ev in events
                     ]
             except HttpError as e:
-                print(f"  Failed to fetch events for {cal['id']}: {e}")
-                continue
+                print(f"Failed for {cal['id']}: {e}")
+        return out
 
-        return all_events
+    def print_calendars(self) -> None:
+        """Print all available calendars."""
+        for c in self.list_calendars():
+            print(f"- {c['summary']}  (ID: {c['id']})")
 
-    def print_calendars(self):
-        """Print all calendars with their IDs."""
-        calendars = self.list_calendars()
-        print("Your calendars:")
-        for cal in calendars:
-            print(f"- {cal['summary']} (ID: {cal['id']})")
-
-    def print_upcoming_events(self, days=7):
-        """Print upcoming events from all calendars for the next `days` days."""
-        events = self.get_upcoming_events(days)
-        if not events:
-            print("No upcoming events found.")
+    def print_upcoming_events(self, days: int = 7) -> None:
+        """Print upcoming events for the next `days` days."""
+        evs = self.get_upcoming_events(days)
+        if not evs:
+            print("No upcoming events.")
             return
-
         print(f"\nUpcoming events (next {days} days):")
-        for cal_summary, cal_events in events.items():
-            print(f"\nCalendar: {cal_summary}")
-            for ev in cal_events:
-                print(f"  • {ev['start']} — {ev['summary']}")
+        for cal, items in evs.items():
+            print(f"\n📅 {cal}")
+            for ev in items:
+                print(f" • {ev['start']} — {ev['summary']}")
 
 
-# implement placeholder google functions
-GOOGLE_TOOLS = [
+# ────────────────────────────────────────────────────────────────────────────
+# OpenAI tool schema – NEW nested "function" structure
+GOOGLE_TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
-        "name": "get_google_calendar_events",
-        "description": "Get upcoming events from Google Calendar. Use this if user asks for schedule or calendar events.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "days": {"type": "integer"}
+        "function": {
+            "name": "get_google_calendar_events",
+            "description": "Get upcoming events from Google Calendar.",
+            "parameters": {
+                "type": "object",
+                "properties": {"days": {"type": "integer"}},
+                "required": [],
+                "additionalProperties": False,
             },
-            "required": [],
-            "additionalProperties": False
-        }
+        },
     },
     {
         "type": "function",
-        "name": "create_google_calendar_event",
-        "description": "Create a new event in Google Calendar. Use this if user wants to create an event.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "summary": {"type": "string"},
-                "start_time": {"type": "string"},
-                "end_time": {"type": "string"},
-                "description": {"type": "string"}
+        "function": {
+            "name": "create_google_calendar_event",
+            "description": "Create a new Google Calendar event.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "summary": {"type": "string"},
+                    "start_time": {"type": "string"},
+                    "end_time": {"type": "string"},
+                    "description": {"type": "string"},
+                },
+                "required": ["summary", "start_time", "end_time"],
+                "additionalProperties": False,
             },
-            "required": ["summary", "start_time", "end_time"],
-            "additionalProperties": False
-        }
+        },
     },
     {
         "type": "function",
-        "name": "delete_google_calendar_event",
-        "description": "Delete an event from Google Calendar. Use this if user wants to delete an event.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "temp": {"type": "string"}
+        "function": {
+            "name": "delete_google_calendar_event",
+            "description": "Delete an event from Google Calendar.",
+            "parameters": {
+                "type": "object",
+                "properties": {"event_id": {"type": "string"}},
+                "required": ["event_id"],
+                "additionalProperties": False,
             },
-            "required": [],
-            "additionalProperties": False
-        }
-    }
+        },
+    },
 ]
 
 
+# ────────────────────────────────────────────────────────────────────────────
 class GoogleAgent:
-    """LLM-driven assistant for interacting with Google services."""
+    """LLM-powered router that decides which Google-tool to call."""
 
-    def _load_config(self):
-        """Load project configuration YAML."""
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-        config_path = os.path.join(base_dir, "config", "config.yaml")
-        with open(config_path, "r") as f:
-            return yaml.safe_load(f)
+    def __init__(self) -> None:
+        """Initialize GoogleAgent and load config."""
+        with CONFIG_FILE.open() as f:
+            cfg = yaml.safe_load(f)
 
-    def __init__(self):
-        """Initialize Google Agent with API key and tools."""
-        config = self._load_config()
-        self.api_key = config["secrets"]["openai_api_key"]
-        self.calendar_manager = GoogleCalendarManager()
+        openai.api_key = cfg["secrets"]["openai_api_key"]
+        self.model = cfg["llm"]["model"]
         self.tools = GOOGLE_TOOLS
-        self.model = config["llm"]["model"]
-        openai.api_key = self.api_key
+        self.calendar_manager = GoogleCalendarManager()
 
-    def llm_decide_and_dispatch(self, user_request: str, arguments: dict = None):
-        """Use LLM to decide which Google tool to use based on the user request, then execute it."""
-        from datetime import datetime
-        now = datetime.now()
-        tool_descriptions = "\n".join([
-            f"- {tool['name']}: {tool['description']}" for tool in self.tools
-        ])
-        system_prompt = (
-            f"You are a Google Agent. Available tools are:\n{tool_descriptions}\n"
-            f"Choose the best tool for the user request and return only the tool name. "
-            f"current_time: {now.strftime('%Y-%m-%d %H:%M:%S')}, current_day: {now.strftime('%A')}"
-        )
-        prompt = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_request}
+    def _call_llm(self, user_request: str):
+        """Ask LLM which tool + arguments to use."""
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a Google-workflow assistant. "
+                    "Pick exactly one tool and output only a tool call."
+                ),
+            },
+            {"role": "user", "content": user_request},
         ]
-        print("\n--- Google Agent Decision Trace ---")
-        print(f"User: {user_request}")
-        print(f"Prompt to LLM: {prompt}")
-        completion = openai.responses.create(
+
+        resp = openai.chat.completions.create(
             model=self.model,
-            input=prompt,
+            messages=messages,
             tools=self.tools,
             tool_choice="required",
-            parallel_tool_calls=False
         )
-        choice = completion.output
-        print("LLM chose:")
-        for msg in choice:
-            if msg.type == "function_call":
-                print(f"  Tool: {msg.name}")
-                print(f"  Arguments: {msg.arguments}")
-                print(f"  Call ID: {getattr(msg, 'call_id', None)}")
-        print("--- End Google Agent Decision Trace ---\n")
-        # Dispatch the chosen tool
-        for msg in choice:
-            if msg.type == "function_call":
-                func_name = msg.name
-                arguments = msg.arguments
-                return self.dispatch(func_name, arguments)
+        return resp.choices[0].message
 
-        raise ValueError("No function call found in LLM response.")
+    def llm_decide_and_dispatch(
+        self,
+        user_request: str,
+        arguments: dict | None = None,  # legacy param (ignored)
+    ):
+        """Decide via LLM which Google tool to run, then execute it."""
+        msg = self._call_llm(user_request)
 
-    def dispatch(self, func_name, arguments):
-        """Dispatch the function call to the appropriate Google tool."""
-        if isinstance(arguments, str):
-            try:
-                arguments = json.loads(arguments)
-            except Exception:
-                arguments = {}
+        if not getattr(msg, "tool_calls", None):
+            raise ValueError("LLM response lacked a tool call.")
+
+        call = msg.tool_calls[0]
+        func_name = call.function.name
+        call_args = json.loads(call.function.arguments or "{}")
+        return self.dispatch(func_name, call_args)
+
+    def dispatch(self, func_name: str, arguments: dict[str, Any]):
+        """Dispatch the tool call to the appropriate handler."""
         if func_name == "get_google_calendar_events":
-            days = arguments.get("days", 7)
-            return self.get_google_calendar_events(days)
+            return self.calendar_manager.get_upcoming_events(arguments.get("days", 7))
+
         elif func_name == "create_google_calendar_event":
-            return "not implemented"
+            return "create_google_calendar_event – not yet implemented"
+
         elif func_name == "delete_google_calendar_event":
-            return "not implemented"
-        raise NotImplementedError(f"Function {func_name} not implemented in GoogleAgent.")
+            return "delete_google_calendar_event – not yet implemented"
 
-    def get_google_calendar_events(self, days=7):
-        """Get upcoming events from Google Calendar for the next `days` days."""
-        return self.calendar_manager.get_upcoming_events(days)
+        raise NotImplementedError(f"Unknown tool: {func_name}")
 
-    def print_calendars(self):
-        """Print all Google Calendars."""
+    def print_calendars(self) -> None:
+        """Print all available calendars."""
         self.calendar_manager.print_calendars()
 
-    def print_upcoming_events(self, days=7):
-        """Print upcoming events from Google Calendar for the next `days` days."""
+    def print_upcoming_events(self, days: int = 7) -> None:
+        """Print upcoming events for the next `days` days."""
         self.calendar_manager.print_upcoming_events(days)
+
+
+# ────────────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    agent = GoogleAgent()
+    result = agent.llm_decide_and_dispatch("What’s on my calendar in the next 7 days?")
+    print(json.dumps(result, indent=2, ensure_ascii=False))
