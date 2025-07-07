@@ -1,5 +1,10 @@
 # Wheatley Code of Conduct
 
-This project is maintained by a single developer. Please keep all discussions friendly and constructive. Harassment, hate speech, or personal attacks have no place here.
+Welcome to the Aperture Science Enrichment Center. To keep testing safe and pleasant for all participants, we enforce the following rules:
 
-If you encounter problematic behavior, contributions may be removed at my discretion. To report issues or ask questions, email contact@example.com.
+- Be respectful and constructive. Harassment or discriminatory language will be incinerated faster than a rogue turret.
+- Keep discussions focused on improving Wheatley. Off-topic rants belong in the incinerator.
+- Report unacceptable behavior to contact@example.com.
+
+Violations may result in removal from the project with no second chances. The cake is a lie, but these rules are not.
+
