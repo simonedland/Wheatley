@@ -8,50 +8,29 @@ graph TD
     service_auth_py["service_auth.py"]
     test_py["test.py"]
 
-    %% main.py imports
-    main_py --> service_auth_py
-    main_py --> hardware_arduino_interface["hardware/arduino_interface.py"]
-    main_py --> assistant_assistant["assistant/assistant.py"]
-    main_py --> llm_llm_client["llm/llm_client.py"]
-    main_py --> tts_tts_engine["tts/tts_engine.py"]
-    main_py --> stt_stt_engine["stt/stt_engine.py"]
-    main_py --> utils_timing_logger["utils/timing_logger.py"]
+    %% main.py imports and uses
+    main_py -->|"imports"| service_auth_py
+    main_py -->|"imports"| test_py
+    main_py -->|"imports: hardware.arduino_interface"| puppet_py
+    main_py -->|"imports: llm.llm_client"| test_py
+    main_py -->|"imports: tts.tts_engine"| test_py
 
-    %% service_auth.py imports
-    service_auth_py --> llm_google_agent["llm/google_agent.py"]
-    service_auth_py --> llm_spotify_agent["llm/spotify_agent.py"]
+    %% test.py uses LLM and TTS
+    test_py -->|"uses"| main_py
 
-    %% test.py imports
-    test_py --> main_py
-    test_py --> assistant_assistant
-    test_py --> llm_llm_client
-    test_py --> tts_tts_engine
-    test_py --> stt_stt_engine
-    test_py --> hardware_arduino_interface
-    test_py --> utils_long_term_memory["utils/long_term_memory.py"]
+    %% present_timeline.py is standalone (loads logs/timings)
+    %% No code-level dependency, but visualizes outputs of main.py (e.g., assistant.log, timings.json)
+    main_py -.->|"produces logs/timings"| present_timeline_py
 
-    %% Notes for present_timeline.py and puppet.py
-    %% These are standalone GUIs and do not import from the others in this set
+    %% service_auth.py is imported by main.py (for authentication)
+    service_auth_py -->|"may import: llm.google_agent, llm.spotify_agent"| main_py
 
-    %% Show test.py depends on main.py and all assistant modules
+    %% puppet.py is GUI for hardware, imported by main.py for ArduinoInterface
+    puppet_py -->|"provides hardware interface"| main_py
 
-    %% File nodes
-    classDef file fill:#f9f,stroke:#333,stroke-width:1px;
-    main_py:::file
-    present_timeline_py:::file
-    puppet_py:::file
-    service_auth_py:::file
-    test_py:::file
+    %% test.py imports llm.llm_client and tts.tts_engine, which are also used by main.py
+    test_py -->|"imports: llm.llm_client, tts.tts_engine"| main_py
 
-    %% External/Local module nodes (not files in this directory)
-    classDef ext fill:#cff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
-    hardware_arduino_interface:::ext
-    assistant_assistant:::ext
-    llm_llm_client:::ext
-    tts_tts_engine:::ext
-    stt_stt_engine:::ext
-    utils_timing_logger:::ext
-    utils_long_term_memory:::ext
-    llm_google_agent:::ext
-    llm_spotify_agent:::ext
+    %% service_auth.py is standalone but used by main.py
+    service_auth_py -->|"used by"| main_py
 ```

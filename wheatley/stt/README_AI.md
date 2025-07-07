@@ -1,163 +1,167 @@
 # AI Summary
 
 ### C:\GIT\Wheatly\Wheatley\Wheatley\stt\stt_engine.py
-Certainly! Here is a **detailed summary** and analysis of the provided Python script:
+Certainly! Here is a **detailed summary and analysis** of the provided Python script:
 
 ---
 
 ## **Overall Purpose**
 
-This script provides a **speech-to-text (STT) utility** with **hotword detection**. It is designed to run on hardware (optionally with an Arduino interface for LED status indication) and supports:
+The script implements a **speech-to-text (STT) utility** with **hotword detection** and optional hardware integration (e.g., LED signaling via Arduino). Its main goal is to enable hands-free voice input by:
 
-- **Hotword detection** (using Porcupine)
-- **Audio recording** (using PyAudio)
-- **Speech transcription** (using OpenAI's Whisper API)
-- **Microphone state feedback** via LED colors
-- **Async background listening** for voice commands
-
-It is suitable for voice assistant applications, smart devices, or any system that needs to listen for a wake word, record speech, and transcribe it.
+- Listening for a configurable hotword (wake word) using the **Porcupine** engine.
+- Recording speech after the hotword is detected.
+- Transcribing the recorded speech using **OpenAI Whisper**.
+- Providing visual feedback (LED colors) about the microphone state.
+- Supporting both synchronous and asynchronous (background) operation.
 
 ---
 
 ## **Main Class: `SpeechToTextEngine`**
 
-### **Initialization and Configuration**
+This is the core class encapsulating all STT and hotword logic. Its responsibilities include:
 
-- **Configuration Loading**: On initialization, the class loads settings from a YAML config file (`config/config.yaml`). This includes audio parameters (chunk size, channels, sample rate), thresholds, and API keys.
-- **OpenAI API Key**: The OpenAI API key is loaded from the config and set for use with Whisper.
-- **LED State**: If an Arduino interface is provided, the mic LED is set to "paused" (red) at startup.
+### **Initialization (`__init__`)**
 
-### **LED Color Constants**
+- Loads configuration from a YAML file (`config/config.yaml`), including STT settings and API keys.
+- Sets up audio parameters (chunk size, sample rate, channels, etc.).
+- Initializes hardware integration (Arduino interface for LED control).
+- Calibrates the microphone's speech/ambient noise threshold.
+- Sets up OpenAI API key for Whisper transcription.
 
-- Four RGB tuples define LED colors for different mic states: waiting for hotword (blue), recording (green), processing (orange), and paused (red).
+### **LED State Management**
 
-### **Internal State**
+- Uses predefined RGB color constants to indicate microphone states (listening, recording, processing, paused).
+- Updates the hardware LED via the Arduino interface (if present).
 
-- Maintains PyAudio and Porcupine instances, audio streams, and threading events for pausing/stopping listening.
+### **Microphone Threshold Calibration**
 
----
-
-## **Key Methods and Their Responsibilities**
-
-### **Microphone LED Control**
-
-- **`_update_mic_led(color)`**: Updates the hardware LED to reflect the current microphone state.
+- Measures ambient noise and spoken audio to set a dynamic threshold for speech detection.
+- Uses LED blinking to prompt the user for calibration phases (ambient, then speech).
 
 ### **Listening Control**
 
-- **`pause_listening()`**: Pauses listening/transcription, sets LED to paused.
-- **`resume_listening()`**: Resumes listening.
-- **`is_paused()`**: Returns pause state.
+- Methods to **pause**, **resume**, and **check** listening state.
+- Updates LED to reflect paused state.
 
-### **Audio Recording**
+### **Audio Stream Handling**
 
-- **`record_until_silent(max_wait_seconds=None)`**:
-  - Opens the microphone and waits for sound above a threshold.
-  - Records until a period of silence is detected or a timeout occurs.
-  - Saves the recording as a WAV file.
-  - Returns the filename or `None` if no audio was recorded.
+- Connects to the microphone input, trying different device indices for robustness.
+- Cleans up audio streams and resources on shutdown.
 
-### **Speech Transcription**
+### **Recording Logic**
 
-- **`transcribe(filename)`**:
-  - Sends the WAV file to OpenAI's Whisper API for transcription.
-  - Returns the transcribed text.
+- **`record_until_silent`**: Records audio when sound above the threshold is detected, stops after a period of silence.
+- Saves the captured audio to a temporary WAV file for later transcription.
+- Tracks and prints amplitude statistics for debugging.
 
-- **`record_and_transcribe(max_wait_seconds=None)`**:
-  - Combines recording and transcription in one step.
-  - Deletes the temporary audio file after transcription.
+### **Transcription Logic**
+
+- **`transcribe`**: Sends the recorded WAV file to OpenAI Whisper (via OpenAI API) and retrieves the transcribed text.
+- **`record_and_transcribe`**: Combines recording and transcription into a single step.
 
 ### **Hotword Detection**
 
-- **`listen_for_hotword(access_key=None, keywords=None, sensitivities=None)`**:
-  - Uses Picovoice Porcupine to listen for specified hotwords (defaults: "computer", "jarvis").
-  - Loads Porcupine API key from config if not provided.
-  - Returns the index of the detected keyword or `None` if interrupted.
+- **`hotword_config`**: Configures the Porcupine hotword engine with keywords and sensitivities.
+- **`listen_for_hotword`**: Listens for a hotword (wake word) and blocks until detected, or until interrupted/paused.
+- Uses Porcupine's API key (from config) and can fall back to default keywords.
 
-### **Voice Input Pipeline**
+### **Voice Input Workflow**
 
-- **`get_voice_input()`**:
-  - Waits for a hotword.
-  - Records and transcribes speech after hotword detection.
-  - Returns the transcribed text.
-
-### **Async Background Listening**
-
-- **`hotword_listener(queue)`**:
-  - Async coroutine for background listening.
-  - Waits for hotword, then records and transcribes speech.
-  - Puts the result into an async queue for further processing.
+- **`get_voice_input`**: Waits for a hotword, then records and transcribes the user's speech, returning the result.
+- **`hotword_listener`**: An asynchronous background task that listens for hotwords and puts transcribed results into an async queue (for integration with event-driven systems).
 
 ### **Cleanup**
 
-- **`cleanup()`**:
-  - Safely closes audio streams, terminates PyAudio and Porcupine instances, and updates the LED to "paused".
+- **`cleanup`**: Safely closes all audio streams, terminates PyAudio and Porcupine resources, and resets the LED.
 
 ---
 
-## **Structure and Component Interaction**
+## **Structure & Component Interaction**
 
-- **Config File**: Centralizes all runtime settings and secrets.
-- **PyAudio**: Handles audio input for both hotword detection and speech recording.
-- **Porcupine**: Provides hotword detection, either by keyword or custom model.
-- **OpenAI Whisper**: Performs transcription of recorded speech.
-- **Arduino Interface (optional)**: Used to provide visual feedback via LED colors.
-- **Asyncio**: Enables non-blocking, background listening for voice input.
+- The class is **self-contained** and manages its own state (audio streams, thresholds, LED state, etc.).
+- **External configuration** (YAML) is used for all sensitive and tunable parameters (API keys, audio settings).
+- **LED feedback** is tightly integrated, providing real-time status to the user.
+- **Hotword detection** and **speech recording** are sequential: the engine waits for a hotword, then records speech, then transcribes.
+- **Async support** via `hotword_listener` allows integration into event loops or async applications.
 
 ---
 
 ## **External Dependencies**
 
-- **PyAudio**: For microphone access and audio streaming.
-- **Numpy**: For efficient audio data processing.
-- **OpenAI Python SDK**: For Whisper API access.
+- **PyAudio**: For real-time audio capture from the microphone.
+- **NumPy**: For efficient audio data processing (amplitude calculations).
+- **OpenAI**: For Whisper-based speech-to-text transcription.
+- **pvporcupine**: For wake word (hotword) detection.
 - **PyYAML**: For configuration file parsing.
-- **pvporcupine**: For hotword detection.
-- **Asyncio**: For async background listening.
-- **Struct, Wave, Time, OS**: Standard Python modules for audio and file handling.
-- **Custom Utility**: `utils.timing_logger.record_timing` for performance logging.
+- **wave**: For saving audio in WAV format.
+- **struct**: For unpacking audio buffers.
+- **asyncio**: For asynchronous background listening.
+- **utils.timing_logger**: For timing/profiling (custom utility, not standard).
+- **Arduino interface** (optional): For hardware LED control (must be provided by the user).
 
 ---
 
 ## **Configuration Requirements**
 
-- **YAML Config File**: Must be present at `config/config.yaml` with sections for:
-  - `stt` (audio settings, Porcupine API key)
-  - `secrets` or `openai_api_key` (OpenAI API key)
-- **Porcupine Keyword File**: If using a custom Porcupine model, must be present at `stt/wheatley.ppn`.
+- **`config/config.yaml`** must exist and contain:
+  - `stt` section with audio parameters and Porcupine API key.
+  - `secrets` or top-level `openai_api_key` for OpenAI Whisper.
+- **Porcupine keyword file** (e.g., `stt/wheatley.ppn`) must be available if using custom wake words.
+- **Arduino interface** (optional) must provide a `set_mic_led_color(r, g, b)` method.
 
 ---
 
-## **Notable Algorithms and Logic**
+## **Notable Algorithms & Logic**
 
-- **Voice Activity Detection**: Simple amplitude thresholding is used to detect the start and end of speech.
-- **Silence Detection**: Recording stops after a configurable period of silence.
-- **Hotword Detection**: Uses Porcupine's efficient keyword spotting algorithm.
-- **Async Background Listening**: Allows the system to listen for voice input in a non-blocking way, suitable for integration into larger async applications.
-- **LED Feedback**: Provides real-time status indication to the user via colored LEDs.
+### **Threshold Calibration**
+
+- Measures **ambient noise** and **user speech** amplitudes.
+- Sets the speech detection threshold to the average of the two, improving robustness across environments.
+
+### **Silence Detection**
+
+- While recording, counts consecutive frames below the threshold.
+- Stops recording after a configurable period of silence, ensuring the user's full utterance is captured.
+
+### **Hotword Detection Loop**
+
+- Continuously reads audio frames and checks for hotword triggers using Porcupine.
+- Handles pausing and interruption gracefully.
+- Provides periodic status updates.
+
+### **Async Voice Input**
+
+- Uses `asyncio` to run hotword listening and speech transcription in the background, allowing integration with async applications or GUIs.
 
 ---
 
-## **Main Script Behavior**
+## **Script Entry Point**
 
-- If run directly, the script instantiates `SpeechToTextEngine`, records up to 5 seconds of speech, transcribes it, prints the result, and cleans up resources.
+- When run directly, the script instantiates the engine, records and transcribes up to 5 seconds of speech, prints the result, and cleans up resources.
 
 ---
 
 ## **Summary Table**
 
-| Component                | Responsibility                                          |
-|--------------------------|--------------------------------------------------------|
-| `SpeechToTextEngine`     | Main class for all STT, hotword, and LED logic         |
-| PyAudio                  | Audio input/streaming                                  |
-| Porcupine                | Hotword detection                                      |
-| OpenAI Whisper           | Speech transcription                                   |
-| Arduino interface        | (Optional) LED color feedback                          |
-| Config file (YAML)       | Centralized settings and secrets                       |
-| Asyncio                  | Background listening                                   |
+| Component                | Purpose/Responsibility                                      |
+|--------------------------|------------------------------------------------------------|
+| `SpeechToTextEngine`     | Main class, manages STT, hotword, hardware, and state      |
+| `__init__`               | Loads config, sets up audio, calibrates, sets API keys     |
+| `_update_mic_led`        | Controls hardware LED for status feedback                  |
+| `calibrate_threshold`    | Dynamically sets speech/ambient threshold                  |
+| `pause/resume/is_paused` | Controls listening state                                   |
+| `connect_stream`         | Robustly connects to audio input                           |
+| `record_until_silent`    | Records until silence, saves to WAV                        |
+| `transcribe`             | Sends audio to Whisper, returns text                       |
+| `hotword_config`         | Configures Porcupine hotword engine                        |
+| `listen_for_hotword`     | Blocks until hotword is detected                           |
+| `get_voice_input`        | Waits for hotword, records, transcribes                    |
+| `hotword_listener`       | Async background hotword/speech listener                   |
+| `cleanup`                | Frees all resources, resets hardware                       |
 
 ---
 
 ## **Conclusion**
 
-This script provides a robust, modular, and hardware-aware speech-to-text pipeline with hotword detection, suitable for voice assistant applications. It is configurable, supports both synchronous and asynchronous operation, and integrates with both cloud (OpenAI) and local (Porcupine) APIs. The design allows for easy extension and integration into larger systems.
+This script provides a robust, configurable, and hardware-integrated speech-to-text pipeline with hotword activation, suitable for voice assistants, smart devices, or hands-free interfaces. It leverages modern APIs (OpenAI Whisper, Porcupine), supports both sync and async operation, and is designed for extensibility and integration with custom hardware (e.g., Arduino-controlled LEDs).

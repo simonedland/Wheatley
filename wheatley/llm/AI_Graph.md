@@ -2,63 +2,58 @@
 
 ```mermaid
 graph TD
+  google_agent_py["google_agent.py"]
+  llm_client_py["llm_client.py"]
+  llm_client_utils_py["llm_client_utils.py"]
+  spotify_agent_py["spotify_agent.py"]
+  spotify_ha_utils_py["spotify_ha_utils.py"]
 
-%% File nodes
-google_agent_py["google_agent.py"]
-llm_client_py["llm_client.py"]
-llm_client_utils_py["llm_client_utils.py"]
-spotify_agent_py["spotify_agent.py"]
-spotify_ha_utils_py["spotify_ha_utils.py"]
+  %% Relationships inferred from imports and usage
 
-%% Relationships inferred from imports and usage
+  %% llm_client.py imports
+  llm_client_py --> google_agent_py
+  llm_client_py --> llm_client_utils_py
+  llm_client_py -->|"from utils.timing_logger, utils.long_term_memory"| utils_timing_logger["utils.timing_logger.py"]
+  llm_client_py -->|"from utils.long_term_memory"| utils_long_term_memory["utils.long_term_memory.py"]
 
-%% google_agent.py
-google_agent_py --> llm_client_py %% (circular, but llm_client.py imports GoogleAgent)
-google_agent_py --> llm_client_utils_py %% via openai, yaml, etc. (shared config, but not direct import)
-google_agent_py --> spotify_agent_py %% via llm_client.py (indirect, see below)
+  %% llm_client_utils.py imports
+  llm_client_utils_py -->|"from service_auth"| service_auth["service_auth.py"]
 
-%% llm_client.py
-llm_client_py --> google_agent_py
-llm_client_py --> spotify_agent_py
-llm_client_py --> llm_client_utils_py
-llm_client_py -->|record_timing, long_term_memory| utils_timing_logger["utils/timing_logger.py"]
-llm_client_py -->|long_term_memory| utils_long_term_memory["utils/long_term_memory.py"]
+  %% google_agent.py does not import local files
 
-%% llm_client_utils.py
-llm_client_utils_py -->|SERVICE_STATUS| service_auth["service_auth.py"]
+  %% spotify_agent.py imports
+  spotify_agent_py --> spotify_ha_utils_py
 
-%% spotify_agent.py
-spotify_agent_py --> spotify_ha_utils_py
-spotify_agent_py --> google_agent_py %% via openai, yaml (shared config, not direct import)
-spotify_agent_py -->|openai| llm_client_utils_py %% (shared config, not direct import)
+  %% spotify_ha_utils.py does not import local files
 
-%% spotify_ha_utils.py
-spotify_ha_utils_py -->|spotipy| spotipy["spotipy (external)"]
-spotify_ha_utils_py -->|yaml| yaml["yaml (external)"]
-spotify_ha_utils_py -->|rich| rich["rich (optional, external)"]
+  %% Cross-agent tool delegation
+  llm_client_py --> spotify_agent_py
+  llm_client_py --> google_agent_py
 
-%% External dependencies (not shown as nodes, but referenced in code)
-google_agent_py -->|googleapiclient, google.oauth2| google_api["Google API (external)"]
-llm_client_py -->|openai, elevenlabs, playsound, requests| openai["openai (external)"]
-llm_client_py -->|elevenlabs| elevenlabs["elevenlabs (external)"]
-llm_client_py -->|playsound| playsound["playsound (external)"]
-llm_client_py -->|requests| requests["requests (external)"]
-llm_client_utils_py -->|requests| requests
+  %% llm_client_utils.py tools reference GoogleAgent and SpotifyAgent tools
+  llm_client_utils_py --> google_agent_py
+  llm_client_utils_py --> spotify_agent_py
 
-%% Service Auth
-llm_client_utils_py --> service_auth
-llm_client_py --> service_auth
+  %% For clarity, show that llm_client.py and spotify_agent.py both use openai and yaml (external dependencies)
+  llm_client_py -.->|"openai, yaml, requests, etc."| external_deps["External Libraries"]
+  spotify_agent_py -.->|"openai, yaml, etc."| external_deps
+  google_agent_py -.->|"openai, yaml, google-api-python-client, etc."| external_deps
+  spotify_ha_utils_py -.->|"spotipy, yaml, rich (optional)"| external_deps
+  llm_client_utils_py -.->|"yaml, requests"| external_deps
 
-%% Indirect/circular relationships
-llm_client_py -.-> google_agent_py %% GoogleCalendarManager used in __main__
+  %% Show config file dependency
+  google_agent_py -->|"config/config.yaml"| config_yaml["config/config.yaml"]
+  llm_client_py -->|"config/config.yaml"| config_yaml
+  llm_client_utils_py -->|"config/config.yaml"| config_yaml
+  spotify_agent_py -->|"config/config.yaml"| config_yaml
+  spotify_ha_utils_py -->|"config/config.yaml"| config_yaml
 
-%% Tool/Agent relationships (usage)
-llm_client_py -->|GoogleAgent, SpotifyAgent| google_agent_py
-llm_client_py -->|SpotifyAgent| spotify_agent_py
+  %% Show that spotify_agent.py uses spotify_ha_utils.SpotifyHA
+  spotify_agent_py --> spotify_ha_utils_py
 
-%% Not shown: config.yaml, token.json, emotion_counter.json, etc. (external files)
-
-%% Legend (not rendered in Mermaid, for reader reference)
-%% - Solid arrows: direct imports or usage
-%% - Dashed arrows: indirect usage or circular references
+  %% Optionally, show test/demo entrypoints
+  google_agent_py -.->|"__main__ demo"| demo_google["(demo)"]
+  llm_client_py -.->|"__main__ demo"| demo_llm["(demo)"]
+  spotify_agent_py -.->|"__main__ demo"| demo_spotify["(demo)"]
+  spotify_ha_utils_py -.->|"__main__ demo"| demo_spotify_ha["(demo)"]
 ```

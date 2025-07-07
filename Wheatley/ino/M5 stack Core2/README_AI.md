@@ -1,176 +1,156 @@
 # AI Summary
 
 ### C:\GIT\Wheatly\Wheatley\Wheatley\ino\M5 stack Core2\M5Stack_Core2.ino
-Certainly! Here’s a **detailed summary** of the provided Arduino sketch, written in plain English, covering its purpose, structure, hardware use, key logic, and dependencies.
+Certainly! Here’s a **detailed plain-English summary** of the provided Arduino sketch, covering its purpose, structure, hardware use, main logic, and key components.
 
 ---
 
 ## **Overall Purpose**
 
-This sketch implements a **touch-based user interface (UI) for controlling a 7-servo robotic head** using an M5Stack Core2 device. It communicates with an OpenRB-150 servo controller board over UART2, manages a 17-pixel NeoPixel LED strip (with special handling for a microphone status LED), and provides both serial and on-device UI for servo configuration and monitoring.
+This sketch implements a **touch-based user interface** (UI) for controlling a robotic head with **7 servos** and a **NeoPixel LED strip**. It runs on an M5Stack Core2 (or similar ESP32-based device), communicating with an **OpenRB-150 servo controller** via UART2. The UI allows users to view and adjust servo positions, see their status, and interact with the system via hardware buttons and USB serial commands. The LED strip provides visual feedback, including a dedicated LED for microphone status.
 
 ---
 
-## **Main Hardware Peripherals Used**
+## **Hardware Peripherals Used**
 
-1. **M5Stack Core2**:  
-   - Provides LCD display, touch buttons (A/B/C), and main MCU.
-2. **OpenRB-150 Board**:  
-   - Connected via UART2 (pins 13/14), controls the actual servos.
-3. **NeoPixel LED Strip**:  
-   - 17 LEDs on pin 27, with the last LED (index 16) reserved for microphone status.
-4. **USB Serial**:  
-   - For debugging, configuration, and command input from a computer.
+- **M5Stack Core2**: Provides the LCD display, touch buttons (A, B, C), and runs the sketch.
+- **UART2 (HardwareSerial)**: Used to communicate with the OpenRB-150 servo controller.
+  - **RX2_PIN (GPIO 13)**: UART2 RX
+  - **TX2_PIN (GPIO 14)**: UART2 TX
+- **NeoPixel LED strip**: 17 LEDs on **GPIO 27** (LED_PIN), with LED 16 (MIC_LED_INDEX) reserved for microphone status.
+- **USB Serial**: For debugging, configuration, and external control.
 
 ---
 
-## **Key Libraries and Dependencies**
+## **External Libraries / Dependencies**
 
-- **M5Unified.h**: For M5Stack Core2 device abstraction (LCD, buttons, etc.).
-- **HardwareSerial**: For UART communication with OpenRB-150.
-- **Adafruit_NeoPixel**: For controlling the RGB LED strip.
-
-**Environment Requirements:**
-- M5Stack Core2 (or compatible M5 device)
-- OpenRB-150 board (or compatible servo controller)
-- Adafruit NeoPixel library installed
-- M5Unified library installed
-
----
-
-## **Code Structure and Component Interaction**
-
-### **Global State and Configuration**
-
-- **ServoState struct**: Holds current angle, velocity, min/max limits, idle jitter parameters, etc. for each servo.
-- **servos[]**: Array of ServoState for 7 active servos.
-- **SERVO_NAMES[]**: Names for each servo, used in the UI.
-- **Various flags**: Track handshake, demo mode, calibration, etc.
-
-### **Setup**
-
-- Initializes all hardware (M5Stack, UART, NeoPixel).
-- Performs an LED strip test (cycling through red, green, blue).
-- Draws the initial UI window.
-- Sends an initial "ESP32" handshake to the OpenRB-150.
-
-### **Main Loop**
-
-- **handleLink()**: Processes incoming UART messages from OpenRB-150 (handshake, calibration, LED commands, etc.).
-- **handleUsbCommands()**: Processes commands from USB serial (LED control, servo config, forwarding).
-- **Handshake logic**: Retries handshake every second until successful, enters demo mode after 10 seconds if no response.
-- **Idle Jitter**: If calibrated, periodically jitters servos within a small range for realism.
-- **Button Handling**:  
-  - **A**: Decrement selected servo angle.
-  - **B**: Increment selected servo angle.
-  - **C**: Cycle to next available servo.
-- **UI Redraws**: Updates only affected lines for efficiency.
+- **M5Unified.h**: For M5Stack Core2 hardware abstraction (LCD, buttons, etc.).
+- **HardwareSerial.h**: For UART communication.
+- **Adafruit_NeoPixel.h**: For controlling the NeoPixel LED strip.
 
 ---
 
 ## **Key Classes, Functions, and Responsibilities**
 
+### **Global State and Configuration**
+
+- **ServoState struct**: Holds per-servo configuration and state (angle, velocity, limits, idle jitter, etc.).
+- **servos[]**: Array of ServoState for each active servo (7 total).
+- **SERVO_NAMES[]**: Human-readable names for each servo.
+- **Various flags**: Track handshake status, demo mode, calibration, etc.
+
 ### **LED Control**
 
-- **setAll(col)**: Sets all LEDs (except MIC_LED_INDEX) to a color.
+- **setAll(col)**: Sets all LEDs (except MIC_LED) to the specified color.
 - **blinkScreen(times)**: Blinks the screen and LEDs red a number of times.
-- **blinkColor(col, times, onMs, offMs)**: Blinks LEDs a specified color.
+- **blinkColor(col, times, onMs, offMs)**: Blinks LEDs with a specific color.
 
-- **processLedCommand(cmd)**: Parses and executes "SET_LED;" commands for the LED strip (excluding MIC_LED).
-- **processMicLedCommand(cmd)**: Handles "SET_MIC_LED;" commands, only affecting the microphone LED.
+- **processLedCommand(cmd)**: Parses and executes `SET_LED;R=...;G=...;B=...;` commands for the LED strip (excluding MIC_LED).
+- **processMicLedCommand(cmd)**: Handles `SET_MIC_LED;IDX=...;R=...;G=...;B=...;` commands for the microphone status LED only.
 
-### **Servo Communication and State**
+### **Servo Control and Communication**
 
-- **sendMoveServoCommand(id, tgt, vel)**: Sends a servo movement command to OpenRB-150.
-- **handleCalibrationData(line)**: Parses calibration data from OpenRB-150, updates servo limits and status.
-- **sendServoConfig()**: Reports current servo configuration over USB serial.
+- **sendMoveServoCommand(id, tgt, vel)**: Sends a command to OpenRB-150 to move a servo.
+- **handleCalibrationData(line)**: Parses calibration data from OpenRB-150 and updates servo limits/status.
+- **sendServoConfig()**: Sends current servo configuration over USB serial.
 
 ### **UI Drawing**
 
-- **drawWindow()**: Draws the entire servo list window.
-- **drawLine(i, y)**: Draws a single row (servo) at a given Y position.
-- **drawSingle(i)**: Redraws a specific servo row if visible.
+- **drawWindow()**: Draws the entire servo status window on the LCD.
+- **drawLine(i, y)**: Draws a single row (servo) in the UI.
+- **drawSingle(i)**: Redraws a single servo row.
+
+### **Command Handlers**
+
+- **handleUsbCommands()**: Handles commands received over USB serial (LED, servo config, forwarding).
+- **handleLink()**: Handles messages from OpenRB-150 over UART2 (handshake, calibration, LED, etc.).
 
 ### **Demo Mode**
 
-- **enterDemoMode()**: Enables demo mode if handshake fails, disables actual servo commands, marks all servos as present.
+- **enterDemoMode()**: Enters a fallback mode if no handshake is received from OpenRB-150.
 
-### **Input Handling**
+---
 
-- **handleUsbCommands()**: Handles USB serial commands for LED/servo control and forwarding.
-- **handleLink()**: Handles UART messages from OpenRB-150 (handshake, calibration, LED commands).
+## **Code Structure and Component Interaction**
+
+### **Startup (`setup()`)**
+
+1. **Initialize hardware**: M5Stack, UART2, NeoPixel strip.
+2. **Test LEDs**: Red, green, blue, then off.
+3. **Draw UI**: Initial servo window.
+4. **Start handshake**: Send "ESP32" to OpenRB-150.
+
+### **Main Loop (`loop()`)**
+
+1. **Update M5Stack state**.
+2. **Handle UART2 messages** (`handleLink()`):  
+   - Process handshake, calibration, LED commands, and log others.
+3. **Handle USB serial commands** (`handleUsbCommands()`):  
+   - LED commands, servo config, config requests, and forward others to OpenRB-150.
+4. **Handshake logic**:  
+   - If handshake not received, retry every second.
+   - If still no handshake after 10 seconds, enter demo mode.
+5. **Idle Jitter**:  
+   - If calibrated, periodically nudge servos within their idle range for realism.
+6. **Button Handling**:
+   - **Button A**: Decrement selected servo angle.
+   - **Button B**: Increment selected servo angle.
+   - **Button C**: Cycle to next available servo.
+7. **UI Updates**:  
+   - Redraw affected rows as needed.
+8. **Delay**: 33 ms per loop iteration.
 
 ---
 
 ## **Notable Algorithms and Logic**
 
-### **1. Handshake and Demo Mode**
+- **Servo Idle Jitter**:  
+  Each servo (if enabled and with idle jitter configured) is randomly moved within a specified range and interval, simulating natural movement.
 
-- On startup, repeatedly sends "ESP32" handshake to OpenRB-150.
-- If no handshake is received within 10 seconds, enters demo mode (simulates servo presence, disables real commands).
+- **Handshake and Demo Mode**:  
+  The sketch expects a "HELLO" from OpenRB-150. If not received within 10 seconds, it enters a demo mode where all servos are marked as available, but no real commands are sent.
 
-### **2. Servo Idle Jitter**
+- **LED Command Parsing**:  
+  Robust parsing of LED commands, with separation between general LEDs and the dedicated microphone LED.
 
-- For each active, present servo, if idle jitter is enabled, randomly moves servo within a small range around its initial angle at random intervals (to simulate life/realism).
-
-### **3. LED Command Parsing**
-
-- Parses commands of the form "SET_LED;R=...;G=...;B=..." and "SET_MIC_LED;IDX=...;R=...;G=...;B=..." to control the LED strip and microphone LED independently.
-
-### **4. UI Navigation**
-
-- Uses M5Stack buttons to increment/decrement servo angles or cycle through servos.
-- Only allows interaction with servos that are present (as determined by calibration or demo mode).
+- **Scrolling UI**:  
+  The UI supports scrolling and selection among servos, with visual feedback for disabled or dead servos.
 
 ---
 
 ## **Configuration and Environment Requirements**
 
-- **Hardware**: M5Stack Core2, OpenRB-150, NeoPixel strip (17 LEDs), USB for debugging/config.
-- **Libraries**: M5Unified, Adafruit_NeoPixel, HardwareSerial.
-- **Pin Assignments**:  
-  - UART2 RX: GPIO 13  
-  - UART2 TX: GPIO 14  
-  - NeoPixel: GPIO 27
+- **Hardware**:  
+  - M5Stack Core2 (or compatible ESP32 board with LCD and buttons)
+  - OpenRB-150 servo controller (connected via UART2)
+  - NeoPixel LED strip (17 LEDs, data on GPIO 27)
+- **Libraries**:  
+  - M5Unified
+  - Adafruit_NeoPixel
+- **Wiring**:  
+  - UART2 RX/TX: GPIO 13/14
+  - LED strip: GPIO 27
 
 ---
 
 ## **Summary Table of Key Functions**
 
-| Function                  | Responsibility                                            |
-|---------------------------|----------------------------------------------------------|
-| `setup()`                 | Initialize hardware, perform LED test, start handshake   |
-| `loop()`                  | Main event loop: handle comms, UI, idle jitter, buttons  |
-| `handleLink()`            | Process UART2 messages from OpenRB-150                   |
-| `handleUsbCommands()`     | Process commands from USB serial                         |
-| `processLedCommand()`     | Parse and execute LED strip color commands               |
-| `processMicLedCommand()`  | Parse and execute mic LED color commands                 |
-| `sendMoveServoCommand()`  | Send servo movement command to OpenRB-150                |
-| `handleCalibrationData()` | Parse servo calibration data and update state            |
-| `drawWindow()`, `drawLine()` | Draw UI to LCD display                              |
-| `enterDemoMode()`         | Enter fallback mode if handshake fails                   |
-
----
-
-## **How Components Interact**
-
-- **User** interacts with the device via touch buttons and USB serial.
-- **UI** displays servo info and allows angle adjustment.
-- **M5Stack** sends/receives commands to/from OpenRB-150 over UART2.
-- **LED strip** is controlled by both the UI and incoming commands (with mic LED handled separately).
-- **Servo state** is synchronized with OpenRB-150 via handshake and calibration messages.
-
----
-
-## **Special Notes**
-
-- **SET_LED** commands skip the mic LED; **SET_MIC_LED** only affects the mic LED.
-- **Demo mode** allows UI operation even if OpenRB-150 is not present.
-- **Idle jitter** adds realism by randomly moving servos when idle.
-- **Efficient UI updates**: Only redraws changed rows, not the whole screen.
+| Function                   | Responsibility                                             |
+|----------------------------|-----------------------------------------------------------|
+| setup()                    | Initialize hardware, test LEDs, start handshake           |
+| loop()                     | Main event loop: handle comms, UI, input, idle jitter     |
+| setAll(), blinkScreen()    | Control NeoPixel strip (except MIC_LED)                   |
+| processLedCommand()        | Parse and apply LED color commands                        |
+| processMicLedCommand()     | Parse and apply mic-status LED command                    |
+| handleLink()               | Process UART2 messages from OpenRB-150                    |
+| handleUsbCommands()        | Process USB serial commands                               |
+| sendMoveServoCommand()     | Send servo move command to OpenRB-150                     |
+| handleCalibrationData()    | Parse and apply servo calibration data                    |
+| drawWindow(), drawLine()   | Draw/refresh UI on LCD                                    |
+| enterDemoMode()            | Fallback if OpenRB-150 is not detected                    |
 
 ---
 
 ## **In Summary**
 
-This sketch is a robust, interactive controller for a 7-servo robotic head, providing both a local UI and remote command/control via serial and UART. It manages servo state, LED feedback, and communication with a dedicated servo controller, with fallback demo capabilities and a user-friendly interface.
+This sketch is a robust, interactive UI and control hub for a 7-servo robotic head, providing real-time feedback, configuration, and control via touch buttons, a color LCD, and a NeoPixel strip. It communicates with an OpenRB-150 servo controller over UART2, supports fallback demo operation, and is designed for easy integration and debugging via USB serial. The code is modular, with clear separation of hardware abstraction, UI, communication, and logic.
