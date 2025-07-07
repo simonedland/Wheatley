@@ -1,38 +1,30 @@
 # Contributing to Wheatley
 
-Thank you for considering contributing to Wheatley! This project is still evolving and there are many rough edges to polish. We welcome community contributions of all kinds. Before submitting a pull request, please follow these guidelines to ensure a smooth development process.
+Thanks for thinking about improving Wheatley. Collaboration is encouraged, but remember: GLaDOS is watching.
 
 ## Getting Started
-
-1. **Fork the repository** and create your branch from `main`.
-2. **Install dependencies** using the helper script:
-
+1. **Fork the repository** and create a feature branch off `main`.
+2. **Install dependencies** with:
    ```bash
    python install_prerequisites.py
    ```
-   This installs the packages listed in `wheatley/requirements.txt`.
-3. **Run the tests** to make sure everything works:
-
+3. **Run the tests**:
    ```bash
    pytest -q
    ```
+   It's strongly advised to run tests locally, but you may open a pull request before they pass.
 
-## Coding Standards
-
-- Include Python docstrings for all public classes, functions, and methods.
-- Add inline comments explaining why complex logic is necessary.
-- Keep code style consistent with the existing project.
-
-## Documentation
-
-- Update or create Markdown documentation whenever you add a new feature.
-- If adding files under `docs/`, update the "Documented Features" list in `AGENTS.md`.
+## Code Standards
+- Every change must comply with our Flake8 configuration. The `code-quality` workflow runs flake8 with bugbear, docstring, naming, and complexity checks.
+- Pull requests targeting `main` fail automatically if flake8 reports even a single issue. No mercy.
+- Include docstrings for all public classes, functions, and methods, and keep comments concise but explanatory.
 
 ## Pull Requests
+1. Keep your feature branch up to date with `main` and squash trivial commits.
+2. Open a pull request targeting `Test` for review and discussion.
+3. All tests and the `code-quality` workflow must pass before anything merges.
+4. After the PR to `Test` is approved and merged, open a follow‑up PR from `Test` to `main`.
+5. A CODEOWNER must approve that final PR to `main`.
 
-1. Ensure your branch is up to date with `main`.
-2. Provide a clear description of your changes and reference any relevant issues.
-3. Confirm that all tests pass before submitting the pull request.
-4. Be responsive to review feedback and update your PR as needed.
+Follow these steps and your PR will glide through like a portal. Skip them and the turret chorus will sing.
 
-Thank you for helping improve Wheatley! Your ideas, bug reports, and code contributions all make the project better for everyone.
