@@ -1,509 +1,322 @@
 # AI Summary
 
 ### C:\GIT\Wheatly\Wheatley\Wheatley\llm\google_agent.py
-Certainly! Here is a detailed summary and analysis of the provided Python script:
+Certainly! Here is a detailed summary and analysis of the provided `google_agent.py` script:
 
 ---
 
 ## **Overall Purpose**
 
-The script provides a set of helper classes and functions for integrating with **Google Calendar** and for building an **LLM (Large Language Model) agent** that can interact with Google services (primarily Google Calendar) in response to user requests. The agent uses OpenAI's API to interpret user queries and decide which Google Calendar operation to perform, such as listing events or (potentially) creating/deleting events.
+The script is designed to serve as an intelligent agent that interfaces with Google Calendar, using both the Google Calendar API and a Large Language Model (LLM, specifically OpenAI's GPT) to interpret user requests and perform calendar-related actions. It allows users to interact with their Google Calendar in natural language, with the LLM deciding which calendar operation to perform (e.g., list events, create, or delete events), and then executing the appropriate API calls.
 
 ---
 
 ## **Main Components**
 
 ### 1. **GoogleCalendarManager**
-**Purpose:**  
-A wrapper class for interacting with the Google Calendar API. It handles authentication, calendar listing, and fetching upcoming events.
+A utility class that encapsulates all direct interactions with the Google Calendar API.
 
-**Responsibilities:**
-- **Configuration Loading:** Reads YAML configuration files for settings and secrets.
-- **Authentication:** Loads OAuth2 credentials from a token file (`token.json`) and uses them to authenticate with Google Calendar.
-- **Calendar Management:**
-  - **list_calendars:** Lists all calendars, skipping those specified in the config.
-  - **get_upcoming_events:** Fetches upcoming events from all calendars (except skipped ones) within a specified time window.
-  - **print_calendars / print_upcoming_events:** Utility methods to print calendar and event information to the console.
+#### **Responsibilities:**
+- **Authentication:** Handles OAuth2 authentication, including token refresh and interactive login via browser if needed. Tokens are stored and reused from disk.
+- **Config Loading:** Loads configuration (such as calendars to skip) from a YAML file.
+- **Calendar Operations:**
+  - **List Calendars:** Retrieves all accessible calendars, excluding those specified in config.
+  - **Get Upcoming Events:** Fetches upcoming events from all calendars for a configurable number of days.
+  - **Print Helpers:** Utility methods to print calendar lists and upcoming events in a readable format.
 
-**Notable Logic:**
-- Skips calendars based on a config setting.
-- Handles API errors gracefully, printing messages and continuing operation.
+#### **Notable Logic:**
+- **Token Management:** Tries to refresh tokens if expired, otherwise falls back to an interactive OAuth flow.
+- **Configurable Calendar Skipping:** Reads a list of calendar IDs to skip from a YAML config file.
 
 ---
 
 ### 2. **GOOGLE_TOOLS**
-**Purpose:**  
-A list of tool/function definitions that describe possible actions the agent can take with Google Calendar. These are used to inform the LLM about available operations.
+A list of tool/function schemas that define the interface between the LLM and the available Google Calendar operations.
 
-**Responsibilities:**
-- Defines the schema and description for:
-  - Getting upcoming events
-  - Creating an event (not implemented)
-  - Deleting an event (not implemented)
+#### **Responsibilities:**
+- **Function Descriptions:** Each entry describes a function (get events, create event, delete event) with its parameters, types, and requirements.
+- **LLM Integration:** These schemas are passed to the LLM so it knows what actions it can request the agent to perform.
 
-**Notable Logic:**
-- Each tool is described with a JSON schema for its parameters, which is useful for LLM function-calling APIs.
+#### **Notable Logic:**
+- **OpenAI Function Calling Format:** Uses OpenAI’s structured tool-calling format, allowing the LLM to return a function call with arguments instead of just text.
 
 ---
 
 ### 3. **GoogleAgent**
-**Purpose:**  
-An agent class that uses an LLM (OpenAI API) to interpret user requests and dispatch them to the appropriate Google Calendar operation.
+The core agent that bridges user requests, the LLM, and the calendar manager.
 
-**Responsibilities:**
-- **Configuration Loading:** Loads API keys, LLM model, and other settings from YAML config.
-- **OpenAI Integration:** Sets up the OpenAI API key and model.
-- **Tool Management:** Holds the list of available tools and passes them to the LLM.
-- **LLM Decision Making:**
-  - **llm_decide_and_dispatch:** Constructs a prompt for the LLM, asking it to choose the best tool for the user's request. It parses the LLM's response and dispatches the corresponding function.
-- **Dispatch Logic:**
-  - **dispatch:** Maps the function name chosen by the LLM to the actual method that implements it. Currently, only event listing is implemented; create/delete are placeholders.
-- **Calendar Operations:** Wraps the print and event-fetching methods of the `GoogleCalendarManager`.
+#### **Responsibilities:**
+- **Initialization:** Loads configuration, sets up the OpenAI API key and model, and instantiates the calendar manager.
+- **LLM Interaction:** Sends user queries to the LLM, instructing it to choose and call one of the defined tools/functions.
+- **Dispatching:** Receives the LLM's tool call, parses the function name and arguments, and invokes the corresponding method on the calendar manager.
+- **Print Helpers:** For direct CLI usage, can print calendars and upcoming events.
 
-**Notable Logic:**
-- The agent logs the prompt and LLM decision process for debugging.
-- Uses OpenAI's function-calling capabilities to let the LLM choose which tool to use.
-- Only the "get_google_calendar_events" function is implemented; others are not yet functional.
+#### **Notable Logic:**
+- **LLM Tool Selection:** The LLM is prompted to pick exactly one tool and output only a tool call, ensuring deterministic and structured responses.
+- **Dispatch Mechanism:** Uses the function name from the LLM’s response to route the call to the appropriate handler.
+- **Partial Implementation:** Only the "get events" operation is implemented; "create" and "delete" are placeholders.
+
+---
+
+### 4. **Main Script Block**
+If run as a script, creates a `GoogleAgent` and asks it to process a sample request ("What’s on my calendar in the next 7 days?"), then prints the result as formatted JSON.
+
+---
+
+## **External Dependencies**
+
+- **Google API Python Client:** For interacting with Google Calendar (`google-api-python-client`, `google-auth`, `google-auth-oauthlib`).
+- **OpenAI Python SDK:** For LLM-powered decision making (`openai`).
+- **PyYAML:** For reading configuration files (`yaml`).
+- **Standard Libraries:** `json`, `datetime`, `pathlib`, `typing`.
+
+---
+
+## **Configuration Requirements**
+
+- **OAuth Credentials:** Requires a Google OAuth client secret file (`client_secret.json`) in a `config` directory.
+- **Token Storage:** OAuth tokens are stored in `token.json` in the same directory.
+- **YAML Config:** A `config.yaml` file is expected, containing:
+  - `skip_calendars`: List of calendar IDs to ignore.
+  - `secrets.openai_api_key`: OpenAI API key.
+  - `llm.model`: The OpenAI model to use (e.g., `gpt-4`).
+
+---
+
+## **Notable Algorithms and Logic**
+
+- **OAuth Flow:** Handles token refresh, fallback to interactive login, and persistent storage of tokens.
+- **LLM Tool Routing:** Uses OpenAI’s function calling to let the LLM choose and parameterize a tool call, then parses and dispatches this call in Python.
+- **Calendar Filtering:** Skips calendars as per configuration, and aggregates events across all visible calendars.
+- **Error Handling:** Catches and logs API errors, handles missing files, and deals with expired/invalid tokens.
 
 ---
 
 ## **Structure and Component Interaction**
 
-- **Configuration:** Both main classes load configuration from a YAML file located at `config/config.yaml` (relative to the script's parent directory). This config includes secrets (API keys) and settings (e.g., calendars to skip).
-- **Authentication:** GoogleCalendarManager handles Google OAuth2 authentication, using a token file.
-- **LLM Agent:** GoogleAgent initializes both the OpenAI API and a GoogleCalendarManager instance. It uses the LLM to decide which Google tool to use for a given user request, then dispatches the request to the appropriate method.
-- **Tool Definitions:** The `GOOGLE_TOOLS` list is used both for LLM prompting and for mapping LLM decisions to actual Python methods.
-
----
-
-## **External Dependencies & APIs**
-
-- **Google Calendar API:**  
-  - `googleapiclient.discovery` and `google.oauth2.credentials` for API access and authentication.
-- **OpenAI API:**  
-  - For LLM-based decision making.
-- **PyYAML:**  
-  - For configuration file parsing.
-- **Standard Libraries:**  
-  - `os`, `json`, `datetime`, etc.
-
-**Configuration Requirements:**
-- A YAML config file at `config/config.yaml` with at least:
-  - `secrets` (including `openai_api_key`)
-  - `skip_calendars` (optional)
-  - `llm` (including `model`)
-- A Google OAuth2 token at `config/token.json`.
-
----
-
-## **Notable Algorithms & Logic**
-
-- **LLM Tool Selection:**  
-  The agent constructs a system prompt listing available tools and asks the LLM to choose the best tool for the user's request. The LLM's response is parsed to determine which function to call. This is a common pattern for LLM "function calling" or "tool use" workflows.
-
-- **Event Aggregation:**  
-  When fetching upcoming events, the manager iterates over all calendars, collects events for each, and organizes them by calendar summary.
-
-- **Error Handling:**  
-  The code is robust to API errors, printing messages and skipping problematic calendars or events.
+1. **Initialization:** On startup, configuration is loaded, and authentication is performed.
+2. **User Request:** The user provides a natural language request.
+3. **LLM Processing:** The agent sends the request to the LLM, along with the available tool schemas.
+4. **Tool Selection:** The LLM responds with a structured tool call (function name and arguments).
+5. **Dispatch:** The agent parses the tool call and invokes the corresponding method on the calendar manager.
+6. **Result:** The result is returned (and printed, if run as a script).
 
 ---
 
 ## **Summary Table**
 
-| Component                | Purpose/Responsibility                                                                 |
-|--------------------------|---------------------------------------------------------------------------------------|
-| GoogleCalendarManager    | Handles Google Calendar API authentication, calendar listing, and event retrieval     |
-| GOOGLE_TOOLS             | Defines available Google Calendar operations for the LLM agent                        |
-| GoogleAgent              | Uses LLM to interpret user requests and dispatches to the appropriate calendar method |
-| Config File (YAML)       | Stores secrets (API keys), LLM model, and settings                                   |
-| Token File (JSON)        | Stores Google OAuth2 credentials                                                     |
+| Component              | Responsibility                                    | Key Methods/Attributes                       |
+|------------------------|---------------------------------------------------|----------------------------------------------|
+| GoogleCalendarManager  | Google Calendar API interaction, config, auth     | list_calendars, get_upcoming_events, ...     |
+| GOOGLE_TOOLS           | LLM tool/function schemas                         | N/A (data structure)                         |
+| GoogleAgent            | LLM interaction, tool dispatch, config            | llm_decide_and_dispatch, dispatch, ...       |
 
 ---
 
-## **Limitations & Extensibility**
+## **Limitations & TODOs**
 
-- **Only event listing is implemented.** Creating and deleting events are placeholders.
-- **No token refresh logic:** The commented-out code hints at plans for token refreshing, but it's not active.
-- **LLM API Usage:** Assumes a function-calling interface for OpenAI's API, which may require specific OpenAI SDK versions or endpoints.
+- **Partial Implementation:** Only event listing is implemented; event creation and deletion are placeholders.
+- **No Error Propagation:** Errors are printed but not always surfaced to the caller.
+- **Single-User:** Assumes a single user/config; not multi-tenant.
+- **No Webhook/Push:** Only supports polling, not real-time updates.
 
 ---
 
 ## **Conclusion**
 
-This script is a modular foundation for building an LLM-powered assistant that can interact with Google Calendar. It is well-structured for extension (e.g., adding event creation/deletion), and it demonstrates modern patterns for LLM tool use and API integration. Proper configuration and credentials are required for operation. The code is robust to errors and designed for interactive or automated use.
+This script is a modular, extensible agent for Google Calendar, leveraging LLMs for natural language understanding and tool selection, and the Google API for execution. It is designed for CLI or backend use, with clear separation between LLM-driven intent parsing and API execution, and is readily extensible for more calendar operations or other Google Workspace APIs.
 
 ### C:\GIT\Wheatly\Wheatley\Wheatley\llm\llm_client.py
-Certainly! Here’s a detailed summary and analysis of the provided Python script, focusing on its **purpose, structure, main classes/functions, dependencies, configuration, and notable logic**.
+Here's a detailed summary and analysis of the provided Python script:
 
 ---
 
 ## **Overall Purpose**
 
-This script provides a set of **wrappers and helper classes/functions** for integrating large language models (LLMs, specifically OpenAI’s GPT models) and various external APIs (such as ElevenLabs for text-to-speech, Google Calendar, Spotify, and weather/advice APIs) into a conversational assistant framework. The assistant can interact with users, call external services, synthesize speech, manage reminders/timers, and more.
+This script provides a set of client wrappers and helper functions for an AI assistant system. It integrates with various APIs and services, most notably OpenAI's GPT models (for LLM/chat), ElevenLabs (for text-to-speech), Google Calendar, and others. It exposes a framework for orchestrating LLM-driven workflows, tool/function calling, speech synthesis, and external service integration, all configurable via YAML files.
 
 ---
 
-## **Main Components and Structure**
+## **Main Components**
 
-### **1. Imports and Dependencies**
+### 1. **TextToSpeech Class**
 
-- **External APIs/Libraries:**
-  - `openai`: For LLM (GPT) interactions.
-  - `elevenlabs` and `playsound`: For text-to-speech (TTS) synthesis and playback.
-  - `requests`: For HTTP requests to external APIs (weather, advice, etc.).
-  - `yaml`, `json`: For configuration and data serialization.
-  - `asyncio`, `time`, `tempfile`, `os`, `logging`: Standard Python utilities.
-- **Local/Project Modules:**
-  - `google_agent`, `spotify_agent`: For Google Calendar and Spotify integrations.
-  - `llm_client_utils`: For utility functions (weather codes, jokes, quotes, etc.).
-  - `utils.timing_logger`: For performance logging.
-  - `utils.long_term_memory`: For persistent memory storage.
-
-### **2. TextToSpeech Class**
-
-**Purpose:**  
-Wraps the ElevenLabs API to generate and play speech from text, using settings from a YAML config file.
-
-**Key Responsibilities:**
-- **Configuration Loading:** Reads TTS settings (voice, API key, etc.) from `config.yaml`.
-- **Audio Generation:** Calls ElevenLabs API to synthesize speech.
-- **Playback:** Writes audio to a temp file and plays it with `playsound`.
-- **Runtime Reloading:** Can reload TTS config on demand.
-
-**Notable Logic:**
-- Uses a temp directory and cleans up audio files after playback.
-- Tracks and logs timing for TTS generation and playback.
-
-### **3. GPTClient Class**
-
-**Purpose:**  
-A wrapper for OpenAI’s GPT chat API, tailored for the assistant (“Wheatley”).
-
-**Key Responsibilities:**
-- **Initialization:** Loads API keys and model name from config.
-- **Text Generation:** Sends conversation history to GPT and extracts the assistant’s reply.
-- **Animation Selection:** Asks GPT to selectHere’s a thorough summary and analysis of the provided Python script:
+- **Purpose:**  
+  Wraps the ElevenLabs API to provide text-to-speech (TTS) capabilities.
+- **Responsibilities:**
+  - Loads TTS configuration (voice, model, API key) from a YAML config file.
+  - Generates audio from text using ElevenLabs.
+  - Plays generated audio and handles temporary files.
+  - Can reload configuration at runtime.
+- **Notable Logic:**  
+  Uses `playsound` to play audio, manages temp files, and logs timing for performance monitoring.
 
 ---
 
-## **Overall Purpose**
+### 2. **GPTClient Class**
 
-The script acts as a **central integration layer** for a conversational assistant (“Wheatley”), providing:
-
-- Wrappers around LLM (OpenAI GPT) API calls.
-- Text-to-speech (TTS) via ElevenLabs.
-- Integration with Google Calendar and Spotify.
-- Tool invocation and workflow execution for various assistant actions (weather, jokes, reminders, etc.).
-- Helper functions for utilities like jokes, quotes, weather, and persistent memory.
-
-It is designed to orchestrate complex, multi-step assistant behaviors by combining LLM outputs, external APIs, and local tools.
-
----
-
-## **Main Classes and Functions**
-
-### **1. `TextToSpeech`**
-
-**Purpose:**  
-Encapsulates ElevenLabs TTS API for generating and playing speech.
-
-**Responsibilities:**
-- Loads TTS configuration (voice, model, API key, etc.) from `config.yaml`.
-- Generates audio from text using ElevenLabs.
-- Plays the audio using `playsound`, managing temporary files.
-- Can reload configuration at runtime.
-
-**Notable Logic:**
-- Uses a temp directory for audio files, cleans up after playback.
-- Logs timing for generation and playback.
-- Supports dynamic reloading of voice/personality settings.
+- **Purpose:**  
+  Encapsulates all interactions with the OpenAI API for chat and function calling.
+- **Responsibilities:**
+  - Handles chat completions and streaming responses.
+  - Extracts and yields sentences in a streaming fashion, with timing info.
+  - Manages emotion/mood selection and tracking (for animation or persona).
+  - Suggests workflows (sequences of tool calls) based on the conversation.
+  - Updates and persists emotion usage statistics.
+- **Notable Logic:**
+  - Uses regular expressions to split sentences, with logic to avoid splitting at abbreviations.
+  - Maintains a JSON file to track emotion/mood usage for more varied responses.
+  - Dynamically injects context about emotion usage into prompts for the LLM.
+  - Manipulates the conversation history to guide the LLM's workflow/tool call suggestions.
 
 ---
 
-### **2. `GPTClient`**
+### 3. **Functions Class**
 
-**Purpose:**  
-Handles all interactions with OpenAI’s GPT models.
-
-**Responsibilities:**
-- Loads OpenAI API key and model from config.
-- Sends conversation history to GPT and extracts the assistant’s reply.
-- Asks GPT to select an animation/mood, using an emotion counter to encourage variety.
-- Builds and sends tool invocation requests to GPT, supporting parallel tool calls.
-- Tracks and persists emotion usage to encourage diverse responses.
-
-**Notable Logic:**
-- Dynamically adjusts tool prompts/context based on emotion usage.
-- Handles both standard text and tool-calling workflows.
-- Persists emotion usage in a JSON file for continuity.
-
----
-
-### **3. `Functions`**
-
-**Purpose:**  
-Implements the actual logic for the “tools” that GPT can invoke.
-
-**Responsibilities:**
-- Initializes sub-agents (Google, Spotify) based on config/service status.
-- Executes workflows: iterates over tool calls suggested by GPT, dispatches to the relevant function, and collects results.
-- Provides implementations for:
-  - Google/Spotify agent calls.
-  - Timer and reminder scheduling (with async event queue support).
-  - Weather queries (via Open-Meteo API).
-  - Jokes, quotes, advice (via utility functions or external APIs).
-  - City coordinate lookup.
-  - Daily summary (combines calendar, weather, and quote).
-  - Personality switching (updates config and TTS settings).
-  - Persistent memory (read, write, edit).
-
-**Notable Logic:**
-- Uses async scheduling for timers and reminders.
-- Supports event queue integration for real-time assistant events.
-- Handles fallback and error cases for unavailable services.
-- Allows dynamic personality switching by updating config and TTS.
+- **Purpose:**  
+  Acts as a container and dispatcher for all "tools" (functions) that the LLM can call.
+- **Responsibilities:**
+  - Registers tool functions using a custom `@tool` decorator.
+  - Executes a workflow (list of tool calls) as directed by the LLM, narrating each step using TTS.
+  - Provides handlers for a variety of assistant actions, including:
+    - Google Calendar and Spotify integration
+    - Timers and reminders (with async scheduling)
+    - Weather retrieval (via Open-Meteo API)
+    - Jokes, quotes, advice (via helper functions or APIs)
+    - Long-term memory (read/write/edit JSON files)
+    - Personality switching (updates config and TTS settings)
+  - Provides utility methods for time parsing, scheduling, and narration.
+- **Notable Logic:**
+  - Dynamically builds a dispatch table of tool functions using Python's `inspect`.
+  - Narrates each tool call using the LLM and TTS for a more interactive experience.
+  - Schedules timers and reminders asynchronously, posting events to an event queue.
+  - Reads and writes to a long-term memory file for persistent storage.
 
 ---
 
-### **4. Utility Imports and Functions**
+### 4. **Helper Functions and Decorators**
 
-- **From `llm_client_utils`:**  
-  Weather code descriptions, joke/quote fetchers, city coordinate lookup, tool builders, config loader.
-- **From `utils.timing_logger`:**  
-  For performance measurement.
-- **From `utils.long_term_memory`:**  
-  For persistent assistant memory.
+- **@tool Decorator:**  
+  Registers a method as a tool callable by the LLM, storing its name for later dispatch.
+- **Various Utility Functions:**  
+  - For weather, jokes, quotes, city coordinates, advice, etc., often imported from other modules.
 
 ---
 
-## **External Dependencies and APIs**
+### 5. **Configuration and External Integration**
 
-- **OpenAI GPT API:**  
-  For all LLM-based conversation and tool selection.
-- **ElevenLabs API:**  
-  For text-to-speech synthesis.
-- **Google Calendar API:**  
-  Via `GoogleCalendarManager` and `GoogleAgent`.
-- **Spotify API:**  
-  Via `SpotifyAgent`.
-- **Open-Meteo API:**  
-  For weather data.
-- **API Ninjas:**  
-  For random advice.
-- **Other:**  
-  `playsound` for audio playback, `requests` for HTTP, `yaml` and `json` for config/data.
+- **Config Loading:**  
+  Uses YAML config files for API keys, TTS settings, personalities, etc.
+- **External APIs:**
+  - **OpenAI:** For LLM chat, function calling, and streaming.
+  - **ElevenLabs:** For TTS.
+  - **Open-Meteo:** For weather data.
+  - **API Ninjas:** For advice.
+  - **Google Calendar & Spotify:** Via agent classes (imported).
+- **File Structure:**  
+  Relies on a specific directory layout for config, temp, and memory files.
+
+---
+
+### 6. **Event-Driven Design**
+
+- **Event Queue:**  
+  Timers and reminders are scheduled asynchronously and post events to an event queue, likely to be consumed by the assistant's main event loop.
+- **Narration:**  
+  Each tool call can be narrated by the assistant, using the LLM to generate a short, in-character description, which is then spoken via TTS.
+
+---
+
+## **Structure and Flow**
+
+- **Initialization:**  
+  Loads configuration and initializes TTS and LLM clients.
+- **Tool Registration:**  
+  All tool functions are registered in the `Functions` class via the decorator.
+- **Workflow Execution:**  
+  The LLM suggests a workflow (a list of tool calls), which is executed by the `Functions` class. Each tool call is narrated, executed, and its result collected.
+- **External Service Integration:**  
+  Tool functions may call out to Google Calendar, Spotify, weather APIs, or other services as needed.
+- **Memory and Personality:**  
+  The assistant can read/write long-term memory and switch personalities, updating both LLM prompts and TTS settings.
+
+---
+
+## **External Dependencies**
+
+- **Python Packages:**  
+  - `openai`, `requests`, `yaml`, `json`, `re`, `playsound`, `elevenlabs`, `tempfile`, `inspect`, `asyncio`, `datetime`, `logging`
+- **Local Modules:**  
+  - `google_agent`, `llm_client_utils`, `utils.timing_logger`, `utils.long_term_memory`
+- **APIs:**  
+  - OpenAI (LLM), ElevenLabs (TTS), Open-Meteo (weather), API Ninjas (advice), Google Calendar, Spotify
 
 ---
 
 ## **Configuration Requirements**
 
-- **`config.yaml`:**  
-  Must exist in a `config` directory two levels up from this script. Contains:
-  - API keys (OpenAI, ElevenLabs, API Ninjas, etc.).
-  - TTS settings (voice, model, etc.).
-  - Assistant personalities and system messages.
-  - Web search settings (optional).
-- **Emotion counter JSON:**  
-  Used to persist emotion/mood usage for animation selection.
-- **Long-term memory JSON:**  
-  Used for persistent assistant memory.
-
----
-
-## **Code Structure and Interactions**
-
-- **Assistant workflow:**
-  1. **User input** is processed and sent to `GPTClient`.
-  2. **GPTClient** determines if a tool call is needed, or generates a reply.
-  3. If tools are invoked, **Functions** executes them (possibly using Google/Spotify agents, weather APIs, etc.).
-  4. **TextToSpeech** is used to vocalize summaries or actions.
-  5. **Event queue** is used for timers/reminders, integrating with the assistant’s event loop.
-  6. **Persistent memory** is managed via utility functions.
-
-- **Modularity:**  
-  Each external service is abstracted behind a class or utility, allowing for easier extension and maintenance.
+- **YAML Config File:**  
+  - Must include API keys (OpenAI, ElevenLabs, API Ninjas), TTS settings, personalities, etc.
+- **File Paths:**  
+  - Expects certain files and directories (e.g., `config/config.yaml`, `long_term_memory.json`, `llm/emotion_counter.json`, `temp/` directory).
 
 ---
 
 ## **Notable Algorithms and Logic**
 
-- **Emotion Counter:**  
-  Tracks which moods/animations have been used, and biases GPT to select less-used ones for variety.
-- **Dynamic Tool Context:**  
-  System messages and tool descriptions are dynamically adjusted based on conversation state and emotion usage.
-- **Async Scheduling:**  
-  Uses asyncio for timers and reminders, posting events to an event queue.
-- **Personality Switching:**  
-  Updates both system messages and TTS settings on the fly, allowing the assistant to change “character”.
+- **Sentence Streaming:**  
+  Efficiently yields sentences from a streaming LLM response, using regex to detect sentence boundaries and skipping abbreviations.
+- **Emotion/Mood Tracking:**  
+  Tracks and persists the frequency of mood/animation selections to encourage varied responses from the LLM.
+- **Dynamic Tool Dispatch:**  
+  Uses Python introspection to build a dispatch table of available tools, allowing the LLM to call any registered function by name.
+- **Narration Pipeline:**  
+  For each tool call, generates a short, in-character narration using the LLM, then speaks it using TTS.
+- **Async Event Scheduling:**  
+  Uses asyncio to schedule timers and reminders, posting events to an event queue for later handling.
+
+---
+
+## **How Components Interact**
+
+- The **GPTClient** handles all LLM interactions, including streaming, tool call suggestions, and animation/mood selection.
+- The **Functions** class receives workflows (tool call sequences) from the LLM, narrates and executes them, and returns results.
+- The **TextToSpeech** class is used by Functions (and potentially elsewhere) to speak narration or responses.
+- External services (Google, Spotify, weather, advice) are accessed via tool functions, which are invoked as needed by the LLM-driven workflow.
+- Configuration and memory are loaded and updated as needed to persist state and settings across runs.
 
 ---
 
 ## **Summary Table**
 
-| Component      | Purpose/Responsibility                                       | Notable Features/Logic              |
-|----------------|-------------------------------------------------------------|-------------------------------------|
-| TextToSpeech   | ElevenLabs TTS wrapper, playback, config reload             | Temp file mgmt, timing, personality |
-| GPTClient      | OpenAI GPT chat, tool invocation, animation selection       | Emotion counter, dynamic prompts    |
-| Functions      | Implements all tool logic (weather, reminders, memory, etc) | Async events, multi-agent support   |
-| Utilities      | Weather, jokes, quotes, city lookup, config, memory         | Modular, reusable                   |
-| Config         | Stores API keys, TTS, personalities, web search, etc.       | YAML-based, reloadable              |
+| Component          | Purpose                                 | Key Responsibilities                                      |
+|--------------------|-----------------------------------------|-----------------------------------------------------------|
+| TextToSpeech       | ElevenLabs TTS wrapper                  | Speech synthesis, config reload, audio playback           |
+| GPTClient          | OpenAI LLM wrapper                      | Chat, streaming, tool call suggestion, mood tracking      |
+| Functions          | Tool dispatcher and executor            | Registers tools, executes workflows, narrates, integrates APIs |
+| @tool decorator    | Tool registration                       | Marks methods as callable tools for LLM                   |
+| Config/Memory      | Persistent settings and state           | Loads/saves YAML config, JSON memory, emotion stats       |
+| External Agents    | Google/Spotify integration              | Calendar/music actions via agent classes                  |
 
 ---
 
 ## **Conclusion**
 
-This script is a **modular, extensible integration layer** for a conversational AI assistant. It coordinates LLM interactions, TTS, external APIs, and event scheduling, providing a robust foundation for a voice-enabled, multi-modal assistant. The code is designed for flexibility, with dynamic configuration, personality switching, and support for new tools and APIs.
+This script is a sophisticated integration layer for an LLM-powered assistant, providing a modular, extensible framework for tool-based reasoning, speech synthesis, and multi-service orchestration. It is highly configurable, supports persistent state, and is designed for interactive, event-driven operation with rich narration and personality features.
 
 ### C:\GIT\Wheatly\Wheatley\Wheatley\llm\llm_client_utils.py
-Certainly! Here’s a **detailed summary** of the provided Python script, covering its purpose, structure, main components, external dependencies, and notable logic.
+Here is a detailed summary and analysis of the provided Python script:
 
 ---
 
 ## **Overall Purpose**
 
-This script provides **shared utilities and tool definitions** for an LLM (Large Language Model) client, likely as part of a conversational assistant or chatbot system (possibly named "Wheatley"). It offers utility functions (such as fetching jokes, quotes, and weather info), manages tool definitions for function-calling by the LLM, and loads configuration and service status for dynamic tool availability.
+This script provides **shared utilities and tool definitions** for an LLM (Large Language Model) client, likely part of a conversational AI assistant system. Its main responsibilities are:
 
----
-
-## **Structure and Main Components**
-
-### **1. Imports and Constants**
-
-- **Standard Libraries:**  
-  - `os`, `yaml`, `datetime`, `requests`: For file handling, configuration, date/time, and HTTP requests.
-- **Service Status Import:**  
-  - Attempts to import `SERVICE_STATUS` from a sibling module, falling back to a local import if needed.
-- **Weather Code Descriptions:**  
-  - A dictionary mapping weather codes to human-readable descriptions, used for interpreting weather API responses.
-
----
-
-### **2. Utility Functions**
-
-#### **a. `_load_config()`**
-- **Purpose:** Loads a shared YAML configuration file (`config.yaml`) found in a parent directory.
-- **Usage:** Provides API keys and other settings for other functions.
-
-#### **b. `get_joke()`**
-- **Purpose:** Fetches a random joke from the [Official Joke API](https://official-joke-api.appspot.com/random_joke).
-- **Returns:** A formatted string with the joke setup and punchline.
-
-#### **c. `get_quote()`**
-- **Purpose:** Fetches a motivational quote from [API Ninjas](https://api-ninjas.com/api/quotes).
-- **Requires:** API key from the loaded config.
-- **Returns:** A formatted string with the quote and author, or a fallback if unavailable.
-
-#### **d. `get_city_coordinates(city)`**
-- **Purpose:** Retrieves latitude and longitude for a specified city using the API Ninjas city endpoint.
-- **Requires:** API key from the loaded config.
-- **Returns:** A formatted string with coordinates, or a fallback if city data is missing.
-
----
-
-### **3. Tool Definitions**
-
-#### **a. `set_animation_tool`**
-- **Purpose:** Defines a tool for setting the bot's animation/mood based on emotional context.
-- **Structure:** JSON schema for function-calling, listing all allowed animation states.
-
-#### **b. `build_tools()`**
-- **Purpose:** Dynamically constructs a list of tool/function definitions (as dictionaries) for the LLM to use.
-- **Behavior:**
-  - Loads config for web search and other purposes.
-  - Defines a set of tools, each as a dictionary with metadata (name, description, parameters).
-  - Some tools are:
-    - **Web search preview** (with optional user location/context size)
-    - **Weather retrieval** (with detailed parameter schema)
-    - **Joke/quote/city coordinate fetchers**
-    - **Advice retrieval**
-    - **Google and Spotify agent delegation** (conditionally included based on service status)
-    - **Timer and reminder setting**
-    - **Daily summary generation**
-    - **Personality switching**
-    - **Long-term memory write/edit**
-  - **Conditional Tool Inclusion:**  
-    - If `SERVICE_STATUS` indicates Google or Spotify services are unavailable, those tools are omitted from the returned list.
-- **Returns:** The final list of tool definitions.
-
----
-
-## **External Dependencies and APIs**
-
-- **YAML Configuration:**  
-  - Expects a `config.yaml` file with at least a `secrets` section containing API keys.
-- **APIs Used:**
-  - **Official Joke API:** For random jokes.
-  - **API Ninjas:** For quotes and city coordinates (requires API key).
-- **Service Status:**  
-  - `SERVICE_STATUS` is used to enable/disable Google and Spotify-related tools at runtime.
-- **Requests Library:**  
-  - Used for all HTTP API calls.
-
----
-
-## **Configuration Requirements**
-
-- **Config File:**  
-  - Must be located at `../config/config.yaml` relative to this script.
-  - Should include:
-    - `secrets.api_ninjas_api_key` for quote and city APIs.
-    - `web_search` section for web search tool configuration (optional).
-- **Service Status:**  
-  - `SERVICE_STATUS` dictionary must indicate which external agents (Google, Spotify) are available.
-
----
-
-## **Notable Algorithms and Logic**
-
-- **Dynamic Tool Construction:**  
-  - The `build_tools()` function builds the tool list at runtime, including or excluding tools based on configuration and service status.
-- **API Key Management:**  
-  - API keys are securely loaded from a YAML config, not hardcoded.
-- **Weather Code Mapping:**  
-  - Weather codes are mapped to human-readable descriptions for better LLM responses.
-- **Function Calling Schema:**  
-  - Tools are defined in a JSON schema-like format, suitable for LLM function-calling frameworks (e.g., OpenAI's function calling or similar).
-- **Contextual Tool Descriptions:**  
-  - Some tool descriptions include dynamic context (e.g., current time, day) to help the LLM provide accurate responses.
-
----
-
-## **Component Interactions**
-
-- **Utility functions** are called directly by the LLM client or via function-calling when the LLM selects a tool.
-- **Tool definitions** are provided to the LLM, which can then "call" these tools by name with specified parameters.
-- **Service status** and **configuration** are checked at runtime to ensure only available and properly configured tools are exposed.
-
----
-
-## **Summary Table**
-
-| Component              | Responsibility                                              |
-|------------------------|------------------------------------------------------------|
-| `_load_config()`       | Loads YAML config for API keys and settings                |
-| `get_joke()`           | Fetches a random joke from an external API                 |
-| `get_quote()`          | Fetches a motivational quote (API Ninjas, needs API key)   |
-| `get_city_coordinates()` | Gets city latitude/longitude (API Ninjas, needs API key) |
-| `set_animation_tool`   | Defines animation/mood tool for the bot                    |
-| `build_tools()`        | Dynamically builds the list of available LLM tools         |
-| `SERVICE_STATUS`       | Controls tool availability for Google/Spotify agents       |
-| `WEATHER_CODE_DESCRIPTIONS` | Maps weather codes to human-readable text             |
-
----
-
-## **Conclusion**
-
-This script is a **shared utility and tool definition module** for an LLM-based assistant. It provides API-backed utility functions, manages configuration and service status, and dynamically builds a set of function-calling tools for the LLM. Its design allows for flexible, context-aware, and secure integration of external services and agent delegation, supporting a wide range of conversational assistant features.
-
-### C:\GIT\Wheatly\Wheatley\Wheatley\llm\spotify_agent.py
-Certainly! Here’s a detailed summary and analysis of the provided `spotify_agent.py` script:
-
----
-
-## **Overall Purpose**
-
-The script implements an **LLM-powered Spotify agent** that can interpret natural language user requests and map them to Spotify actions. It acts as an intelligent interface between a user (via chat/CLI) and the Spotify API, using an LLM (such as OpenAI’s GPT) to decide which Spotify tool/function to invoke based on the user’s request.
+- Defining a set of callable "tools" (functions or actions) that the LLM can use to fulfill user requests.
+- Providing utility functions for fetching jokes, quotes, city coordinates, and configuration data.
+- Managing tool availability based on external service status.
+- Supplying metadata and schemas for each tool so that the LLM can invoke them correctly.
 
 ---
 
@@ -511,262 +324,408 @@ The script implements an **LLM-powered Spotify agent** that can interpret natura
 
 ### 1. **External Dependencies**
 
-- **openai**: For LLM-powered decision-making and function/tool selection.
-- **yaml**: For configuration loading.
-- **json, os, datetime, typing**: Standard Python libraries for data handling, file I/O, and type hints.
-- **spotify_ha_utils.SpotifyHA**: A local or relative module that wraps Spotify API calls and provides high-level Spotify control functions.
+- **os**: For file path manipulations.
+- **yaml**: For loading configuration from YAML files.
+- **datetime**: To get the current date and time.
+- **requests**: For making HTTP requests to external APIs.
+- **service_auth.SERVICE_STATUS**: For checking the status of external services (Google, Spotify, etc.).
 
-### 2. **Configuration**
+### 2. **Configuration Management**
 
-- Loads configuration from `config/config.yaml` (relative to the script’s parent directory), which must include:
-  - OpenAI API key (`secrets.openai_api_key`)
-  - LLM model configuration (`llm.model`)
-- Requires valid Spotify credentials, handled by `SpotifyHA.get_default()`.
+- **_load_config()**:  
+  Loads a shared YAML configuration file (`config.yaml`) located in a parent directory. This config provides secrets (API keys) and other settings used by the tools.
 
----
+### 3. **Utility Functions**
 
-## **Main Classes and Functions**
+- **get_joke()**:  
+  Fetches a random joke from the [Official Joke API](https://official-joke-api.appspot.com/).
 
-### **A. `SPOTIFY_TOOLS`**
+- **get_quote()**:  
+  Fetches a motivational quote from [API Ninjas](https://api-ninjas.com/api/quotes), using an API key from the configuration.
 
-- **Purpose**: Defines a list of tool/function specifications that the LLM can choose from.
-- **Structure**: Each tool is a dictionary with:
-  - `name`: Function name
-  - `description`: What the tool does
-  - `parameters`: Expected input parameters (JSON schema)
-- **Coverage**: Includes tools for playback control, searching, queue management, device management, and history.
+- **get_city_coordinates(city)**:  
+  Looks up latitude and longitude for a given city using the API Ninjas city endpoint, again using the configured API key.
 
----
+### 4. **Weather Code Descriptions**
 
-### **B. `SpotifyAgent` Class**
+- **WEATHER_CODE_DESCRIPTIONS**:  
+  A dictionary mapping weather codes (integers) to human-readable weather descriptions. Used for interpreting weather API responses.
 
-#### **Responsibilities:**
+### 5. **Tool Definitions**
 
-- **Configuration Loading**: Loads YAML config for API keys and model selection.
-- **Spotify API Wrapper**: Instantiates a `SpotifyHA` object for all Spotify operations.
-- **Tool List**: Exposes the list of tools to the LLM.
-- **LLM Orchestration**: Uses OpenAI’s API to select and call the appropriate tool based on user input.
-- **Dispatching**: Maps tool/function names to actual method calls on the `SpotifyHA` object, handling arguments and formatting responses.
+- **set_animation_tool**:  
+  A list containing a tool definition for setting the bot's animation/mood. It specifies allowed animation states and describes how the bot should select an animation based on context.
 
-#### **Key Methods:**
+- **build_tools()**:  
+  The core function that assembles and returns a list of all available tools for the LLM client.  
+  - Each tool is defined as a dictionary with metadata: type, name, description, and a JSON schema for parameters.
+  - Some tools are simple (like `get_joke`), others are more complex (like `get_weather` or `call_google_agent`).
+  - The function dynamically includes or excludes tools based on the `SERVICE_STATUS` dictionary (e.g., Google or Spotify tools are only included if those services are available).
+  - The web search tool is configured with user location and context size if available in the config.
+  - The function also injects the current date and time into the weather tool's description for contextual awareness.
 
-1. **`_load_config()`**
-   - Loads YAML configuration from a fixed path.
-
-2. **`__init__()`**
-   - Loads config, initializes Spotify and OpenAI API keys, sets up the tool list.
-
-3. **`_dispatch(name, arguments)`**
-   - Core dispatcher that executes the correct Spotify action based on the tool name and arguments.
-   - Handles argument parsing, type casting, and calls the corresponding `SpotifyHA` method.
-   - Formats responses for user readability.
-
-4. **`llm_decide_and_dispatch(user_request, arguments=None)`**
-   - Prepares a prompt for the LLM, including the available tools and current time.
-   - Sends the user request and tool list to the LLM, which returns a function call.
-   - Dispatches the selected tool with the provided arguments.
-   - Returns the result to the user.
+#### **Notable Tool Definitions**
+- **get_weather**: Fetches weather and forecast for given coordinates, with flexible forecast range and unit options.
+- **test_function**: A simple function for testing function-calling.
+- **get_joke, get_quote, get_city_coordinates**: Call the above utility functions.
+- **get_advice**: Placeholder for an advice-fetching tool (not implemented in this script).
+- **call_google_agent, call_spotify_agent**: Delegate requests to specialized agents for Google and Spotify services.
+- **set_timer, set_reminder**: Schedule events or reminders for the user.
+- **daily_summary**: Compiles a daily summary from various sources (implementation not shown).
+- **set_personality**: Switches the assistant's personality mode.
+- **write_long_term_memory, edit_long_term_memory**: Persist and edit JSON data in long-term memory.
 
 ---
 
-### **C. `_pretty(obj)` Function**
+## **Structure and Interactions**
 
-- **Purpose**: Nicely formats and prints the results of Spotify actions for the CLI.
-- **Logic**: Handles different types of responses (tracks, lists, status messages) and prints them in a human-friendly way.
-
----
-
-### **D. `__main__` Block**
-
-- **Purpose**: Provides a simple command-line interface (CLI) for interactive use.
-- **Logic**: 
-  - Instantiates the agent.
-  - Repeatedly prompts the user for input.
-  - Passes the input to the agent, formats the response, and prints it.
-  - Handles interruptions gracefully.
+- **Configuration** is loaded via `_load_config()` whenever a tool needs secrets or settings.
+- **SERVICE_STATUS** is used to dynamically enable/disable tools for Google and Spotify, ensuring the LLM only offers tools that are available.
+- **Tool Metadata** is structured to be compatible with function-calling LLMs (e.g., OpenAI's function calling), with JSON schemas for parameters and clear descriptions.
+- **APIs**: The script interacts with several external APIs:
+  - Official Joke API (no auth)
+  - API Ninjas (quotes, city lookup; requires API key)
+- **Weather Codes**: The script provides a mapping for interpreting weather API responses (not directly used here, but likely used elsewhere in the system).
 
 ---
 
-## **How Components Interact**
+## **Configuration Requirements**
 
-1. **User Input**: User types a natural language request.
-2. **LLM Prompting**: The agent constructs a prompt for the LLM, listing all available tools and the user’s request.
-3. **LLM Tool Selection**: The LLM picks the most appropriate tool (function) and provides arguments.
-4. **Dispatch**: The agent’s `_dispatch` method calls the corresponding Spotify function.
-5. **Spotify API**: The `SpotifyHA` object interacts with the Spotify API to perform the action.
-6. **Response Formatting**: The result is formatted (via `_pretty`) and shown to the user.
+- **config.yaml**:  
+  Must exist in a `config` directory one level above the script.  
+  - Should contain a `secrets` section with at least `api_ninjas_api_key`.
+  - May contain `web_search` settings (e.g., `user_location`, `search_context_size`).
 
----
-
-## **Notable Algorithms and Logic**
-
-- **LLM-Driven Tool Selection**: The agent leverages the LLM’s function-calling capabilities to map free-form user requests to structured function calls, reducing the need for hand-crafted intent parsing.
-- **Dynamic Dispatch**: The `_dispatch` method acts as a router, mapping tool names to concrete Spotify operations, handling argument parsing, and formatting.
-- **Queue and Device Management**: The agent can search, queue, and remove tracks, as well as manage playback devices and transfer playback, all via natural language.
-- **Market-Specific Logic**: Some operations (like `queue_artist_top_track`) are hardcoded for the Norwegian market (`country="NO"`).
+- **service_auth.py**:  
+  Must provide a `SERVICE_STATUS` dictionary indicating which external services are available.
 
 ---
 
-## **External APIs and Configuration Requirements**
+## **Notable Logic and Algorithms**
 
-- **Spotify API**: Accessed via the `SpotifyHA` utility class (not shown here).
-- **OpenAI API**: Requires a valid API key for LLM-based function selection.
-- **YAML Config File**: Must be present at `config/config.yaml` with the necessary secrets and model info.
+- **Dynamic Tool Availability**:  
+  The `build_tools()` function checks `SERVICE_STATUS` to include/exclude tools for Google and Spotify, ensuring that the LLM doesn't offer unavailable services.
+
+- **Contextual Tool Descriptions**:  
+  The weather tool's description dynamically includes the current day and time, and provides logic for interpreting user requests about "the weekend" based on the current day.
+
+- **Parameter Schema Enforcement**:  
+  Each tool defines a strict JSON schema for its parameters, ensuring that the LLM provides the correct arguments when invoking tools.
+
+- **API Key Management**:  
+  API keys are never hardcoded; they're loaded from a secure config file.
 
 ---
 
 ## **Summary Table**
 
-| Component         | Responsibility                                      | Key Interactions                   |
-|-------------------|-----------------------------------------------------|------------------------------------|
-| `SPOTIFY_TOOLS`   | Tool definitions for LLM                            | Used in LLM prompt and dispatch    |
-| `SpotifyAgent`    | Main logic: config, LLM, dispatch, Spotify control  | Uses `SpotifyHA`, OpenAI API       |
-| `_pretty`         | CLI output formatting                               | Formats results for user           |
-| CLI (`__main__`)  | User interaction loop                               | Calls agent, prints output         |
-| `SpotifyHA`       | Spotify API abstraction (external module)           | Handles all Spotify API calls      |
+| Component                  | Purpose/Responsibility                                                                 |
+|----------------------------|---------------------------------------------------------------------------------------|
+| `_load_config()`           | Loads YAML config with secrets and settings                                           |
+| `get_joke()`               | Fetches a random joke from an external API                                           |
+| `get_quote()`              | Fetches a motivational quote using API Ninjas                                        |
+| `get_city_coordinates()`   | Looks up city coordinates using API Ninjas                                           |
+| `WEATHER_CODE_DESCRIPTIONS`| Maps weather codes to human-readable descriptions                                    |
+| `set_animation_tool`       | Defines an animation/mood-setting tool for the bot                                   |
+| `build_tools()`            | Assembles and returns a list of available tools, with dynamic inclusion/exclusion    |
+| `SERVICE_STATUS`           | Dictates which tools are available based on external service status                  |
 
 ---
 
 ## **Conclusion**
 
-This script is a sophisticated bridge between natural language user requests and the Spotify API, using an LLM to select and invoke the appropriate Spotify function. It is modular, extensible, and designed for both interactive CLI use and as a backend agent for more complex systems. Its core logic centers on LLM-driven function selection, dynamic dispatching, and robust Spotify API integration. Configuration and API keys are required for both Spotify and OpenAI access.
+This script is a **tool and utility registry** for an LLM-based assistant, providing both the definitions and implementations for a range of assistant actions. It is designed for extensibility, security (via config), and dynamic adaptability to available services. The script is intended to be imported and used by the main LLM client, which will invoke these tools as needed to fulfill user requests.
 
-### C:\GIT\Wheatly\Wheatley\Wheatley\llm\spotify_ha_utils.py
-Certainly! Here’s a detailed summary and analysis of the provided `spotify_ha_utils.py` Python script:
+### C:\GIT\Wheatly\Wheatley\Wheatley\llm\spotify_agent.py
+Certainly! Here is a detailed summary and analysis of the provided Python script:
 
 ---
 
 ## **Overall Purpose**
 
-The script defines a utility module for interacting with the Spotify Web API, focusing on playback and queue management. It wraps the [Spotipy](https://spotipy.readthedocs.io/) library in a class (`SpotifyHA`) that provides high-level, user-friendly methods for controlling playback, searching, queueing, and removing tracks, as well as a CLI demo with optional rich formatting. It is designed for both scripting and interactive command-line use, with features that make it suitable for home automation or personal Spotify control.
+This script implements a **Spotify agent** that enables users to interact with their Spotify account using natural language. It leverages a **Large Language Model (LLM)** (e.g., OpenAI's GPT) to interpret user requests, select the appropriate Spotify tool/function, and execute playback or account management actions. The agent supports a variety of Spotify operations, such as searching for tracks, managing playback, queueing songs, listing devices, and more.
+
+---
+
+## **Main Components and Structure**
+
+### **1. Tool Definitions (`SPOTIFY_TOOLS`)**
+
+- **Purpose:**  
+  Defines a list of Spotify-related "tools" (functions) that the LLM can select from. Each tool is described with a name, description, and expected parameters (using a JSON schema-like format).
+- **Examples of tools:**  
+  - `search_tracks`: Search for tracks by text.
+  - `queue_track_by_name`: Find and queue a song.
+  - `get_recently_played`: Show recent listening history.
+  - `list_devices`: List available Spotify devices.
+  - `transfer_playback`: Switch playback to a device.
+  - `play_album_by_name`: Play an album by name.
+  - Others: get current track, get queue, toggle play/pause, skip track, queue artist top track, remove queue item.
+
+### **2. Handler Registration (`handles` decorator and `_HANDLER_REGISTRY`)**
+
+- **Purpose:**  
+  Provides a decorator (`@handles`) to register handler methods for each tool by name. This allows for dynamic dispatching of tool calls to the correct method.
+- **Mechanism:**  
+  The decorator adds the handler function to the `_HANDLER_REGISTRY` dictionary, mapping tool names to their corresponding methods.
+
+### **3. `SpotifyAgent` Class**
+
+- **Purpose:**  
+  The central class that manages configuration, authentication, LLM interaction, and dispatching tool calls.
+- **Key Methods:**
+  - `__init__`: Loads configuration, authenticates with Spotify (via a utility class), and sets up the LLM and tool list.
+  - `_load_config`: Loads configuration from a YAML file (expects OpenAI API key and LLM model info).
+  - `_dispatch`: Looks up and calls the appropriate handler for a given tool name and arguments.
+  - `_coerce`: Utility to ensure arguments are in dict form (parsing JSON strings if necessary).
+  - **Handlers:**  
+    Each tool has a corresponding handler method (decorated with `@handles`). These methods interact with the `SpotifyHA` utility class to perform the actual Spotify API calls.
+  - `llm_decide_and_dispatch`:  
+    - Constructs a prompt for the LLM, listing all available tools and the current time.
+    - Sends the user request (and optional arguments) to the LLM.
+    - Expects the LLM to return a function call (tool selection and arguments).
+    - Dispatches the call to the appropriate handler.
+    - Raises an error if the LLM does not return a function call.
+
+### **4. Utility Functions**
+
+- `_pretty`:  
+  Formats and prints the results of Spotify operations in a user-friendly way (for command-line interaction).
+
+### **5. Command-Line Interface (CLI) Section**
+
+- If run as a script, the agent enters a REPL loop, prompting the user for input, passing it to the agent, and pretty-printing the result.
+
+---
+
+## **External Dependencies**
+
+- **openai**:  
+  For LLM interaction (OpenAI API key required in config).
+- **yaml**:  
+  For configuration file parsing.
+- **spotify_ha_utils.SpotifyHA**:  
+  A utility class (not included here) that wraps Spotify API calls and provides methods like `get_current_track`, `search_tracks`, `queue_track_by_name`, etc.
+- **Standard libraries**:  
+  `os`, `json`, `datetime`, `typing`.
+
+---
+
+## **Configuration Requirements**
+
+- **YAML config file**:  
+  Expected at `config/config.yaml` (relative to the script's parent directory).
+  - Must contain:
+    - `secrets.openai_api_key`: OpenAI API key.
+    - `llm.model`: Model name for the LLM (e.g., `gpt-4`).
+- **Spotify authentication**:  
+  Handled by `SpotifyHA.get_default()`. The user must be authenticated with Spotify (details abstracted in `SpotifyHA`).
+
+---
+
+## **Notable Algorithms and Logic**
+
+### **LLM Tool Selection and Dispatch**
+
+- The agent constructs a prompt for the LLM, listing all available tools and their descriptions.
+- The LLM is instructed to pick **exactly one tool** and respond with a function call (tool name and arguments).
+- The agent parses the LLM's response and dispatches the call to the corresponding handler.
+- This architecture allows the agent to be **extensible**: new tools can be added by defining their schema and handler.
+
+### **Handler Registration via Decorators**
+
+- The use of a decorator (`@handles`) to register handlers for each tool name is a clean, scalable way to map tool names to methods.
+
+### **Dynamic Argument Coercion**
+
+- Arguments passed to handlers may be dicts or JSON strings; `_coerce` ensures they are always dicts for handler use.
+
+---
+
+## **Component Interactions**
+
+1. **User Input** (via CLI or programmatically).
+2. **LLM Prompt Construction**:  
+   The agent builds a prompt including the tool list and user request.
+3. **LLM Call**:  
+   Sends the prompt to the OpenAI API, requesting a function call.
+4. **Tool Selection**:  
+   The LLM chooses the appropriate tool and provides arguments.
+5. **Dispatch**:  
+   The agent dispatches the call to the registered handler.
+6. **Spotify API Call**:  
+   The handler uses `SpotifyHA` to interact with Spotify.
+7. **Result Formatting**:  
+   The result is formatted and returned (or printed in the CLI).
+
+---
+
+## **Summary Table of Main Tools and Handlers**
+
+| Tool Name              | Handler Method                | Description                                      |
+|------------------------|------------------------------|--------------------------------------------------|
+| get_current_track      | _get_current_track           | Info about currently playing track                |
+| get_queue              | _get_queue                   | Upcoming queue with ETA                          |
+| toggle_play_pause      | _toggle_play_pause           | Toggle play/pause                                |
+| skip_next_track        | _skip_next_track             | Skip to next track                               |
+| search_tracks          | _search_tracks               | Search for tracks                                |
+| queue_track_by_name    | _queue_track_by_name         | Find and queue a track                           |
+| queue_artist_top_track | _queue_artist_top_track      | Queue top track by artist                        |
+| remove_queue_item      | _remove_queue_item           | Remove tracks from queue                         |
+| list_devices           | _list_devices                | List Spotify devices                             |
+| transfer_playback      | _transfer_playback           | Transfer playback to device                      |
+| get_recently_played    | _get_recently_played         | Show recently played tracks                      |
+| play_album_by_name     | _play_album_by_name          | Play an album by name                            |
+
+---
+
+## **Extensibility**
+
+- **Adding new tools**:  
+  Add a new entry to `SPOTIFY_TOOLS` and define a handler method with the `@handles` decorator.
+- **Changing LLM model or API**:  
+  Update the config file.
+
+---
+
+## **Summary**
+
+This script provides a robust, extensible agent for controlling Spotify via natural language, using LLM-powered tool selection. It abstracts Spotify API interactions behind a set of tools, each with a handler, and uses a decorator-based registry for dispatch. The agent is designed for both command-line and programmatic use, and is easily configurable and extensible. The separation of tool definitions, handler registration, and LLM interaction makes the codebase maintainable and adaptable to new features or tools.
+
+### C:\GIT\Wheatly\Wheatley\Wheatley\llm\spotify_ha_utils.py
+Certainly! Here’s a **detailed summary and analysis** of the provided `spotify_ha_utils.py` script, covering its **purpose, structure, main classes/functions, dependencies, configuration, and notable logic**.
+
+---
+
+## **Overall Purpose**
+
+This script provides a **convenient, object-oriented wrapper** around the [Spotipy](https://spotipy.readthedocs.io/) library for the Spotify Web API, focusing on **queue and playback management**. It includes utilities for searching, queueing, and controlling playback, as well as a CLI demo (with optional [Rich](https://rich.readthedocs.io/) output) that displays the current queue and estimated times until each track plays.
 
 ---
 
 ## **Main Components**
 
 ### **1. Configuration Loader**
-- **Functionality:** Loads Spotify API credentials and configuration from a YAML file (default: `config/config.yaml`).
-- **Details:** Looks for a `secrets` section containing `spotify_client_id` and `spotify_client_secret`.
 
-### **2. `SpotifyHA` Class**
-**Purpose:**  
-A compact, object-oriented wrapper around Spotipy, focused on queue and playback operations.
-
-#### **Key Responsibilities:**
-- **Authentication:** Handles OAuth2 authentication using credentials from the config file.
-- **Playback Control:** Play, pause, skip, transfer playback, and toggle play/pause.
-- **Queue Management:** Add, search, and remove tracks from the playback queue.
-- **Device Management:** List and select active playback devices.
-- **Track/Artist/Album Search:** Search for tracks, albums, and artists, and queue or play them.
-- **Rich CLI Demo:** Optionally display queue and ETA information in a formatted table using Rich.
-- **Utility Functions:** Flatten track data, format durations, and select the best artist match.
-
-#### **Notable Methods:**
-- **`__init__`**: Initializes the Spotify client with proper authentication.
-- **`get_default`**: Singleton pattern for a default instance.
-- **`_flat`**: Flattens Spotify track objects for easier display and manipulation.
-- **`_ms_to_mmss`**: Converts milliseconds to a human-readable time string.
-- **Playback Methods:** `play`, `pause`, `skip_next`, `toggle_play_pause`, `transfer_playback`, `start_playback`.
-- **Queue Methods:** `get_queue`, `add_to_queue`, `remove_from_queue` (precise removal by position), `_queue_wait_times` (calculate ETA for each track in the queue).
-- **Search Methods:** `search_tracks`, `search_and_queue_track` (find and queue a track by query), `artist_top_track` (auto-pick top track for an artist), `get_recently_played`.
-- **Album Playback:** `play_album_by_name` (search and play an album by name and optional artist).
-- **CLI Demo:** `demo` (queues a random top track from an artist and displays the queue with ETA, using Rich if available).
+- **Function:** `_load_cfg`
+- **Responsibility:** Loads configuration (including Spotify API credentials) from a YAML file, typically expected at `../config/config.yaml` relative to the script.
+- **Interaction:** Used during initialization for authentication.
 
 ---
 
-## **Structure & Interactions**
+### **2. Main Class: `SpotifyHA`**
 
-- **Configuration:**  
-  On initialization, the class loads API credentials from a YAML file. If authentication fails, it prints an error and raises the exception.
+#### **Purpose**
+A compact, user-friendly wrapper around Spotipy, focusing on playback, queue, and search operations, with some extra utilities for CLI demonstration and queue management.
 
-- **Spotipy Integration:**  
-  All Spotify API calls are made through a Spotipy client, which is authenticated with the loaded credentials.
+#### **Key Responsibilities & Methods**
 
-- **Queue Handling:**  
-  The script provides both simple and advanced queue management, including:
-  - Adding tracks with optional verification.
-  - Removing tracks at a specific position by skipping ahead and re-queuing tracks that were ahead of the removed one (to maintain queue order).
-  - Calculating and displaying ETA for each track in the queue.
+##### **Construction and Authentication**
+- **`__init__`**: Handles OAuth authentication using credentials from the config file. Sets up the Spotipy client.
+- **`get_default`**: Singleton pattern for a default instance.
 
-- **Search & Playback:**  
-  The class can search for tracks, albums, and artists, and can automatically pick the best artist match based on the query or popularity.
+##### **Helpers**
+- **`_flat`**: Flattens a Spotify track dictionary to a simplified structure (id, uri, name, artists, album, image, duration).
+- **`_ms_to_mmss`**: Converts milliseconds to a human-readable time string.
+- **`_fmt_track`**: Formats a track for display.
 
-- **CLI Demo:**  
-  If the `rich` library is installed, the demo displays the queue in a visually appealing table with ETA for each track. Otherwise, it falls back to plain text output.
+##### **Playback State and Queue**
+- **`get_current_playback`**: Returns current playback state.
+- **`get_current_track`**: Returns the currently playing track (optionally simplified).
+- **`is_playing`**: Returns whether playback is active.
+- **`get_queue`**: Returns the current playback queue (optionally simplified).
+- **`_queue_wait_times`**: Returns a list of (track, wait_time) tuples, estimating how long until each track will play.
+
+##### **Device Management**
+- **`list_devices`**: Lists available Spotify devices.
+- **`get_active_device`**: Returns the currently active device.
+- **`_with_device`**: Helper to resolve a device ID, defaulting to the active device.
+
+##### **Playback Control**
+- **`play`, `pause`, `skip_next`, `toggle_play_pause`, `transfer_playback`, `start_playback`**: Control playback and device transfer.
+
+##### **Search and Queue**
+- **`search_tracks`**: Search for tracks by query.
+- **`add_to_queue`**: Adds a track to the queue, with optional verification.
+- **`search_and_queue_track`**: Searches for a track and queues it (optionally picking the first or a random result).
+
+##### **Queue Manipulation**
+- **`remove_from_queue`**: Removes a track from the queue at a specified position. This is done by skipping tracks and re-queueing those ahead, since the Spotify API does not support direct removal.
+
+##### **Artist and Album Helpers**
+- **`_best_artist`**: Picks the best-matching artist from a list, based on query or follower count.
+- **`artist_top_track`**: Finds and queues the top track for a given artist, with options for country and random selection.
+- **`get_recently_played`**: Returns recently played tracks.
+- **`play_album_by_name`**: Searches for an album (optionally by artist) and starts playback of that album.
+
+##### **CLI Demo**
+- **`demo`**: Demonstrates queueing a top track by a given artist and displays the queue with ETAs, using Rich if available for pretty output.
+
+---
+
+### **3. CLI Entry Point**
+
+- If run as a script, it creates a default `SpotifyHA` instance and runs the demo for "Kaizers Orchestra".
 
 ---
 
 ## **External Dependencies**
 
-- **[Spotipy](https://spotipy.readthedocs.io/):**  
-  For all Spotify Web API interactions (required).
-
-- **[PyYAML](https://pyyaml.org/):**  
-  For loading configuration from YAML files (required).
-
-- **[Rich](https://rich.readthedocs.io/):**  
-  For optional pretty CLI output (optional, gracefully degrades if not installed).
+- **[spotipy](https://spotipy.readthedocs.io/):** Python client for the Spotify Web API (required).
+- **[PyYAML](https://pyyaml.org/):** For reading configuration (required).
+- **[rich](https://rich.readthedocs.io/):** For pretty CLI output (optional).
+- **Spotify Developer Account:** Required for API credentials (client ID/secret).
 
 ---
 
 ## **Configuration Requirements**
 
-- **YAML Config File:**  
-  Expects a YAML file (default: `config/config.yaml`) with a `secrets` section containing:
+- **YAML Config File:** Expected at `../config/config.yaml` (relative to script), containing at least:
   - `spotify_client_id`
   - `spotify_client_secret`
-- **Redirect URI:**  
-  Defaults to `http://127.0.0.1:5000/callback` but can be customized.
+- **Redirect URI:** Defaults to `http://127.0.0.1:5000/callback`, must be set in your Spotify developer dashboard.
 
 ---
 
-## **Notable Algorithms & Logic**
+## **Notable Algorithms and Logic**
 
-### **1. Precise Queue Removal**
-- **Problem:** Spotify’s API does not support removing arbitrary tracks from the queue.
-- **Solution:** The script removes a track at a given position by:
-  - Skipping ahead to the target track (using `skip_next`).
-  - Skipping the target track.
-  - Re-adding all tracks that were ahead of the removed track, in reverse order, to preserve queue order.
-- **Purpose:** Allows for precise queue manipulation not natively supported by Spotify.
+### **Queue Wait Time Calculation**
+- The `_queue_wait_times` method estimates the time until each track in the queue will play, by summing the remaining time of the current track and the durations of queued tracks.
 
-### **2. Queue ETA Calculation**
-- **Logic:**  
-  Calculates the time (ETA) until each track in the queue will play, based on the current playback position and each track’s duration.
-- **Purpose:** Enables the CLI demo to show when each queued track will play.
+### **Precise Queue Removal**
+- The `remove_from_queue` method works around the lack of a direct "remove from queue" API by:
+  - Skipping forward to the target track.
+  - Skipping it (thus removing it from the queue).
+  - Re-adding any tracks that were ahead of it, preserving queue order.
 
-### **3. Artist Auto-Selection**
-- **Logic:**  
-  When searching for an artist, if there are multiple matches, it prefers an exact name match (case-insensitive), otherwise picks the most popular artist (by followers).
-- **Purpose:** Increases reliability of artist-based actions.
+### **Artist Selection**
+- The `_best_artist` method tries to match the query exactly, otherwise picks the artist with the most followers.
 
-### **4. Search and Queue**
-- **Logic:**  
-  Searches for tracks matching a query, picks the first (or a random) result, and queues it, verifying that it was successfully added.
-- **Purpose:** Simplifies the process of finding and queuing tracks via free-text search.
+### **Rich CLI Output**
+- If Rich is installed, the demo displays a formatted table with track names, artists, and ETAs.
 
 ---
 
-## **Script Entry Point**
+## **Component Interactions**
 
-- If run as a script, it creates a default `SpotifyHA` instance and runs the demo for the artist "Kaizers Orchestra".
+- **Authentication** is handled on initialization, using config loaded by `_load_cfg`.
+- **Playback and queue operations** are performed via the Spotipy client (`self._sp`), with helpers for formatting and device management.
+- **CLI demo** uses the other methods to queue a track, compute ETAs, and display the results.
 
 ---
 
 ## **Summary Table**
 
-| Component         | Purpose/Responsibility                                       |
-|-------------------|-------------------------------------------------------------|
-| Config Loader     | Loads Spotify API credentials from YAML                      |
-| SpotifyHA Class   | High-level Spotify API wrapper for playback/queue/search     |
-| Playback Methods  | Play, pause, skip, transfer playback                        |
-| Queue Methods     | Add, remove, list, and ETA calculation for queue            |
-| Search Methods    | Search and queue tracks, albums, and artists                |
-| CLI Demo          | Pretty queue/ETA display using Rich (optional)              |
-| External Deps     | spotipy, pyyaml, (optional) rich                            |
+| Component         | Responsibility                                    | Notable Features                                 |
+|-------------------|---------------------------------------------------|--------------------------------------------------|
+| `_load_cfg`       | Load YAML config                                  | Expects Spotify credentials                      |
+| `SpotifyHA`       | Main OO wrapper for Spotipy                       | Playback, queue, search, artist/album helpers    |
+| `demo`            | CLI demonstration of queue/ETA                    | Uses Rich if available                           |
+| External deps     | spotipy, yaml, rich (optional)                    | Requires Spotify developer credentials           |
+| Notable logic     | Queue ETA, precise queue removal, artist picking  | Workarounds for API limitations                  |
 
 ---
 
 ## **Conclusion**
 
-This script is a robust, user-friendly utility for controlling Spotify playback and queue from Python, with advanced features like precise queue manipulation, artist/album/track search, and a rich CLI demo. It is well-suited for automation, scripting, or interactive use, and can be easily extended for custom Spotify control scenarios.
+This script is a **feature-rich utility for Spotify playback and queue management**, ideal for automation, CLI tools, or integration with smart home systems. It abstracts away much of the Spotipy boilerplate, adds user-friendly helpers, and provides a nice CLI demo for interactive use. The code is modular, extensible, and demonstrates thoughtful workarounds for Spotify API limitations (notably queue removal and artist selection). Configuration is handled via YAML, and the script is ready for both import as a module and standalone CLI use.

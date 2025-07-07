@@ -7,109 +7,101 @@ Here is a detailed summary and analysis of the provided Python script:
 
 ## **Overall Purpose**
 
-This script provides conversation management utilities for an assistant called "Wheatley." Its main role is to maintain a bounded (limited-length) conversation history between a user and the assistant, handle memory management (including a slot for long-term memory), and support debugging by printing the conversation in a readable format. It is designed to be used as part of a larger assistant or chatbot system.
+The script defines utilities for managing conversation history in the context of an assistant called "Wheatley". Its main goal is to maintain a bounded, structured, and up-to-date conversation buffer between a user and the assistant, including system-level context and long-term memory. This is crucial for conversational AI applications, where context management and memory are essential for coherent and context-aware interactions.
 
 ---
 
-## **Main Class and Responsibilities**
+## **Main Class: `ConversationManager`**
 
-### **ConversationManager**
+### **Responsibilities**
 
-This is the only class in the script and encapsulates all conversation management logic. Its responsibilities include:
-
-- **Initializing the conversation buffer** with system messages and configuration.
-- **Adding new messages** (from user or assistant) to the conversation.
-- **Maintaining a fixed-size buffer** for recent conversation turns.
-- **Managing a long-term memory slot** in the conversation.
-- **Providing access to the current conversation** as a list of message dictionaries.
-- **Pretty-printing the conversation** for debugging purposes.
-
----
-
-## **Key Methods and Their Roles**
-
-### **1. `__init__(self, max_memory=5)`**
-
-- **Purpose:** Initializes the conversation manager.
-- **Actions:**
-  - Loads a system message template from a YAML configuration file (`config/config.yaml`).
-  - Replaces placeholders (`<current_time>`, `<current_day>`) in the system message with the current date and day of the week.
-  - Sets up the conversation buffer (`self.messages`) with:
-    - The system message (with current time/day).
-    - A placeholder for long-term memory (empty system message).
-  - Sets the maximum number of user/assistant turns to remember (`max_memory`).
-
-### **2. `add_text_to_conversation(self, role, text)`**
-
-- **Purpose:** Adds a new message from a given role (user or assistant) to the conversation.
-- **Actions:**
-  - Refreshes the system message with the current time and day (re-reads config).
-  - Appends the new message to the buffer.
-  - Ensures that only the most recent `max_memory` user/assistant turns are kept (oldest are removed if over limit, always preserving the two system messages at the start).
-
-### **3. `update_memory(self, memory_text)`**
-
-- **Purpose:** Updates the long-term memory slot in the conversation.
-- **Actions:**
-  - If the slot does not exist, inserts it.
-  - Otherwise, replaces its content with the new memory text.
-
-### **4. `get_conversation(self)`**
-
-- **Purpose:** Returns the current conversation buffer as a list of message dictionaries.
-- **Actions:** Simple getter for `self.messages`.
-
-### **5. `print_memory(self)`**
-
-- **Purpose:** Pretty-prints the current conversation buffer for debugging.
-- **Actions:**
-  - Uses ANSI color codes to differentiate roles (system, user, assistant).
-  - Wraps message text for readability.
-  - Prints each message with its index, role, and content.
+- **Conversation Buffer:** Maintains a list of messages representing the conversation history, including system prompts, user inputs, and assistant responses.
+- **System Message Handling:** Loads and dynamically updates a system message template from a configuration file, injecting current time and day.
+- **Long-term Memory:** Supports a dedicated message slot for long-term memory, which can be updated independently.
+- **History Boundedness:** Ensures the conversation history does not exceed a specified number of user/assistant turns.
+- **Debugging:** Provides a method to pretty-print the current conversation buffer for inspection.
 
 ---
 
 ## **Structure and Component Interaction**
 
-- **Initialization:** When a `ConversationManager` is created, it loads configuration and sets up the initial conversation buffer.
-- **Adding Messages:** New messages are added via `add_text_to_conversation`, which also ensures the buffer does not exceed the specified memory size.
-- **Memory Management:** The long-term memory slot can be updated independently of the main conversation turns.
-- **Access and Debugging:** The current state of the conversation can be retrieved or printed for inspection.
+### **Initialization (`__init__`)**
+
+- **Configuration Loading:** On instantiation, the class loads a YAML configuration file (`config.yaml`) located two directories up from the script, inside a `config` folder.
+- **System Message:** Extracts a system message template from the config, replaces placeholders (`<current_time>`, `<current_day>`) with the current timestamp and weekday, and sets it as the first message in the buffer.
+- **Long-term Memory Placeholder:** Adds a second system message as a placeholder for long-term memory.
+- **Buffer Setup:** Initializes the buffer with the above two system messages. The rest of the buffer will be filled with user and assistant messages.
+
+### **Adding Messages (`add_text_to_conversation`)**
+
+- **Dynamic System Message:** Each time a new message is added, the system message is refreshed with the latest time and day.
+- **Message Appending:** Appends the new message (from either user or assistant) to the buffer.
+- **Buffer Trimming:** Ensures the buffer only retains the most recent `max_memory` user/assistant turns (plus the two system messages), discarding older messages as needed.
+
+### **Long-term Memory (`update_memory`)**
+
+- **Memory Slot:** Updates or sets the second message in the buffer to store long-term memory, which can be used for persistent context or facts.
+
+### **Retrieving Conversation (`get_conversation`)**
+
+- **Access:** Returns the current state of the conversation buffer as a list of message dictionaries.
+
+### **Debugging (`print_memory`)**
+
+- **Pretty Printing:** Prints the entire conversation buffer to the console with color-coded roles and wrapped text for readability, aiding debugging and inspection.
 
 ---
 
 ## **External Dependencies**
 
-- **Standard Library:** Uses `os`, `textwrap`, and `datetime` modules.
-- **PyYAML:** Uses `yaml` for loading configuration files. This is an external dependency and must be installed (e.g., via `pip install pyyaml`).
-- **Configuration File:** Expects a YAML file at `config/config.yaml` (relative to the script's parent directory). This file must contain an `assistant` section with a `system_message` key.
+- **Standard Library:**
+  - `os`: For file path manipulation.
+  - `textwrap`: For formatting output.
+  - `datetime`: For current time and day.
+- **Third-party:**
+  - `yaml`: For reading the configuration file. (Requires `PyYAML` to be installed.)
 
 ---
 
 ## **Configuration Requirements**
 
-- **YAML Config:** The configuration file must be present and properly formatted. The `system_message` can include placeholders `<current_time>` and `<current_day>`, which are dynamically replaced with the current date and day.
-- **Directory Structure:** The script assumes a specific directory structure for locating the config file.
+- **Config File:** Expects a YAML file at `../../config/config.yaml` relative to the script's location.
+  - **Key:** The config must have an `assistant` section with a `system_message` string, which may contain `<current_time>` and `<current_day>` placeholders.
 
 ---
 
 ## **Notable Algorithms and Logic**
 
-- **Bounded Conversation Buffer:** The buffer always contains two system messages at the start (the main system message and the long-term memory slot), followed by up to `max_memory` user/assistant turns. When the buffer exceeds this size, the oldest user/assistant message is removed.
-- **Dynamic System Message:** The system message is refreshed with the current time and day every time a new message is added, ensuring context is always up-to-date.
-- **Long-term Memory Slot:** The second message in the buffer is reserved for long-term memory, which can be updated independently of the conversation flow.
+- **Dynamic System Message Replacement:** Each time the conversation is updated, the system message is refreshed with the current time and day, ensuring that the assistant's context is always up to date.
+- **Bounded Buffer:** The buffer is kept at a fixed size (`max_memory` user/assistant turns + 2 system messages) by removing the oldest user/assistant messages as new ones are added.
+- **Long-term Memory Slot:** A dedicated slot in the buffer for persistent context, separate from the rolling conversation history.
+- **Pretty-printing Algorithm:** Uses color codes and text wrapping to display the conversation buffer in a readable format, distinguishing between system, user, and assistant roles.
 
 ---
 
-## **Summary of Design**
+## **Component Interaction**
 
-- **Single Responsibility:** The `ConversationManager` is solely responsible for managing the conversation buffer.
-- **Extensibility:** The design allows for easy extension, such as adding more memory slots or custom message roles.
-- **Separation of Concerns:** Configuration loading, message management, and debugging output are cleanly separated within the class.
-- **User-Friendly Debugging:** The pretty-printing method aids developers in understanding the current conversation state.
+- The class is self-contained and manages all aspects of conversation history.
+- It interacts with the file system to load configuration and with the system clock for dynamic placeholders.
+- The buffer structure is always: `[system message, long-term memory, ...recent conversation turns...]`.
+- All methods operate on this shared buffer, ensuring consistency.
 
 ---
 
-## **In Summary**
+## **Summary Table**
 
-This script is a utility for managing the conversation history of an AI assistant, handling both short-term and long-term memory, with configuration-driven system messages that adapt to the current time and day. It relies on a YAML config file and the PyYAML library, and is designed for integration into a larger assistant framework. The logic ensures that the conversation context remains relevant and manageable, while providing tools for inspection and debugging.
+| Component                | Purpose/Responsibility                                                                 |
+|--------------------------|---------------------------------------------------------------------------------------|
+| `__init__`               | Loads config, sets up system message, initializes buffer                              |
+| `add_text_to_conversation` | Adds a message, refreshes system message, trims buffer                               |
+| `update_memory`          | Updates long-term memory slot                                                         |
+| `get_conversation`       | Returns current buffer                                                                |
+| `print_memory`           | Pretty-prints buffer with color and wrapping                                          |
+| External: `yaml`         | Loads config file                                                                     |
+| Config: `system_message` | Template for system context, supports dynamic placeholders                            |
+
+---
+
+## **Conclusion**
+
+This script provides a robust, configurable, and extensible foundation for managing conversational context in an AI assistant. Its use of a dynamic system message, bounded memory, and explicit long-term memory slot makes it suitable for applications where both recency and persistence of context are important. The reliance on external configuration and YAML parsing allows for easy customization without code changes. The pretty-printing utility aids in development and debugging.

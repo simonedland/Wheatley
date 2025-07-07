@@ -6,160 +6,114 @@ config:
   theme: neutral
 ---
 flowchart TD
-  Main[main.py: Main event loop and orchestrator for Wheatley assistant]
-  load_config[load_config: Loads YAML configuration]
-  initialize_assistant[initialize_assistant: Instantiates all subsystems (LLM, TTS, STT, Arduino, etc.)]
-  Event[Event: Dataclass for event objects in async loop]
-  async_conversation_loop[async_conversation_loop: Handles async event-driven conversation]
-  user_input_producer[user_input_producer: Produces user input events]
-  print_event[print_event: Prints event objects]
-  get_event[get_event: Retrieves and normalizes events from queue]
-  handle_non_user_event[handle_non_user_event: Adds system messages for non-user events]
-  process_event[process_event: Updates conversation and checks for exit]
-  run_tool_workflow[run_tool_workflow: Executes LLM-suggested tool workflow]
-  generate_assistant_reply[generate_assistant_reply: Gets LLM reply and animation]
-  handle_tts_and_follow_up[handle_tts_and_follow_up: Plays TTS and manages follow-up input]
-  print_async_tasks[print_async_tasks: Prints list of async tasks]
-  ConversationManager[ConversationManager: Maintains bounded conversation history]
-  GPTClient[GPTClient: Handles OpenAI LLM API interactions]
-  Functions[Functions: Implements LLM tool functions]
-  TextToSpeechEngine[TextToSpeechEngine: ElevenLabs TTS and playback]
-  SpeechToTextEngine[SpeechToTextEngine: Handles hotword detection and speech-to-text]
-  ArduinoInterface[ArduinoInterface: Controls Arduino-based servo hardware]
-  ServoController[ServoController: Manages servo configs and emotion animations]
-  Servo[Servo: Represents a single servo motor]
-  service_auth[service_auth.py: Authenticates external services and provides agents]
-  authenticate_services[authenticate_services: Checks and prints service status]
-  GoogleAgent[GoogleAgent: LLM-driven Google Calendar agent]
-  GoogleCalendarManager[GoogleCalendarManager: Interacts with Google Calendar API]
-  SpotifyAgent[SpotifyAgent: LLM-driven Spotify agent]
-  SpotifyHA[SpotifyHA: Spotipy-based Spotify control and queue]
-  timing_logger[timing_logger.py: Captures and exports execution timings]
-  record_timing[record_timing: Records timing entries]
-  export_timings[export_timings: Writes timings to file]
-  clear_timings[clear_timings: Clears timing log]
-  long_term_memory[long_term_memory.py: Persistent JSON-based storage]
-  read_memory[read_memory: Reads memory entries]
-  overwrite_memory[overwrite_memory: Overwrites memory file]
-  edit_memory[edit_memory: Edits or appends memory entries]
-  llm_client_utils[llm_client_utils.py: Shared utilities and tool definitions for LLM]
-  build_tools[build_tools: Builds LLM tool list]
-  get_joke[get_joke: Fetches a random joke]
-  get_quote[get_quote: Fetches a motivational quote]
-  get_city_coordinates[get_city_coordinates: Gets city coordinates]
-  present_timeline[present_timeline.py: GUI for displaying timing and log data]
-  TimelineGUI[TimelineGUI: Tkinter GUI for timeline and logs]
-  puppet[puppet.py: GUI for servo control and calibration]
-  PuppetGUI[PuppetGUI: Tkinter GUI for servo puppet]
-  SerialBackend[SerialBackend: Serial communication for puppet GUI]
-  install_prerequisites[install_prerequisites.py: Installs Python requirements]
-  old_inspiration[old_inspiration.py: ElevenLabs TTS streaming demo]
-  test[test.py: Unit tests for main modules]
+  Main[main.py: CLI entry point and async event loop orchestrator]
+  Assistant[assistant.py: ConversationManager - manages conversation history]
+  Arduino[arduino_interface.py: ArduinoInterface/ServoController - controls hardware servos and LEDs]
+  LLMClient[llm_client.py: GPTClient/Functions/TextToSpeech - LLM, tools, TTS]
+  TTS[tts_engine.py: TextToSpeechEngine - ElevenLabs TTS streaming/playback]
+  STT[stt_engine.py: SpeechToTextEngine - Speech-to-text, hotword detection]
+  GoogleAgent[google_agent.py: GoogleAgent/GoogleCalendarManager - Google Calendar tools]
+  SpotifyAgent[spotify_agent.py: SpotifyAgent - Spotify LLM agent/tools]
+  SpotifyHA[spotify_ha_utils.py: SpotifyHA - Spotipy playback/queue utils]
+  LongTermMemory[long_term_memory.py: Persistent JSON memory store]
+  TimingLogger[timing_logger.py: Timing logger for performance metrics]
+  MainHelpers[main_helpers.py: Feature summary and service auth helpers]
+  ServiceAuth[service_auth.py: External service authentication]
+  LLMUtils[llm_client_utils.py: LLM tool definitions/utilities]
+  Test[test.py: Unit tests for LLM and TTS]
+  PoC[PoC.py: LLM-to-TTS streaming with live table UI (demo)]
+  AdNauseam[ad_nauseam.py: Code summarizer using OpenAI API]
+  Puppet[puppet.py: Servo/LED GUI for hardware puppet]
+  Timeline[present_timeline.py: GUI for timing/log visualization]
+  InstallReq[install_prerequisites.py: Installs Python requirements]
 
-  Main --> load_config
-  Main --> initialize_assistant
-  Main --> async_conversation_loop
-  Main --> print_async_tasks
-  Main --> clear_timings
-  Main --> export_timings
-  Main --> authenticate_services
-  Main --> ConversationManager
-  Main --> GPTClient
-  Main --> TextToSpeechEngine
-  Main --> SpeechToTextEngine
-  Main --> ArduinoInterface
+  Main --> Assistant
+  Main --> Arduino
+  Main --> LLMClient
+  Main --> TTS
+  Main --> STT
+  Main --> MainHelpers
+  Main --> TimingLogger
 
-  initialize_assistant --> ConversationManager
-  initialize_assistant --> GPTClient
-  initialize_assistant --> TextToSpeechEngine
-  initialize_assistant --> SpeechToTextEngine
-  initialize_assistant --> ArduinoInterface
-  ArduinoInterface --> ServoController
-  ServoController --> Servo
+  Assistant --> LongTermMemory
+  Assistant --> TimingLogger
 
-  async_conversation_loop --> user_input_producer
-  async_conversation_loop --> get_event
-  async_conversation_loop --> process_event
-  async_conversation_loop --> run_tool_workflow
-  async_conversation_loop --> generate_assistant_reply
-  async_conversation_loop --> handle_tts_and_follow_up
-  async_conversation_loop --> print_event
-  async_conversation_loop --> print_async_tasks
-  async_conversation_loop --> ArduinoInterface
+  Arduino --> ServoController[ServoController: Animations, servo config]
+  Arduino --> TimingLogger
 
-  user_input_producer --> Event
-  get_event --> Event
-  process_event --> ConversationManager
-  process_event --> handle_non_user_event
-  handle_non_user_event --> ConversationManager
-  run_tool_workflow --> GPTClient
-  run_tool_workflow --> Functions
-  run_tool_workflow --> ConversationManager
-  run_tool_workflow --> timing_logger
-  generate_assistant_reply --> GPTClient
-  generate_assistant_reply --> ConversationManager
-  generate_assistant_reply --> ArduinoInterface
-  handle_tts_and_follow_up --> TextToSpeechEngine
-  handle_tts_and_follow_up --> SpeechToTextEngine
-  handle_tts_and_follow_up --> Event
+  LLMClient --> LLMUtils
+  LLMClient --> GoogleAgent
+  LLMClient --> SpotifyAgent
+  LLMClient --> LongTermMemory
+  LLMClient --> TimingLogger
+  LLMClient --> TTS
 
-  GPTClient --> llm_client_utils
-  GPTClient --> timing_logger
-  GPTClient --> Functions
-  GPTClient --> TextToSpeechEngine
-  GPTClient --> GoogleAgent
-  GPTClient --> SpotifyAgent
+  TTS --> TimingLogger
 
-  Functions --> GPTClient
-  Functions --> GoogleAgent
-  Functions --> SpotifyAgent
-  Functions --> timing_logger
-  Functions --> long_term_memory
-  Functions --> llm_client_utils
+  STT --> Arduino
+  STT --> TimingLogger
 
-  TextToSpeechEngine --> timing_logger
-
-  SpeechToTextEngine --> timing_logger
-  SpeechToTextEngine --> ArduinoInterface
-
-  ArduinoInterface --> ServoController
-  ArduinoInterface --> Servo
-
-  service_auth --> authenticate_services
-  authenticate_services --> GoogleAgent
-  authenticate_services --> SpotifyAgent
-
-  GoogleAgent --> GoogleCalendarManager
-  GoogleAgent --> GPTClient
+  GoogleAgent --> GoogleCalendarManager[GoogleCalendarManager: Google Calendar API]
+  GoogleAgent --> TimingLogger
 
   SpotifyAgent --> SpotifyHA
+  SpotifyAgent --> TimingLogger
 
-  timing_logger --> record_timing
-  timing_logger --> export_timings
-  timing_logger --> clear_timings
+  MainHelpers --> ServiceAuth
 
-  long_term_memory --> read_memory
-  long_term_memory --> overwrite_memory
-  long_term_memory --> edit_memory
+  ServiceAuth --> GoogleAgent
+  ServiceAuth --> SpotifyAgent
 
-  llm_client_utils --> build_tools
-  llm_client_utils --> get_joke
-  llm_client_utils --> get_quote
-  llm_client_utils --> get_city_coordinates
+  Test --> LLMClient
+  Test --> TTS
 
-  present_timeline --> TimelineGUI
-  TimelineGUI --> timing_logger
+  PoC --> TTS
+  PoC --> LLMClient
 
-  puppet --> PuppetGUI
-  PuppetGUI --> SerialBackend
+  AdNauseam --> LLMClient
+  AdNauseam --> TimingLogger
 
-  install_prerequisites -->|Runs| None
-  old_inspiration -->|Demo| None
-  test --> Main
-  test --> ConversationManager
-  test --> GPTClient
-  test --> TextToSpeechEngine
-  test --> SpeechToTextEngine
-  test --> ArduinoInterface
-  test --> long_term_memory
+  Puppet --> Arduino
+
+  Timeline --> TimingLogger
+
+  InstallReq -.->|Runs before all| Main
+
+  subgraph Hardware
+    Arduino
+    Puppet
+  end
+
+  subgraph LLM
+    LLMClient
+    LLMUtils
+    GoogleAgent
+    SpotifyAgent
+    SpotifyHA
+  end
+
+  subgraph Audio
+    TTS
+    STT
+    PoC
+  end
+
+  subgraph Utils
+    TimingLogger
+    LongTermMemory
+    MainHelpers
+    ServiceAuth
+  end
+
+  subgraph GUI
+    Puppet
+    Timeline
+  end
+
+  subgraph CLI
+    Main
+    AdNauseam
+    InstallReq
+    Test
+  end
 ```
