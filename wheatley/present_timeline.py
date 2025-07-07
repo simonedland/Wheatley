@@ -57,6 +57,7 @@ def load_logs(path: str = "assistant.log"):
 # ── GUI ────────────────────────────────────────────────────────────────────
 class TimelineGUI(tk.Tk):
     """Main GUI application for displaying timeline and timing insights."""
+    
     ZOOM_STEP = 0.8  # 0.8 → zoom in 20 %, 1/0.8 zoom out
 
     def __init__(self):
@@ -76,7 +77,6 @@ class TimelineGUI(tk.Tk):
     # ── layout ─────────────────────────────────────────────────────────
     def _make_widgets(self):
         """Create and layout the main widgets."""
-
         top = ttk.Frame(self)
         top.pack(side=tk.TOP, fill=tk.X, padx=8, pady=4)
 
