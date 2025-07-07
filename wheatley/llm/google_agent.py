@@ -1,5 +1,5 @@
 """
-google_agent.py
+google_agent.py.
 
 Google Calendar helpers + LLM-powered agent.
 Python ≥ 3.10 • google-api-python-client ≥ 2.116.0 • openai ≥ 1.15.0
@@ -27,6 +27,7 @@ CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 TOKEN_FILE = CONFIG_DIR / "token.json"
 SECRET_FILE = CONFIG_DIR / "client_secret.json"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
+
 
 # ────────────────────────────────────────────────────────────────────────────
 class GoogleCalendarManager:
@@ -118,8 +119,7 @@ class GoogleCalendarManager:
                 if events:
                     out[cal["summary"]] = [
                         {
-                            "start": ev.get("start", {}).get("dateTime")
-                            or ev.get("start", {}).get("date"),
+                            "start": ev.get("start", {}).get("dateTime") or ev.get("start", {}).get("date"),
                             "summary": ev.get("summary", "(no title)"),
                         }
                         for ev in events
@@ -144,6 +144,7 @@ class GoogleCalendarManager:
             print(f"\n📅 {cal}")
             for ev in items:
                 print(f" • {ev['start']} — {ev['summary']}")
+
 
 # ────────────────────────────────────────────────────────────────────────────
 # OpenAI tool schema – NEW nested "function" structure
@@ -193,6 +194,7 @@ GOOGLE_TOOLS: list[dict[str, Any]] = [
         },
     },
 ]
+
 
 # ────────────────────────────────────────────────────────────────────────────
 class GoogleAgent:
@@ -265,6 +267,7 @@ class GoogleAgent:
     def print_upcoming_events(self, days: int = 7) -> None:
         """Print upcoming events for the next `days` days."""
         self.calendar_manager.print_upcoming_events(days)
+
 
 # ────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
