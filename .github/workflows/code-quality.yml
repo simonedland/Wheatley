@@ -2,9 +2,9 @@ name: Python Code Quality Check
 
 on:
   push:
-    branches: [main, test]
+    branches: [main, Test]
   pull_request:
-    branches: [main, test]
+    branches: [main, Test]
 
 permissions:
   contents: read
@@ -79,7 +79,7 @@ jobs:
           path: flake8-report.txt
           if-no-files-found: warn
 
-      # ───── 8. Create / update “code-quality” issues (main & test only) ──────
+      # ───── 8. Create / update “code-quality” issues (main & Test only) ──────
       - name: Create / update code-quality issues
         if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
         env:
@@ -89,8 +89,8 @@ jobs:
           BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
           LABELS="code-quality,branch:${BRANCH}"
 
-          # Only proceed for main or test
-          if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "test" ]; then
+          # Only proceed for main or Test
+          if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "Test" ]; then
             echo "Skipping issue creation for branch '$BRANCH'"
             exit 0
           fi
@@ -131,7 +131,7 @@ jobs:
             fi
           done < files_with_issues.txt
 
-      # ─── 9. Close code-quality issues when file is clean (main & test only) ──
+      # ─── 9. Close code-quality issues when file is clean (main & Test only) ──
       - name: Close resolved code-quality issues
         if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
         env:
@@ -139,7 +139,7 @@ jobs:
         run: |
           BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
 
-          if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "test" ]; then
+          if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "Test" ]; then
             echo "Skipping issue closure for branch '$BRANCH'"
             exit 0
           fi
