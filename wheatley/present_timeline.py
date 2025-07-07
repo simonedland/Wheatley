@@ -77,6 +77,7 @@ class TimelineGUI(tk.Tk):
     # ── layout ─────────────────────────────────────────────────────────
     def _make_widgets(self):
         """Create and layout the main widgets."""
+        
         top = ttk.Frame(self)
         top.pack(side=tk.TOP, fill=tk.X, padx=8, pady=4)
 
