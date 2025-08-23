@@ -24,6 +24,9 @@ from elevenlabs import VoiceSettings
 
 
 class TextToSpeechEngine:
+    def is_playing(self) -> bool:
+        """Return True if TTS is currently playing audio."""
+        return self._playing.is_set()
     """Interface to ElevenLabs TTS with persistent playback stream."""
 
     def _load_config(self) -> None:
