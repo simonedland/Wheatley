@@ -4,6 +4,7 @@ import openai
 import json
 import yaml
 import re
+import io
 
 import os
 import logging
@@ -13,7 +14,8 @@ import time
 import asyncio
 from datetime import datetime, timedelta
 
-from playsound import playsound
+from pydub import AudioSegment
+import pyaudio
 from elevenlabs.client import ElevenLabs
 from elevenlabs import VoiceSettings
 import tempfile
@@ -96,31 +98,42 @@ class TextToSpeech:
         self._load_config()
 
     def generate_and_play_advanced(self, text):
-        """Generate and play audio from ``text`` using ElevenLabs TTS."""
+        """Generate and play audio from ``text`` using ElevenLabs TTS using in-memory decode."""
         generate_start = time.time()
         self.reload_config()
-        base_dir = os.path.dirname(os.path.dirname(__file__))
-        temp_dir = os.path.join(base_dir, "temp")
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
         audio_chunks = list(self.elevenlabs_generate_audio(text))
-        # Use NamedTemporaryFile for cleaner handling
-        with tempfile.NamedTemporaryFile(mode='wb', suffix='.mp3', dir=temp_dir, delete=False) as temp_file:
-            for chunk in audio_chunks:
-                temp_file.write(chunk)
-            file_path = temp_file.name
+        mp3_buffer = bytearray()
+        for chunk in audio_chunks:
+            if isinstance(chunk, (bytes, bytearray)):
+                mp3_buffer.extend(chunk)
         record_timing("tts_generate", generate_start)
+
+        if not mp3_buffer:
+            logging.error("No audio data generated for narration.")
+            return
+
         play_start = time.time()
         try:
-            playsound(file_path)
-        except Exception as e:
-            logging.error(f"Error playing audio file: {e}")
-        finally:
+            audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
+            pcm_data = (
+                audio
+                .set_frame_rate(22050)
+                .set_channels(1)
+                .set_sample_width(2)
+                .raw_data
+            )
+            p = pyaudio.PyAudio()
+            stream = p.open(format=pyaudio.paInt16, channels=1, rate=22050, output=True)
             try:
-                os.remove(file_path)
-            except Exception as e:
-                logging.error(f"Error deleting audio file: {e}")
-        record_timing("tts_play", play_start)
+                stream.write(pcm_data)
+            finally:
+                stream.stop_stream()
+                stream.close()
+                p.terminate()
+        except Exception as e:
+            logging.error(f"Error playing narration audio: {e}")
+        finally:
+            record_timing("tts_play", play_start)
 
 
 # =================== LLM Client ===================

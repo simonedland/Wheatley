@@ -1,0 +1,534 @@
+[
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-08-23T15:31:46.949330",
+    "endTime": "2025-08-23T15:31:50.805132",
+    "durationMs": 3855,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-08-23T15:31:50.815064",
+    "endTime": "2025-08-23T15:31:51.571340",
+    "durationMs": 756,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_generate",
+    "startTime": "2025-08-23T15:31:51.571779",
+    "endTime": "2025-08-23T15:31:52.511380",
+    "durationMs": 939,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_play",
+    "startTime": "2025-08-23T15:31:52.925184",
+    "endTime": "2025-08-23T15:32:09.004560",
+    "durationMs": 16079,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "stt_listen_hotword",
+    "startTime": "2025-08-23T15:32:09.005936",
+    "endTime": "2025-08-23T15:32:11.851279",
+    "durationMs": 2845,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_record_until_silent",
+    "startTime": "2025-08-23T15:32:11.851365",
+    "endTime": "2025-08-23T15:32:17.037368",
+    "durationMs": 5186,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-08-23T15:32:17.037851",
+    "endTime": "2025-08-23T15:32:18.135050",
+    "durationMs": 1097,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_listen_hotword",
+    "startTime": "2025-08-23T15:32:18.135635",
+    "endTime": "2025-08-23T15:32:18.219309",
+    "durationMs": 83,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-08-23T15:32:18.154015",
+    "endTime": "2025-08-23T15:32:19.604822",
+    "durationMs": 1450,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-08-23T15:32:19.644850",
+    "endTime": "2025-08-23T15:32:20.939790",
+    "durationMs": 1294,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_generate_audio",
+    "startTime": "2025-08-23T15:32:20.948325",
+    "endTime": "2025-08-23T15:32:20.948334",
+    "durationMs": 0,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_generate",
+    "startTime": "2025-08-23T15:32:20.939827",
+    "endTime": "2025-08-23T15:32:21.426712",
+    "durationMs": 486,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_play",
+    "startTime": "2025-08-23T15:32:21.426737",
+    "endTime": "2025-08-23T15:32:25.197206",
+    "durationMs": 3770,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:32:26.637231",
+    "endTime": "2025-08-23T15:32:26.736149",
+    "durationMs": 98,
+    "thread": "Thread-2 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:32:26.746472",
+    "endTime": "2025-08-23T15:32:27.109264",
+    "durationMs": 362,
+    "thread": "Thread-2 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:32:26.736758",
+    "endTime": "2025-08-23T15:32:27.246143",
+    "durationMs": 509,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:32:27.109946",
+    "endTime": "2025-08-23T15:32:27.741834",
+    "durationMs": 631,
+    "thread": "TTS_1"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:32:27.109544",
+    "endTime": "2025-08-23T15:32:27.898691",
+    "durationMs": 789,
+    "thread": "Thread-2 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:32:27.898978",
+    "endTime": "2025-08-23T15:32:27.944640",
+    "durationMs": 45,
+    "thread": "Thread-2 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:32:27.944859",
+    "endTime": "2025-08-23T15:32:28.329617",
+    "durationMs": 384,
+    "thread": "TTS_1"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:32:27.899228",
+    "endTime": "2025-08-23T15:32:28.815013",
+    "durationMs": 915,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:32:27.247870",
+    "endTime": "2025-08-23T15:32:29.252376",
+    "durationMs": 2004,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-08-23T15:32:28.827366",
+    "endTime": "2025-08-23T15:32:29.810351",
+    "durationMs": 982,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:32:29.252456",
+    "endTime": "2025-08-23T15:32:36.036594",
+    "durationMs": 6784,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:32:36.036720",
+    "endTime": "2025-08-23T15:32:50.713820",
+    "durationMs": 14677,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:32:50.713982",
+    "endTime": "2025-08-23T15:32:52.164462",
+    "durationMs": 1450,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "stt_record_until_silent",
+    "startTime": "2025-08-23T15:32:52.164991",
+    "endTime": "2025-08-23T15:33:04.231796",
+    "durationMs": 12066,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-08-23T15:33:04.231988",
+    "endTime": "2025-08-23T15:33:06.303252",
+    "durationMs": 2071,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-08-23T15:32:52.164989",
+    "endTime": "2025-08-23T15:33:06.303655",
+    "durationMs": 14138,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-08-23T15:33:06.314148",
+    "endTime": "2025-08-23T15:33:07.756331",
+    "durationMs": 1442,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:08.155246",
+    "endTime": "2025-08-23T15:33:08.253980",
+    "durationMs": 98,
+    "thread": "Thread-3 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:08.279708",
+    "endTime": "2025-08-23T15:33:08.497407",
+    "durationMs": 217,
+    "thread": "Thread-3 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:08.254658",
+    "endTime": "2025-08-23T15:33:08.691190",
+    "durationMs": 436,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:08.497781",
+    "endTime": "2025-08-23T15:33:08.701822",
+    "durationMs": 204,
+    "thread": "Thread-3 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:08.498424",
+    "endTime": "2025-08-23T15:33:08.945511",
+    "durationMs": 447,
+    "thread": "TTS_1"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:08.702321",
+    "endTime": "2025-08-23T15:33:09.086587",
+    "durationMs": 384,
+    "thread": "Thread-3 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:08.702652",
+    "endTime": "2025-08-23T15:33:09.182815",
+    "durationMs": 480,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:09.087045",
+    "endTime": "2025-08-23T15:33:09.508602",
+    "durationMs": 421,
+    "thread": "TTS_1"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:08.692703",
+    "endTime": "2025-08-23T15:33:10.255126",
+    "durationMs": 1562,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-08-23T15:33:09.521104",
+    "endTime": "2025-08-23T15:33:11.899457",
+    "durationMs": 2378,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:10.255224",
+    "endTime": "2025-08-23T15:33:12.729742",
+    "durationMs": 2474,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:12.729825",
+    "endTime": "2025-08-23T15:33:15.375138",
+    "durationMs": 2645,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:15.375214",
+    "endTime": "2025-08-23T15:33:17.636439",
+    "durationMs": 2261,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "stt_record_until_silent",
+    "startTime": "2025-08-23T15:33:17.636893",
+    "endTime": "2025-08-23T15:33:23.980442",
+    "durationMs": 6343,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-08-23T15:33:23.980551",
+    "endTime": "2025-08-23T15:33:26.038613",
+    "durationMs": 2058,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-08-23T15:33:17.636891",
+    "endTime": "2025-08-23T15:33:26.038903",
+    "durationMs": 8402,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-08-23T15:33:26.050395",
+    "endTime": "2025-08-23T15:33:27.203540",
+    "durationMs": 1153,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:27.657618",
+    "endTime": "2025-08-23T15:33:27.691518",
+    "durationMs": 33,
+    "thread": "Thread-4 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:27.715140",
+    "endTime": "2025-08-23T15:33:27.820947",
+    "durationMs": 105,
+    "thread": "Thread-4 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:27.821425",
+    "endTime": "2025-08-23T15:33:27.929130",
+    "durationMs": 107,
+    "thread": "Thread-4 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:27.949570",
+    "endTime": "2025-08-23T15:33:28.002579",
+    "durationMs": 53,
+    "thread": "Thread-4 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:27.692202",
+    "endTime": "2025-08-23T15:33:28.071557",
+    "durationMs": 379,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:27.822118",
+    "endTime": "2025-08-23T15:33:28.350455",
+    "durationMs": 528,
+    "thread": "TTS_1"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:28.075776",
+    "endTime": "2025-08-23T15:33:28.583277",
+    "durationMs": 507,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:28.352174",
+    "endTime": "2025-08-23T15:33:28.741017",
+    "durationMs": 388,
+    "thread": "TTS_1"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:28.080513",
+    "endTime": "2025-08-23T15:33:29.668403",
+    "durationMs": 1587,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-08-23T15:33:28.753070",
+    "endTime": "2025-08-23T15:33:29.941204",
+    "durationMs": 1188,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:29.668492",
+    "endTime": "2025-08-23T15:33:33.252502",
+    "durationMs": 3584,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:33.252597",
+    "endTime": "2025-08-23T15:33:34.788464",
+    "durationMs": 1535,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:34.788574",
+    "endTime": "2025-08-23T15:33:36.409739",
+    "durationMs": 1621,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "stt_record_until_silent",
+    "startTime": "2025-08-23T15:33:36.410132",
+    "endTime": "2025-08-23T15:33:39.508314",
+    "durationMs": 3098,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_transcribe",
+    "startTime": "2025-08-23T15:33:39.508385",
+    "endTime": "2025-08-23T15:33:41.297857",
+    "durationMs": 1789,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-08-23T15:33:36.410131",
+    "endTime": "2025-08-23T15:33:41.298263",
+    "durationMs": 4888,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-08-23T15:33:41.308398",
+    "endTime": "2025-08-23T15:33:42.723662",
+    "durationMs": 1415,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:43.129366",
+    "endTime": "2025-08-23T15:33:43.183794",
+    "durationMs": 54,
+    "thread": "Thread-5 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:43.184751",
+    "endTime": "2025-08-23T15:33:43.578083",
+    "durationMs": 393,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:43.184110",
+    "endTime": "2025-08-23T15:33:43.586323",
+    "durationMs": 402,
+    "thread": "Thread-5 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-08-23T15:33:43.586689",
+    "endTime": "2025-08-23T15:33:43.652204",
+    "durationMs": 65,
+    "thread": "Thread-5 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:43.587090",
+    "endTime": "2025-08-23T15:33:44.155488",
+    "durationMs": 568,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-08-23T15:33:43.652701",
+    "endTime": "2025-08-23T15:33:44.157224",
+    "durationMs": 504,
+    "thread": "TTS_1"
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-08-23T15:33:44.172027",
+    "endTime": "2025-08-23T15:33:44.943638",
+    "durationMs": 771,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:43.579554",
+    "endTime": "2025-08-23T15:33:45.497777",
+    "durationMs": 1918,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:45.497894",
+    "endTime": "2025-08-23T15:33:51.001837",
+    "durationMs": 5503,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-08-23T15:33:51.001933",
+    "endTime": "2025-08-23T15:33:52.708387",
+    "durationMs": 1706,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "stt_record_until_silent",
+    "startTime": "2025-08-23T15:33:52.708829",
+    "endTime": "2025-08-23T15:33:57.725975",
+    "durationMs": 5017,
+    "thread": "asyncio_1"
+  },
+  {
+    "functionality": "stt_record_and_transcribe",
+    "startTime": "2025-08-23T15:33:52.708828",
+    "endTime": "2025-08-23T15:33:57.726023",
+    "durationMs": 5017,
+    "thread": "asyncio_1"
+  }
+]

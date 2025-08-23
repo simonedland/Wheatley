@@ -292,12 +292,34 @@ def run_tool_workflow(
     manager: "ConversationManager",
     gpt_client: "GPTClient",
     queue: asyncio.Queue,
-) -> None:
-    """Ask GPT for a workflow, execute its tools, and add the results to the conversation. Complexity is kept low by delegating to helpers."""
+    *,
+    stt_engine: Optional["SpeechToTextEngine"] = None,
+    tts_engine: Optional["TextToSpeechEngine"] = None,
+    stt_enabled: bool = False,
+    hotword_task: Optional[asyncio.Task] = None,
+) -> Optional[asyncio.Task]:
+    """Ask GPT for a workflow, execute its tools, and add the results to the conversation.
+
+    While tools run (and we narrate what we're doing), temporarily pause STT and stop the hotword listener,
+    then resume and restart it afterward. Returns the possibly updated hotword_task.
+    """
+    # Pause listening and cancel hotword while executing tools to prevent self-hearing
+    if hotword_task:
+        hotword_task.cancel()
+        hotword_task = None
+    if stt_enabled and stt_engine:
+        stt_engine.pause_listening()
     for _ in range(MAX_CHAIN_RETRY):
         workflow = _fetch_workflow(gpt_client, manager)
         if not workflow:                      # None or empty list → done
-            return
+            # Resume STT before returning early
+            if stt_enabled and stt_engine:
+                stt_engine.resume_listening()
+            # Restart hotword listener
+            if stt_enabled and stt_engine:
+                loop = asyncio.get_running_loop()
+                hotword_task = loop.create_task(stt_engine.hotword_listener(queue, tts_engine=tts_engine))
+            return hotword_task
 
         _inject_context_from_search(workflow, manager)
         _refresh_long_term_memory(manager)
@@ -306,9 +328,22 @@ def run_tool_workflow(
             _execute_workflow(workflow, queue, manager)
         except Exception as exc:
             logging.error(f"Error executing workflow tools: {exc}")
-            return
+            if stt_enabled and stt_engine:
+                stt_engine.resume_listening()
+            if stt_enabled and stt_engine:
+                loop = asyncio.get_running_loop()
+                hotword_task = loop.create_task(stt_engine.hotword_listener(queue, tts_engine=tts_engine))
+            return hotword_task
         # success → break retry loop
         break
+
+    # Resume and restart hotword after tools
+    if stt_enabled and stt_engine:
+        stt_engine.resume_listening()
+    if stt_enabled and stt_engine:
+        loop = asyncio.get_running_loop()
+        hotword_task = loop.create_task(stt_engine.hotword_listener(queue, tts_engine=tts_engine))
+    return hotword_task
 
 
 # ────────────────────────────── Helpers ─────────────────────────────────── #
@@ -715,7 +750,13 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                     hotword_task.cancel()
                 break
 
-            run_tool_workflow(manager, gpt_client, queue)
+            hotword_task = run_tool_workflow(
+                manager, gpt_client, queue,
+                stt_engine=stt_engine,
+                tts_engine=tts_engine,
+                stt_enabled=stt_enabled,
+                hotword_task=hotword_task,
+            ) or hotword_task
             if tts_enabled:
                 input_allowed_event.clear()  # Block input while TTS is playing
                 playback_done_event = threading.Event()
