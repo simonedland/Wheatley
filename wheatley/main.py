@@ -378,57 +378,37 @@ def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient
 # Play the assistant's speech and optionally capture a follow-up
 async def handle_tts_and_follow_up(gpt_text, last_input_type, tts_engine, stt_engine, event_queue, hotword_task, stt_enabled, tts_enabled):
     """Play the assistant reply using TTS and optionally capture a quick follow-up from the user."""
-    if not tts_enabled:
+    # If TTS is disabled or engine is missing, do nothing here
+    if not (tts_enabled and tts_engine):
         return hotword_task
+    # Always pause listening before TTS playback
+    if stt_enabled and stt_engine:
+        stt_engine.pause_listening()
 
-    # Stop hotword detection while speaking
+    # Optionally stop hotword detection task while speaking
     if hotword_task:
         hotword_task.cancel()
-        await asyncio.gather(hotword_task, return_exceptions=True)
+        try:
+            await hotword_task
+        except Exception:
+            pass
         hotword_task = None
-
-    if stt_enabled:
-        stt_engine.pause_listening()
-        print("[STT] Hotword listener paused.")
 
     tts_engine.generate_and_play_advanced(gpt_text)
 
-    if not stt_enabled:
-        return hotword_task
+    # Resume listening after TTS playback
+    if stt_enabled and stt_engine:
+        stt_engine.resume_listening()
 
-    stt_engine.resume_listening()
-
-    if last_input_type == "voice":
-        print("[STT] Listening for follow-up without hotword for 5 seconds...")
-        loop = asyncio.get_event_loop()
-        follow_up_future = loop.run_in_executor(
-            None, lambda: stt_engine.record_and_transcribe(5)
+    # Always listen for 5 seconds for follow-up after TTS, then resume hotword listener
+    if stt_enabled and stt_engine:
+        hotword_task = await handle_follow_up_after_stream(
+            last_input_type, stt_engine, event_queue, hotword_task, stt_enabled, tts_engine
         )
-        next_event_task = asyncio.create_task(event_queue.get())
-        done, _ = await asyncio.wait(
-            [follow_up_future, next_event_task], return_when=asyncio.FIRST_COMPLETED
-        )
-        if follow_up_future in done:
-            follow_up = follow_up_future.result()
-            if follow_up and follow_up.strip():
-                await event_queue.put(
-                    Event("user", follow_up.strip(), {"input_type": "voice"})
-                )
-            next_event_task.cancel()
-            await asyncio.gather(next_event_task, return_exceptions=True)
-        else:
-            follow_up_future.cancel()
-            await asyncio.gather(follow_up_future, return_exceptions=True)
-            next_event = next_event_task.result()
-            await event_queue.put(next_event)
-
-    hotword_task = asyncio.create_task(stt_engine.hotword_listener(event_queue))
-    print("[STT] Hotword listener resumed.")
-
     return hotword_task
 
 
-async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue, hotword_task, stt_enabled):
+async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue, hotword_task, stt_enabled, tts_engine=None):
     """Handle follow-up voice recording after streaming TTS playback."""
     if not stt_enabled:
         return hotword_task
@@ -436,31 +416,31 @@ async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue
     if stt_engine:
         stt_engine.resume_listening()
 
-    if last_input_type == "voice":
-        print("[STT] Listening for follow-up without hotword for 5 seconds...")
-        loop = asyncio.get_event_loop()
-        follow_up_future = loop.run_in_executor(
-            None, lambda: stt_engine.record_and_transcribe(5)
-        )
-        next_event_task = asyncio.create_task(event_queue.get())
-        done, _ = await asyncio.wait(
-            [follow_up_future, next_event_task], return_when=asyncio.FIRST_COMPLETED
-        )
-        if follow_up_future in done:
-            follow_up = follow_up_future.result()
-            if follow_up and follow_up.strip():
-                await event_queue.put(
-                    Event("user", follow_up.strip(), {"input_type": "voice"})
-                )
-            next_event_task.cancel()
-            await asyncio.gather(next_event_task, return_exceptions=True)
-        else:
-            follow_up_future.cancel()
-            await asyncio.gather(follow_up_future, return_exceptions=True)
-            next_event = next_event_task.result()
-            await event_queue.put(next_event)
+    # Always listen for follow-up without hotword for 5 seconds after TTS
+    print("[STT] Listening for follow-up without hotword for 5 seconds...")
+    loop = asyncio.get_event_loop()
+    follow_up_future = loop.run_in_executor(
+        None, lambda: stt_engine.record_and_transcribe(5, tts_engine=tts_engine)
+    )
+    next_event_task = asyncio.create_task(event_queue.get())
+    done, _ = await asyncio.wait(
+        [follow_up_future, next_event_task], return_when=asyncio.FIRST_COMPLETED
+    )
+    if follow_up_future in done:
+        follow_up = follow_up_future.result()
+        if follow_up and follow_up.strip():
+            await event_queue.put(
+                Event("user", follow_up.strip(), {"input_type": "voice"})
+            )
+        next_event_task.cancel()
+        await asyncio.gather(next_event_task, return_exceptions=True)
+    else:
+        follow_up_future.cancel()
+        await asyncio.gather(follow_up_future, return_exceptions=True)
+        next_event = next_event_task.result()
+        await event_queue.put(next_event)
 
-    hotword_task = asyncio.create_task(stt_engine.hotword_listener(event_queue))
+    hotword_task = asyncio.create_task(stt_engine.hotword_listener(event_queue, tts_engine=tts_engine))
     print("[STT] Hotword listener resumed.")
     return hotword_task
 
@@ -482,6 +462,10 @@ async def stream_assistant_reply(
 
     It hands control back to the hot-word listener.
     """
+    # Always pause listening before streaming TTS
+    if stt_enabled and stt_engine:
+        stt_engine.pause_listening()
+
     cfg = _prepare_stream(stt_enabled, stt_engine, hotword_task)
     cfg['tts_engine'] = tts_engine
     ctx = _make_context(cfg, manager)
@@ -501,9 +485,16 @@ async def stream_assistant_reply(
     gpt_text = _finalise_conversation(manager, ctx.sentences)
     print(f"[Conversation] Full assistant reply: {gpt_text}")
     animation = _handle_animation(gpt_client, manager, arduino_interface)
-    hotword_task = await _resume_hotword(
-        last_input_type, stt_engine, queue, hotword_task, stt_enabled
-    )
+    # Wait for playback to fully finish before resuming listening
+    if playback_done_event is not None and isinstance(playback_done_event, threading.Event):
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, playback_done_event.wait)
+    # Resume listening after playback; then run 5s no-hotword follow-up and restart hotword listener
+    if stt_enabled and stt_engine:
+        stt_engine.resume_listening()
+        hotword_task = await handle_follow_up_after_stream(
+            last_input_type, stt_engine, queue, hotword_task, stt_enabled, tts_engine
+        )
 
     _log_stream_done(ctx.timing)
     return gpt_text, animation, hotword_task
@@ -707,7 +698,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
     # Start background producers
     user_task = asyncio.create_task(user_input_producer(queue, input_allowed_event))
     hotword_task = (
-        asyncio.create_task(stt_engine.hotword_listener(queue)) if stt_enabled else None
+        asyncio.create_task(stt_engine.hotword_listener(queue, tts_engine=tts_engine)) if stt_enabled else None
     )
 
     last_input_type = "text"
@@ -755,17 +746,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
             print(Fore.LIGHTBLACK_EX + Style.BRIGHT + "\n»»» Ready for your input! Type below..." + Style.RESET_ALL)
 
-            if not tts_enabled:
-                hotword_task = await handle_tts_and_follow_up(
-                    gpt_text,
-                    last_input_type,
-                    tts_engine,
-                    stt_engine,
-                    queue,
-                    hotword_task,
-                    stt_enabled,
-                    tts_enabled,
-                )
+            # Follow-up after TTS is handled inside stream_assistant_reply
 
     except (asyncio.CancelledError, KeyboardInterrupt):
         print("\n[Main] KeyboardInterrupt or CancelledError received. Exiting...")
