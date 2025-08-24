@@ -1,5 +1,5 @@
 /****************************************************************************** 
- *  Core-2 touch UI for 7-servo head  ·  talks to OpenRB-150 on UART2
+ *  Core-2 touch UI for 10-servo head  ·  talks to OpenRB-150 on UART2
  *  rev 2025-06-13  –  SET_LED skips MIC_LED; SET_MIC_LED only affects MIC_LED
  ******************************************************************************/
 
@@ -65,24 +65,27 @@ constexpr int MIC_LED_INDEX = 16;
 uint32_t lastColor = 0;
 
 /* Servo bookkeeping */
-constexpr int totalServos  = 11;
-constexpr int activeServos = 7;
+constexpr int activeServos = 10;             // lens, eyelid1, eyelid2, eyeX, eyeY, handle1, handle2, eyeX2, eyeY2, eyeZ
+constexpr int totalServos  = activeServos+4; // keep 4 disabled rows for UI spacing
 struct ServoState {
   int angle, initial_angle, velocity;
   int min_angle, max_angle, idle_range;
   unsigned long lastIdleUpdate, idleUpdateInterval;
 };
 ServoState servos[activeServos] = {
-  {  0,  0, 5,    0,   0,700,0,2000},
-  {180,180, 5,  180, 220,40,0,2000},
-  {180,180, 5,  140, 180,40,0,2000},
-  {130,130, 5,  130, 220,90,0,2000},
-  {140,140, 5,  140, 210,80,0,2000},
-  {  0,  0, 5,   -60,  60,10,0,2000},
-  {  0,  0, 5,   -60,  60,10,0,2000}
+  {  0,  0, 5,    0,   0,700,0,2000},   // lens
+  {180,180, 5,  180, 220,40,0,2000},   // eyelid1
+  {180,180, 5,  140, 180,40,0,2000},   // eyelid2
+  {130,130, 5,  130, 220,90,0,2000},   // eyeX
+  {140,140, 5,  140, 210,80,0,2000},   // eyeY
+  {  0,  0, 5,   -60,  60,10,0,2000},  // handle1
+  {  0,  0, 5,   -60,  60,10,0,2000},  // handle2
+  {130,130, 5,  130, 220,90,0,2000},   // eyeX2
+  {140,140, 5,  140, 210,80,0,2000},   // eyeY2
+  {  0,  0, 5,   -60,  60,10,0,2000}   // eyeZ (twist)
 };
 const char* SERVO_NAMES[activeServos] = {
-  "lens","eyelid1","eyelid2","eyeX","eyeY","handle1","handle2"
+  "lens","eyelid1","eyelid2","eyeX","eyeY","handle1","handle2","eyeX2","eyeY2","eyeZ"
 };
 
 /* UI layout */

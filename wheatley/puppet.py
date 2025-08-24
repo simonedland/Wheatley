@@ -26,10 +26,13 @@ from tkinter import (
 from tkinter import ttk
 
 # ── constants ──────────────────────────────────────────────────────────
-SERVO_NAMES = ("lens", "eyelid1", "eyelid2",
-               "eyeX", "eyeY", "handle1", "handle2")
-DEFAULT_MIN = [0, 180, 140, 130, 140, -60, -60]
-DEFAULT_MAX = [0, 220, 180, 220, 210, 60, 60]
+SERVO_NAMES = (
+    "lens", "eyelid1", "eyelid2",
+    "eyeX", "eyeY", "handle1", "handle2",
+    "eyeX2", "eyeY2", "eyeZ"
+)
+DEFAULT_MIN = [0, 180, 140, 130, 140, -60, -60, 130, 140, -60]
+DEFAULT_MAX = [0, 220, 180, 220, 210, 60, 60, 220, 210, 60]
 ACCENT = "#00c3ff"
 BAR_COLOR = "#00c851"
 DOT_COLOR = "#ff4040"
@@ -508,7 +511,7 @@ class PuppetGUI(Tk):
                     scale.configure(from_=mn, to=mx)
                     self._draw_band(sid)
                     got += 1
-            if got == 7 and not self.limits_ready:
+            if got >= len(self.servo_min) and not self.limits_ready:
                 self.limits_ready = True
                 self._disable_tx_buttons(False)
                 self._msg("[INFO] Servo limits received – controls enabled")
