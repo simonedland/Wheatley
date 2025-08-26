@@ -222,16 +222,16 @@ class ServoController:
         # Updated servo configurations with names and sensible ranges.
         # New servos: eyeX2, eyeY2 mirror eyeX/eyeY; eyeZ is a twist axis similar to handles.
         servo_configs = [
-            {'name': 'lens',    'idle_range': 700, 'min_angle': 0, 'max_angle': 0, 'interval': 2000},
+            {'name': 'lens', 'idle_range': 700, 'min_angle': 0, 'max_angle': 0, 'interval': 2000},
             {'name': 'eyelid1', 'idle_range': 40, 'min_angle': 180, 'max_angle': 220, 'interval': 2000},
             {'name': 'eyelid2', 'idle_range': 40, 'min_angle': 140, 'max_angle': 180, 'interval': 2000},
-            {'name': 'eyeX',    'idle_range': 90, 'min_angle': 130, 'max_angle': 220, 'interval': 2000},
-            {'name': 'eyeY',    'idle_range': 80, 'min_angle': 140, 'max_angle': 210, 'interval': 2000},
+            {'name': 'eyeX', 'idle_range': 90, 'min_angle': 130, 'max_angle': 220, 'interval': 2000},
+            {'name': 'eyeY', 'idle_range': 80, 'min_angle': 140, 'max_angle': 210, 'interval': 2000},
             {'name': 'handle1', 'idle_range': 10, 'min_angle': -60, 'max_angle': 60, 'interval': 2000},
             {'name': 'handle2', 'idle_range': 10, 'min_angle': -60, 'max_angle': 60, 'interval': 2000},
-            {'name': 'eyeX2',   'idle_range': 90, 'min_angle': 130, 'max_angle': 220, 'interval': 2000},
-            {'name': 'eyeY2',   'idle_range': 80, 'min_angle': 140, 'max_angle': 210, 'interval': 2000},
-            {'name': 'eyeZ',    'idle_range': 10, 'min_angle': -60, 'max_angle': 60, 'interval': 2000},
+            {'name': 'eyeX2', 'idle_range': 90, 'min_angle': 130, 'max_angle': 220, 'interval': 2000},
+            {'name': 'eyeY2', 'idle_range': 80, 'min_angle': 140, 'max_angle': 210, 'interval': 2000},
+            {'name': 'eyeZ', 'idle_range': 10, 'min_angle': -60, 'max_angle': 60, 'interval': 2000},
         ]
         self.servos = []
         for i in range(self.servo_count):
