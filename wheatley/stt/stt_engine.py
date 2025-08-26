@@ -180,15 +180,25 @@ class SpeechToTextEngine:
         start_time = time.time()
 
         def tts_playing() -> bool:
-            return (
-                tts_engine is not None
-                and hasattr(tts_engine, "is_playing")
-                and tts_engine.is_playing()
-            )
+            return tts_engine is not None and hasattr(tts_engine, "is_playing") and tts_engine.is_playing()
 
-        while tts_playing():
-            print("[STT] Waiting for TTS to finish before recording...")
-            time.sleep(0.1)
+        def wait_for_tts() -> None:
+            while tts_playing():
+                print("[STT] Waiting for TTS to finish before recording...")
+                time.sleep(0.1)
+
+        def should_abort() -> bool:
+            if self.is_paused() or tts_playing():
+                msg = (
+                    "[STT] TTS started during recording, aborting..."
+                    if tts_playing()
+                    else "[STT] Recording paused, aborting..."
+                )
+                print(msg)
+                return True
+            return False
+
+        wait_for_tts()
 
         audio = pyaudio.PyAudio()
         try:
@@ -200,8 +210,6 @@ class SpeechToTextEngine:
                 frames_per_buffer=self.CHUNK,
             )
             frames: list[bytes] = []
-            silent_frames = 0
-            recording = False
             print("Monitoring...")
             self._update_mic_led(RECORDING_COLOR)
 
@@ -209,41 +217,36 @@ class SpeechToTextEngine:
             max_amplitude = float("-inf")
 
             while True:
-                if self.is_paused() or tts_playing():
-                    msg = (
-                        "[STT] TTS started during recording, aborting..."
-                        if tts_playing()
-                        else "[STT] Recording paused, aborting..."
-                    )
-                    print(msg)
+                if should_abort():
                     frames = []
                     break
-
+                if max_wait_seconds is not None and time.time() - start_time > max_wait_seconds:
+                    print("No sound detected, aborting...")
+                    break
                 data = stream.read(self.CHUNK, exception_on_overflow=False)
-                data_int = np.frombuffer(data, dtype=np.int16)
-                amplitude = np.max(np.abs(data_int))
+                amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
                 min_amplitude = min(min_amplitude, amplitude)
                 max_amplitude = max(max_amplitude, amplitude)
-
-                if not recording:
-                    if max_wait_seconds is not None and (time.time() - start_time) > max_wait_seconds:
-                        print("No sound detected, aborting...")
-                        frames = []
-                        break
-                    if amplitude > self.THRESHOLD:
-                        print("Sound detected, recording...")
-                        recording = True
-                        self._update_mic_led(RECORDING_COLOR)
-                        frames.append(data)
-                else:
+                if amplitude > self.THRESHOLD:
+                    print("Sound detected, recording...")
                     frames.append(data)
-                    if amplitude > self.THRESHOLD:
-                        silent_frames = 0
-                    else:
-                        silent_frames += 1
-                        if silent_frames > (self.RATE / self.CHUNK * self.SILENCE_LIMIT):
-                            print("Silence detected, stopping...")
-                            break
+                    self._update_mic_led(RECORDING_COLOR)
+                    break
+
+            silent_frames = 0
+            while frames:
+                if should_abort():
+                    frames = []
+                    break
+                data = stream.read(self.CHUNK, exception_on_overflow=False)
+                frames.append(data)
+                amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
+                min_amplitude = min(min_amplitude, amplitude)
+                max_amplitude = max(max_amplitude, amplitude)
+                silent_frames = 0 if amplitude > self.THRESHOLD else silent_frames + 1
+                if silent_frames > (self.RATE / self.CHUNK * self.SILENCE_LIMIT):
+                    print("Silence detected, stopping...")
+                    break
 
             print(f"Minimum amplitude: {min_amplitude}")
             print(f"Maximum amplitude: {max_amplitude}")
@@ -260,7 +263,7 @@ class SpeechToTextEngine:
             wf.setnchannels(self.CHANNELS)
             wf.setsampwidth(audio.get_sample_size(self.FORMAT))
             wf.setframerate(self.RATE)
-            wf.writeframes(b''.join(frames))
+            wf.writeframes(b"".join(frames))
             wf.close()
             record_timing("stt_record_until_silent", start_time)
             return wav_filename
