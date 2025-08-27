@@ -175,87 +175,108 @@ class SpeechToTextEngine:
             except Exception:
                 self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
 
+    # ----------------------------
+    # Recording helper methods
+    # ----------------------------
+    def _tts_playing(self, tts_engine) -> bool:
+        return tts_engine is not None and hasattr(tts_engine, "is_playing") and tts_engine.is_playing()
+
+    def _wait_for_tts(self, tts_engine) -> None:
+        while self._tts_playing(tts_engine):
+            print("[STT] Waiting for TTS to finish before recording...")
+            time.sleep(0.1)
+
+    def _should_abort(self, tts_engine) -> bool:
+        if self.is_paused() or self._tts_playing(tts_engine):
+            msg = (
+                "[STT] TTS started during recording, aborting..."
+                if self._tts_playing(tts_engine)
+                else "[STT] Recording paused, aborting..."
+            )
+            print(msg)
+            return True
+        return False
+
+    def _open_input_stream(self, audio):
+        return audio.open(
+            format=self.FORMAT,
+            channels=self.CHANNELS,
+            rate=self.RATE,
+            input=True,
+            frames_per_buffer=self.CHUNK,
+        )
+
+    def _monitor_for_sound(self, stream, start_time, max_wait_seconds, tts_engine):
+        frames = []
+        min_amplitude = float("inf")
+        max_amplitude = float("-inf")
+        while True:
+            if self._should_abort(tts_engine):
+                return [], min_amplitude, max_amplitude
+            if max_wait_seconds is not None and time.time() - start_time > max_wait_seconds:
+                print("No sound detected, aborting...")
+                return [], min_amplitude, max_amplitude
+            data = stream.read(self.CHUNK, exception_on_overflow=False)
+            amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
+            min_amplitude = min(min_amplitude, amplitude)
+            max_amplitude = max(max_amplitude, amplitude)
+            if amplitude > self.THRESHOLD:
+                print("Sound detected, recording...")
+                frames.append(data)
+                self._update_mic_led(RECORDING_COLOR)
+                return frames, min_amplitude, max_amplitude
+
+    def _continue_until_silence(self, stream, frames, tts_engine, min_amplitude, max_amplitude):
+        silent_frames = 0
+        while frames:
+            if self._should_abort(tts_engine):
+                return [], min_amplitude, max_amplitude
+            data = stream.read(self.CHUNK, exception_on_overflow=False)
+            frames.append(data)
+            amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
+            min_amplitude = min(min_amplitude, amplitude)
+            max_amplitude = max(max_amplitude, amplitude)
+            silent_frames = 0 if amplitude > self.THRESHOLD else silent_frames + 1
+            if silent_frames > (self.RATE / self.CHUNK * self.SILENCE_LIMIT):
+                print("Silence detected, stopping...")
+                break
+        return frames, min_amplitude, max_amplitude
+
     def record_until_silent(self, max_wait_seconds=None, tts_engine=None):
         """Record audio until silence is detected."""
         start_time = time.time()
-
-        def tts_playing() -> bool:
-            return tts_engine is not None and hasattr(tts_engine, "is_playing") and tts_engine.is_playing()
-
-        def wait_for_tts() -> None:
-            while tts_playing():
-                print("[STT] Waiting for TTS to finish before recording...")
-                time.sleep(0.1)
-
-        def should_abort() -> bool:
-            if self.is_paused() or tts_playing():
-                msg = (
-                    "[STT] TTS started during recording, aborting..."
-                    if tts_playing()
-                    else "[STT] Recording paused, aborting..."
-                )
-                print(msg)
-                return True
-            return False
-
-        wait_for_tts()
+        
+        # Ensure we don't start while TTS is speaking
+        self._wait_for_tts(tts_engine)
 
         audio = pyaudio.PyAudio()
         try:
-            stream = audio.open(
-                format=self.FORMAT,
-                channels=self.CHANNELS,
-                rate=self.RATE,
-                input=True,
-                frames_per_buffer=self.CHUNK,
-            )
-            frames: list[bytes] = []
+            stream = self._open_input_stream(audio)
+            frames = []
             print("Monitoring...")
             self._update_mic_led(RECORDING_COLOR)
 
-            min_amplitude = float("inf")
-            max_amplitude = float("-inf")
+            # Phase 1: wait for sound above threshold
+            frames, min_amplitude, max_amplitude = self._monitor_for_sound(
+                stream, start_time, max_wait_seconds, tts_engine
+            )
 
-            while True:
-                if should_abort():
-                    frames = []
-                    break
-                if max_wait_seconds is not None and time.time() - start_time > max_wait_seconds:
-                    print("No sound detected, aborting...")
-                    break
-                data = stream.read(self.CHUNK, exception_on_overflow=False)
-                amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
-                min_amplitude = min(min_amplitude, amplitude)
-                max_amplitude = max(max_amplitude, amplitude)
-                if amplitude > self.THRESHOLD:
-                    print("Sound detected, recording...")
-                    frames.append(data)
-                    self._update_mic_led(RECORDING_COLOR)
-                    break
-
-            silent_frames = 0
-            while frames:
-                if should_abort():
-                    frames = []
-                    break
-                data = stream.read(self.CHUNK, exception_on_overflow=False)
-                frames.append(data)
-                amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
-                min_amplitude = min(min_amplitude, amplitude)
-                max_amplitude = max(max_amplitude, amplitude)
-                silent_frames = 0 if amplitude > self.THRESHOLD else silent_frames + 1
-                if silent_frames > (self.RATE / self.CHUNK * self.SILENCE_LIMIT):
-                    print("Silence detected, stopping...")
-                    break
+            # Phase 2: continue recording until silence window reached
+            if frames:
+                frames, min_amplitude, max_amplitude = self._continue_until_silence(
+                    stream, frames, tts_engine, min_amplitude, max_amplitude
+                )
 
             print(f"Minimum amplitude: {min_amplitude}")
             print(f"Maximum amplitude: {max_amplitude}")
 
             stream.stop_stream()
             stream.close()
+
             if not frames:
                 record_timing("stt_record_until_silent", start_time)
                 return None
+
             self._update_mic_led(PROCESSING_COLOR)
 
             wav_filename = "temp_recording.wav"
