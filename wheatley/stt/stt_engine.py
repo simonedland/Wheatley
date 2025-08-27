@@ -52,6 +52,7 @@ class SpeechToTextEngine:
         self._pause_event = Event()
         self._listening = False
         # Set OpenAI API key from config
+        porcupine_api_key = config.get("stt", {}).get("porcupine_api_key")
         openai_api_key = config.get("secrets", {}).get("openai_api_key")
         if not openai_api_key:
             openai_api_key = config.get("openai_api_key")
@@ -60,6 +61,10 @@ class SpeechToTextEngine:
             self.api_key = openai_api_key
         else:
             raise ValueError("OpenAI API key not found in config")
+        if porcupine_api_key:
+            self.porcupine_api_key = porcupine_api_key
+        else:
+            raise ValueError("Porcupine API key not found in config")
 
         # Ensure the microphone status LED reflects the initial paused state
         self._update_mic_led(PAUSED_COLOR)
@@ -170,68 +175,121 @@ class SpeechToTextEngine:
             except Exception:
                 self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
 
-    def record_until_silent(self, max_wait_seconds=None):
-        """Record audio until silence is detected."""
-        start_time = time.time()
-        self._audio = pyaudio.PyAudio()
-        self.connect_stream()
+    # ----------------------------
+    # Recording helper methods
+    # ----------------------------
+    def _tts_playing(self, tts_engine) -> bool:
+        return tts_engine is not None and hasattr(tts_engine, "is_playing") and tts_engine.is_playing()
+
+    def _wait_for_tts(self, tts_engine) -> None:
+        while self._tts_playing(tts_engine):
+            print("[STT] Waiting for TTS to finish before recording...")
+            time.sleep(0.1)
+
+    def _should_abort(self, tts_engine) -> bool:
+        if self.is_paused() or self._tts_playing(tts_engine):
+            msg = (
+                "[STT] TTS started during recording, aborting..."
+                if self._tts_playing(tts_engine)
+                else "[STT] Recording paused, aborting..."
+            )
+            print(msg)
+            return True
+        return False
+
+    def _open_input_stream(self, audio):
+        return audio.open(
+            format=self.FORMAT,
+            channels=self.CHANNELS,
+            rate=self.RATE,
+            input=True,
+            frames_per_buffer=self.CHUNK,
+        )
+
+    def _monitor_for_sound(self, stream, start_time, max_wait_seconds, tts_engine):
         frames = []
-        silent_frames = 0
-        recording = False
-        start_time = time.time()
-        print("Monitoring...")
-        self._update_mic_led(RECORDING_COLOR)
-
-        min_amplitude = float('inf')
-        max_amplitude = float('-inf')
-
+        min_amplitude = float("inf")
+        max_amplitude = float("-inf")
         while True:
-            data = self._stream.read(self.CHUNK, exception_on_overflow=False)
-            data_int = np.frombuffer(data, dtype=np.int16)
-            amplitude = np.max(np.abs(data_int))
+            if self._should_abort(tts_engine):
+                return [], min_amplitude, max_amplitude
+            if max_wait_seconds is not None and time.time() - start_time > max_wait_seconds:
+                print("No sound detected, aborting...")
+                return [], min_amplitude, max_amplitude
+            data = stream.read(self.CHUNK, exception_on_overflow=False)
+            amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
             min_amplitude = min(min_amplitude, amplitude)
             max_amplitude = max(max_amplitude, amplitude)
-            if not recording and max_wait_seconds is not None and (time.time() - start_time) > max_wait_seconds:
-                print("No sound detected, aborting...")
-                frames = []
-                break
             if amplitude > self.THRESHOLD:
-                if not recording:
-                    print("Sound detected, recording...")
-                    recording = True
-                    self._update_mic_led(RECORDING_COLOR)
+                print("Sound detected, recording...")
                 frames.append(data)
-                silent_frames = 0
-            else:
-                if recording:
-                    silent_frames += 1
-                    frames.append(data)
-                    if silent_frames > (self.RATE / self.CHUNK * self.SILENCE_LIMIT):
-                        print("Silence detected, stopping...")
-                        break
+                self._update_mic_led(RECORDING_COLOR)
+                return frames, min_amplitude, max_amplitude
 
-        print(f"Minimum amplitude: {min_amplitude}")
-        print(f"Maximum amplitude: {max_amplitude}")
+    def _continue_until_silence(self, stream, frames, tts_engine, min_amplitude, max_amplitude):
+        silent_frames = 0
+        while frames:
+            if self._should_abort(tts_engine):
+                return [], min_amplitude, max_amplitude
+            data = stream.read(self.CHUNK, exception_on_overflow=False)
+            frames.append(data)
+            amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
+            min_amplitude = min(min_amplitude, amplitude)
+            max_amplitude = max(max_amplitude, amplitude)
+            silent_frames = 0 if amplitude > self.THRESHOLD else silent_frames + 1
+            if silent_frames > (self.RATE / self.CHUNK * self.SILENCE_LIMIT):
+                print("Silence detected, stopping...")
+                break
+        return frames, min_amplitude, max_amplitude
 
-        self._stream.stop_stream()
-        self._stream.close()
-        self._stream = None
-        self._audio.terminate()
-        self._audio = None
-        if not frames:
+    def record_until_silent(self, max_wait_seconds=None, tts_engine=None):
+        """Record audio until silence is detected."""
+        start_time = time.time()
+
+        # Ensure we don't start while TTS is speaking
+        self._wait_for_tts(tts_engine)
+
+        audio = pyaudio.PyAudio()
+        try:
+            stream = self._open_input_stream(audio)
+            frames = []
+            print("Monitoring...")
+            self._update_mic_led(RECORDING_COLOR)
+
+            # Phase 1: wait for sound above threshold
+            frames, min_amplitude, max_amplitude = self._monitor_for_sound(
+                stream, start_time, max_wait_seconds, tts_engine
+            )
+
+            # Phase 2: continue recording until silence window reached
+            if frames:
+                frames, min_amplitude, max_amplitude = self._continue_until_silence(
+                    stream, frames, tts_engine, min_amplitude, max_amplitude
+                )
+
+            print(f"Minimum amplitude: {min_amplitude}")
+            print(f"Maximum amplitude: {max_amplitude}")
+
+            stream.stop_stream()
+            stream.close()
+
+            if not frames:
+                record_timing("stt_record_until_silent", start_time)
+                return None
+
+            self._update_mic_led(PROCESSING_COLOR)
+
+            wav_filename = "temp_recording.wav"
+            wf = wave.open(wav_filename, 'wb')
+            wf.setnchannels(self.CHANNELS)
+            wf.setsampwidth(audio.get_sample_size(self.FORMAT))
+            wf.setframerate(self.RATE)
+            wf.writeframes(b"".join(frames))
+            wf.close()
             record_timing("stt_record_until_silent", start_time)
-            return None
-        self._update_mic_led(PROCESSING_COLOR)
-
-        wav_filename = "temp_recording.wav"
-        wf = wave.open(wav_filename, 'wb')
-        wf.setnchannels(self.CHANNELS)
-        wf.setsampwidth(pyaudio.PyAudio().get_sample_size(self.FORMAT))
-        wf.setframerate(self.RATE)
-        wf.writeframes(b''.join(frames))
-        wf.close()
-        record_timing("stt_record_until_silent", start_time)
-        return wav_filename
+            return wav_filename
+        finally:
+            audio.terminate()
 
     def transcribe(self, filename):
         """Transcribe audio file using OpenAI Whisper."""
@@ -244,10 +302,10 @@ class SpeechToTextEngine:
         record_timing("stt_transcribe", start_time)
         return transcription_result.text
 
-    def record_and_transcribe(self, max_wait_seconds=None):
+    def record_and_transcribe(self, max_wait_seconds=None, tts_engine=None):
         """Record audio and transcribe using traditional Whisper API."""
         start_time = time.time()
-        wav_file = self.record_until_silent(max_wait_seconds)
+        wav_file = self.record_until_silent(max_wait_seconds, tts_engine=tts_engine)
         if not wav_file:
             record_timing("stt_record_and_transcribe", start_time)
             return ""
@@ -264,15 +322,18 @@ class SpeechToTextEngine:
             sensitivities = [0.5] * len(keywords)
         try:
             self._porcupine = pvporcupine.create(
-                access_key=self.api_key,
-                keyword_paths=["stt/wheatley.ppn"]
+                access_key=self.porcupine_api_key,
+                keyword_paths=["stt/wheatley.ppn"],
+                sensitivities=sensitivities
             )
+            print("[Hotword] Using custom keyword file 'wheatley.ppn'")
         except Exception:
             self._porcupine = pvporcupine.create(
-                access_key=self.api_key,
+                access_key=self.porcupine_api_key,
                 keywords=keywords,
                 sensitivities=sensitivities
             )
+            print("[Hotword] Using default keywords")
 
     def listen_for_hotword(self, access_key=None, keywords=None, sensitivities=None):
         """Block until one of ``keywords`` is heard.
@@ -292,6 +353,8 @@ class SpeechToTextEngine:
             Index of detected keyword or ``None`` if listening was interrupted.
         """
         start_time = time.time()
+        if keywords is None:
+            keywords = ["computer", "jarvis"]
         if access_key is None:
             # Try to load from config
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
@@ -349,30 +412,38 @@ class SpeechToTextEngine:
         record_timing("stt_listen_hotword", start_time)
         return detected_index
 
-    def get_voice_input(self):
+    def get_voice_input(self, tts_engine=None):
         """Wait for hotword, then record and transcribe speech. Return transcribed text or empty string if nothing detected."""
+        # Block if TTS is playing
+        if tts_engine is not None:
+            while hasattr(tts_engine, 'is_playing') and tts_engine.is_playing():
+                print("[STT] Waiting for TTS to finish before listening...")
+                time.sleep(0.1)
         idx = self.listen_for_hotword()
-        if idx is None:
+        if idx is None or self.is_paused():
             return ""
-        wav_file = self.record_until_silent()
-        if not wav_file:
-            print("No audio detected.")
+        wav_file = self.record_until_silent(tts_engine=tts_engine)
+        if not wav_file or self.is_paused():
+            print("No audio detected or paused.")
             return ""
         self._update_mic_led(PROCESSING_COLOR)
+        if self.is_paused():
+            print("[STT] Paused before transcription.")
+            return ""
         text = self.transcribe(wav_file)
         os.remove(wav_file)
         return text
 
-    async def hotword_listener(self, queue):
+    async def hotword_listener(self, queue, tts_engine=None):
         """Background task that records speech after a hotword trigger."""
         print("[Hotword] Background listener started.")
         loop = asyncio.get_event_loop()
         try:
             while True:
-                if self.is_paused():
+                if self.is_paused() or (tts_engine is not None and hasattr(tts_engine, 'is_playing') and tts_engine.is_playing()):
                     await asyncio.sleep(0.1)
                     continue
-                text = await loop.run_in_executor(None, self.get_voice_input)
+                text = await loop.run_in_executor(None, self.get_voice_input, tts_engine)
                 if text and text.strip():
                     await queue.put({"type": "voice", "text": text.strip()})
         except asyncio.CancelledError:

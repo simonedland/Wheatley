@@ -76,14 +76,15 @@ Dynamixel2Arduino dxl(DXL_SERIAL, DXL_DIR_PIN);
 using namespace ControlTableItem;
 
 /* -------------------- SERVO TABLE -------------------- */
-#define NUM_SERVOS 7
-const uint8_t SERVOS[NUM_SERVOS] = {0,1,2,3,4,5,6};
+#define NUM_SERVOS 10
+const uint8_t SERVOS[NUM_SERVOS] = {0,1,2,3,4,5,6,7,8,9};
 const char* SERVO_NAMES[NUM_SERVOS] = {
-  "lens","eyelid1","eyelid2","eyeX","eyeY","handle1","handle2"
+  "lens","eyelid1","eyelid2","eyeX","eyeY","handle1","handle2","eyeX2","eyeY2","eyeZ"
 };
-const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {false,true,true,true,true,true,true};
-const float MANUAL_MIN[NUM_SERVOS]        = {0,180,140,130,140,-60,-60};
-const float MANUAL_MAX[NUM_SERVOS]        = {0,220,180,220,210, 60,60};
+const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {false,true,true,true,true,true,true,true,true,true};
+// Assumptions: eyeX2/eyeY2 share limits with eyeX/eyeY; eyeZ is a small twist: -60..60
+const float MANUAL_MIN[NUM_SERVOS]        = {0,180,140,130,140,-60,-60,130,140,-60};
+const float MANUAL_MAX[NUM_SERVOS]        = {0,220,180,220,210, 60, 60,220,210, 60};
 
 int32_t minPosArr[NUM_SERVOS]; // Min position (ticks) for each servo
 int32_t maxPosArr[NUM_SERVOS]; // Max position (ticks) for each servo
