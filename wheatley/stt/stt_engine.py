@@ -245,7 +245,7 @@ class SpeechToTextEngine:
     def record_until_silent(self, max_wait_seconds=None, tts_engine=None):
         """Record audio until silence is detected."""
         start_time = time.time()
-        
+
         # Ensure we don't start while TTS is speaking
         self._wait_for_tts(tts_engine)
 
