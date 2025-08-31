@@ -84,8 +84,8 @@ const char* SERVO_NAMES[NUM_SERVOS] = {
 const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {false,true,true,true,true,true,true,true,true,true};
 // Assumptions: eyeX2/eyeY2 share limits with eyeX/eyeY; eyeZ is a small twist: -60..60
 // Test constraint: keep eyeX2, eyeY2, eyeZ at 180° ±5° (new hardware burn-in)
-const float MANUAL_MIN[NUM_SERVOS]        = {0,180,140,130,140,-60,-60,175,175,175};
-const float MANUAL_MAX[NUM_SERVOS]        = {0,220,180,220,210, 60, 60,185,185,185};
+const float MANUAL_MIN[NUM_SERVOS]        = {0,180,140,130,140,-60,-60,150,130,140};
+const float MANUAL_MAX[NUM_SERVOS]        = {0,220,180,220,210, 60, 60,180,200,220};
 
 int32_t minPosArr[NUM_SERVOS]; // Min position (ticks) for each servo
 int32_t maxPosArr[NUM_SERVOS]; // Max position (ticks) for each servo
