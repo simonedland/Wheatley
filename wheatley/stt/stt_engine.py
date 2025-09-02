@@ -10,6 +10,7 @@ import struct
 import pvporcupine
 import time
 import asyncio
+import random
 from threading import Event
 from utils.timing_logger import record_timing
 
@@ -26,6 +27,11 @@ HOTWORD_COLOR = (0, 0, 255)         # blue
 RECORDING_COLOR = (0, 255, 0)       # green
 PROCESSING_COLOR = (255, 165, 0)    # orange
 PAUSED_COLOR = (255, 0, 0)          # red
+
+# Directory containing pre-recorded greetings played after hotword detection
+HOTWORD_GREETINGS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "audio", "hotword_greetings"
+)
 
 
 class SpeechToTextEngine:
@@ -185,6 +191,29 @@ class SpeechToTextEngine:
         while self._tts_playing(tts_engine):
             print("[STT] Waiting for TTS to finish before recording...")
             time.sleep(0.1)
+
+    def _play_hotword_greeting(self, tts_engine) -> None:
+        """Play a random greeting from ``HOTWORD_GREETINGS_DIR`` if available."""
+        if tts_engine is None:
+            return
+        try:
+            files = [
+                f
+                for f in os.listdir(HOTWORD_GREETINGS_DIR)
+                if f.lower().endswith(".mp3")
+            ]
+        except FileNotFoundError:
+            return
+        if not files:
+            return
+        choice = random.choice(files)
+        path = os.path.join(HOTWORD_GREETINGS_DIR, choice)
+        try:
+            with open(path, "rb") as fh:
+                tts_engine.play_mp3_bytes(fh.read())
+            self._wait_for_tts(tts_engine)
+        except Exception as exc:
+            print(f"[STT] Failed to play greeting '{choice}': {exc}")
 
     def _should_abort(self, tts_engine) -> bool:
         if self.is_paused() or self._tts_playing(tts_engine):
@@ -422,6 +451,7 @@ class SpeechToTextEngine:
         idx = self.listen_for_hotword()
         if idx is None or self.is_paused():
             return ""
+        self._play_hotword_greeting(tts_engine)
         wav_file = self.record_until_silent(tts_engine=tts_engine)
         if not wav_file or self.is_paused():
             print("No audio detected or paused.")
