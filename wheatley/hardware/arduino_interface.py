@@ -230,9 +230,9 @@ class ServoController:
             {'name': 'handle1', 'idle_range': 10, 'min_angle': -60, 'max_angle': 60, 'interval': 2000},
             {'name': 'handle2', 'idle_range': 10, 'min_angle': -60, 'max_angle': 60, 'interval': 2000},
             # Test constraint: new axes locked to 180° ±5° with small idle
-            {'name': 'eyeX2', 'idle_range': 5, 'min_angle': 175, 'max_angle': 185, 'interval': 2000},
-            {'name': 'eyeY2', 'idle_range': 5, 'min_angle': 175, 'max_angle': 185, 'interval': 2000},
-            {'name': 'eyeZ', 'idle_range': 5, 'min_angle': 175, 'max_angle': 185, 'interval': 2000},
+            {'name': 'eyeX2', 'idle_range': 5, 'min_angle': 150, 'max_angle': 180, 'interval': 2000},
+            {'name': 'eyeY2', 'idle_range': 5, 'min_angle': 130, 'max_angle': 200, 'interval': 2000},
+            {'name': 'eyeZ', 'idle_range': 5, 'min_angle': 140, 'max_angle': 220, 'interval': 2000},
         ]
         self.servos = []
         for i in range(self.servo_count):
