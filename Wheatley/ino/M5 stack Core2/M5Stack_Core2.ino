@@ -1,6 +1,7 @@
 /****************************************************************************** 
  *  Core-2 touch UI for 10-servo head  ·  talks to OpenRB-150 on UART2
  *  rev 2025-06-13  –  SET_LED skips MIC_LED; SET_MIC_LED only affects MIC_LED
+ *  rev 2025-06-30  –  periodic SYNC with OpenRB-150 to refresh state
  ******************************************************************************/
 
 #include <M5Unified.h>
@@ -104,6 +105,7 @@ unsigned long lastHandshakeAttempt = 0; // Track last handshake attempt
 bool dryRun                = true;
 bool servoPingResult[activeServos] = {false};
 bool calibrationReceived   = false;
+unsigned long lastSyncRequest   = 0;    // Periodic SYNC timer
 
 /* ———— Forward declarations ———— */
 void drawWindow();
@@ -313,6 +315,7 @@ void handleCalibrationData(const String &line) {
   drawWindow();
   Serial.println("[OK] Calibration table updated");
   Serial.print("SERVO_CONFIG:"); Serial.println(line);
+  lastSyncRequest = millis();
 }
 
 void sendServoConfig() {
@@ -410,6 +413,7 @@ void handleLink() {
       OpenRB.println("ESP32"); // Always reply to HELLO
       // Stop handshake retries
       lastHandshakeAttempt = millis();
+      lastSyncRequest = millis();
       continue;
     }
 
@@ -476,6 +480,15 @@ void loop(){
     // Demo mode if no handshake after 10s
     if (now - handshakeStart > 10000) {
       enterDemoMode();
+    }
+  }
+
+  // Periodic SYNC request to OpenRB-150
+  if (handshakeReceived) {
+    unsigned long now = millis();
+    if (now - lastSyncRequest > 60000) { // once per minute
+      OpenRB.println("SYNC");
+      lastSyncRequest = now;
     }
   }
 
