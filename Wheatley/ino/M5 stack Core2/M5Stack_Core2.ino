@@ -80,9 +80,9 @@ ServoState servos[activeServos] = {
   {140,140, 5,  140, 210,80,0,2000},   // eyeY
   {  0,  0, 5,   -60,  60,10,0,2000},  // handle1
   {  0,  0, 5,   -60,  60,10,0,2000},  // handle2
-  {180,180, 5,  175, 185, 5,0,2000},   // eyeX2 (test: lock to 180° ±5°)
-  {180,180, 5,  175, 185, 5,0,2000},   // eyeY2 (test: lock to 180° ±5°)
-  {180,180, 5,  175, 185, 5,0,2000}    // eyeZ (twist) (test: lock to 180° ±5°)
+  {180,180, 5,  150, 180, 5,0,2000},   // eyeX2 (test: lock to 180° ±5°)
+  {180,180, 5,  130, 200, 5,0,2000},   // eyeY2 (test: lock to 180° ±5°)
+  {180,180, 5,  140, 220, 5,0,2000}    // eyeZ (twist) (test: lock to 180° ±5°)
 };
 const char* SERVO_NAMES[activeServos] = {
   "lens","eyelid1","eyelid2","eyeX","eyeY","handle1","handle2","eyeX2","eyeY2","eyeZ"
