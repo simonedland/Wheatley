@@ -2,6 +2,7 @@
  *  OpenRB-150  ⇄  Core-2 UART bridge + multi-servo calibration demo
  *  fixed: 2025-05-21  (10 s handshake & servo-torque tweak)
  *  modified: 2025-05-23  (moved Core-2 link to Serial3 on pins D14/D13)
+ *  modified: 2025-06-30  (boot-order agnostic link; periodic SYNC support)
  ******************************************************************************/
 
 #include <Arduino.h>
@@ -58,7 +59,9 @@ const float     DXL_PROTOCOL = 2.0;         // Protocol version
 
 /* ————— CORE-2 LINK (now Serial3 / D14, D13) ————— */
 const uint32_t LINK_BAUD = 115200;          // UART baud rate
-#define HANDSHAKE_TIMEOUT_MS 10000          // Handshake timeout (ms)
+
+bool linkReady = false;                     // Has Core-2 handshake occurred?
+unsigned long lastHello = 0;                // Last time HELLO was broadcast
 
 /* ————— CALIBRATION SETTINGS ————— */
 const float STEP_DEG        = 15.0f;        // Step size for calibration (deg)
@@ -83,8 +86,9 @@ const char* SERVO_NAMES[NUM_SERVOS] = {
 };
 const bool  USE_MANUAL_LIMITS[NUM_SERVOS] = {false,true,true,true,true,true,true,true,true,true};
 // Assumptions: eyeX2/eyeY2 share limits with eyeX/eyeY; eyeZ is a small twist: -60..60
-const float MANUAL_MIN[NUM_SERVOS]        = {0,180,140,130,140,-60,-60,130,140,-60};
-const float MANUAL_MAX[NUM_SERVOS]        = {0,220,180,220,210, 60, 60,220,210, 60};
+// Test constraint: keep eyeX2, eyeY2, eyeZ at 180° ±5° (new hardware burn-in)
+const float MANUAL_MIN[NUM_SERVOS]        = {0,180,140,130,140,-60,-60,150,130,140};
+const float MANUAL_MAX[NUM_SERVOS]        = {0,220,180,220,210, 60, 60,180,200,220};
 
 int32_t minPosArr[NUM_SERVOS]; // Min position (ticks) for each servo
 int32_t maxPosArr[NUM_SERVOS]; // Max position (ticks) for each servo
@@ -200,27 +204,7 @@ void setup()
   dxl.setPortProtocolVersion(DXL_PROTOCOL);
 
   Serial2.begin(LINK_BAUD);             // Start Core-2 link on Serial3
-
-  // --- 10 s bidirectional handshake with Core-2 ---
-  unsigned long start = millis();
-  while (millis() - start < HANDSHAKE_TIMEOUT_MS) {
-    Serial2.println("HELLO");                     // Announce ourselves
-    unsigned long sliceEnd = millis() + 300;      // Short listen window
-    while (millis() < sliceEnd) {
-      Serial2.println("HELLO");
-      if (Serial2.available() && Serial2.find("ESP32")) {
-        dryRun = false;
-        DEBUG_SERIAL.println(F("[INFO] Core-2 detected"));
-        blinkOnboardLED(3);                       // Blink onboard LED 3×
-        break;
-      }
-    }
-    if (!dryRun) break;                           // Success
-  }
-  if (dryRun) {
-    DEBUG_SERIAL.println(F("[WARN] No Core-2 response after 10 s ⇒ dry-run"));
-    return;                                       // Skip calibration in dry-run
-  }
+  Serial2.println("HELLO");             // Initial announcement
 
   // --- Probe & calibrate all servos ---
   for (uint8_t i=0;i<NUM_SERVOS;++i){
@@ -239,16 +223,32 @@ void setup()
   }
 
   printAllServoStatus();
-  sendLimitsToCore2();           // Send calibration & ping result to Core-2
 }
 
 /* --------------------- LOOP --------------------- */
 void loop()
 {
-  // Handle incoming commands from Core-2
-  if (!dryRun && Serial2.available()){
+  unsigned long now = millis();
+  // Periodically announce ourselves until handshake succeeds
+  if (!linkReady && now - lastHello > 1000) {
+    Serial2.println("HELLO");
+    lastHello = now;
+  }
+
+  // Handle incoming messages from Core-2
+  if (Serial2.available()){
     String msg = Serial2.readStringUntil('\n'); msg.trim();
-    if (msg.startsWith("MOVE_SERVO")) handleMoveServoCommand(msg);
+    if (msg.startsWith("ESP32")) {
+      linkReady = true;
+      dryRun = false;
+      Serial2.println("HELLO");
+      sendLimitsToCore2();
+      blinkOnboardLED(3);
+    } else if (msg.startsWith("SYNC")) {
+      sendLimitsToCore2();
+    } else if (!dryRun && msg.startsWith("MOVE_SERVO")) {
+      handleMoveServoCommand(msg);
+    }
   }
 
   // Demo: sweep first servo back and forth twice, then turn on LED

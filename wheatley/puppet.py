@@ -31,8 +31,8 @@ SERVO_NAMES = (
     "eyeX", "eyeY", "handle1", "handle2",
     "eyeX2", "eyeY2", "eyeZ"
 )
-DEFAULT_MIN = [0, 180, 140, 130, 140, -60, -60, 130, 140, -60]
-DEFAULT_MAX = [0, 220, 180, 220, 210, 60, 60, 220, 210, 60]
+DEFAULT_MIN = [0, 180, 140, 130, 140, -60, -60, 150, 130, 140]
+DEFAULT_MAX = [0, 220, 180, 220, 210, 60, 60, 180, 200, 220]
 ACCENT = "#00c3ff"
 BAR_COLOR = "#00c851"
 DOT_COLOR = "#ff4040"
