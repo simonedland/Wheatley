@@ -30,7 +30,7 @@ PAUSED_COLOR = (255, 0, 0)          # red
 
 # Directory containing pre-recorded greetings played after hotword detection
 HOTWORD_GREETINGS_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "audio", "hotword_greetings"
+    os.path.dirname(os.path.dirname(__file__)), "stt", "hotword_greetings"
 )
 
 
