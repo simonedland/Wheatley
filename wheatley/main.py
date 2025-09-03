@@ -227,13 +227,11 @@ async def user_input_producer(q: asyncio.Queue, input_allowed_event: asyncio.Eve
     loop = asyncio.get_event_loop()
     while True:
         await input_allowed_event.wait()  # Block input if not allowed
-        wait_start = time.time()
         text = await loop.run_in_executor(None, input, "You: ")
         # Wait here if TTS is still playing (input_allowed_event not set)
         print("Waiting for input to be allowed...")
         while not input_allowed_event.is_set():
             await input_allowed_event.wait()
-        record_timing("await_user_input", wait_start)
         await q.put(Event("user", text.strip(), {"input_type": "text"}))
         if text.strip().lower() == "exit":
             break
@@ -386,9 +384,11 @@ def _execute_workflow(
         print(f"Tool Name: {call.get('name', 'unknown')}")
         print(f"Arguments: {call.get('arguments', {})}")
 
+    start = time.time()
     fn_results: List[Tuple[Dict[str, Any], Any]] = (
         Functions().execute_workflow(workflow, event_queue=queue) or []
     )
+    record_timing("workflow_execute", start)
 
     for _, result in fn_results:
         manager.add_text_to_conversation("system", str(result))
@@ -433,9 +433,11 @@ async def handle_tts_and_follow_up(gpt_text, last_input_type, tts_engine, stt_en
 
     # Always listen for 5 seconds for follow-up after TTS, then resume hotword listener
     if stt_enabled and stt_engine:
+        follow_start = time.time()
         hotword_task = await handle_follow_up_after_stream(
             last_input_type, stt_engine, event_queue, hotword_task, stt_enabled, tts_engine
         )
+        record_timing("post_stream_follow_up", follow_start)
     return hotword_task
 
 
@@ -493,6 +495,7 @@ async def stream_assistant_reply(
 
     It hands control back to the hot-word listener.
     """
+    stream_start = time.time()
     # Always pause listening before streaming TTS
     if stt_enabled and stt_engine:
         stt_engine.pause_listening()
@@ -500,6 +503,7 @@ async def stream_assistant_reply(
     cfg = _prepare_stream(stt_enabled, stt_engine, hotword_task)
     cfg['tts_engine'] = tts_engine
     ctx = _make_context(cfg, manager)
+    ctx.timing["stream_start"] = stream_start
     ctx.play_executor.submit(_playback_worker, ctx.playback_q, ctx.cfg["tts_engine"], playback_done_event)
     ctx.sentence_q.ctx = ctx
     # Start the sentence producer in a thread (it will launch TTS jobs)
@@ -523,9 +527,11 @@ async def stream_assistant_reply(
     # Resume listening after playback; then run 5s no-hotword follow-up and restart hotword listener
     if stt_enabled and stt_engine:
         stt_engine.resume_listening()
+        follow_start = time.time()
         hotword_task = await handle_follow_up_after_stream(
             last_input_type, stt_engine, queue, hotword_task, stt_enabled, tts_engine
         )
+        record_timing("post_stream_follow_up", follow_start)
 
     _log_stream_done(ctx.timing)
     return gpt_text, animation, hotword_task
@@ -601,6 +607,9 @@ def _sentence_producer(gpt_client, manager, loop, q: asyncio.Queue) -> None:
     idx = 0.0
     ctx = getattr(q, 'ctx', None)
     for sentence, ts_start, _ in gpt_client.sentence_stream(manager.get_conversation()):
+        if ctx is not None and "stream_start" in ctx.timing and not ctx.timing.get("first_sentence_logged"):
+            record_timing("time_to_first_sentence", ctx.timing["stream_start"])
+            ctx.timing["first_sentence_logged"] = True
         print(f"[Producer] Sentence {idx} created: {sentence}")
         record_timing("sentence_created", ts_start)
         if ctx is not None:

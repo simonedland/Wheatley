@@ -20,31 +20,31 @@
     "durationMs": 852,
     "thread": "MainThread"
   },
-  {
-    "functionality": "tts_play",
-    "startTime": "2025-07-04T13:10:59.813262",
-    "endTime": "2025-07-04T13:11:13.909089",
-    "durationMs": 14095,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "await_user_input",
-    "startTime": "2025-07-04T13:11:13.924854",
-    "endTime": "2025-07-04T13:11:13.926544",
-    "durationMs": 1,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-07-04T13:11:13.934628",
-    "endTime": "2025-07-04T13:11:15.526155",
-    "durationMs": 1591,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_text",
-    "startTime": "2025-07-04T13:11:15.565088",
-    "endTime": "2025-07-04T13:11:16.451682",
+    {
+      "functionality": "tts_play",
+      "startTime": "2025-07-04T13:10:59.813262",
+      "endTime": "2025-07-04T13:11:13.909089",
+      "durationMs": 14095,
+      "thread": "MainThread"
+    },
+    {
+      "functionality": "llm_get_workflow",
+      "startTime": "2025-07-04T13:11:13.934628",
+      "endTime": "2025-07-04T13:11:15.526155",
+      "durationMs": 1591,
+      "thread": "MainThread"
+    },
+    {
+      "functionality": "workflow_execute",
+      "startTime": "2025-07-04T13:11:15.526155",
+      "endTime": "2025-07-04T13:11:15.576155",
+      "durationMs": 50,
+      "thread": "MainThread"
+    },
+    {
+      "functionality": "llm_get_text",
+      "startTime": "2025-07-04T13:11:15.565088",
+      "endTime": "2025-07-04T13:11:16.451682",
     "durationMs": 886,
     "thread": "MainThread"
   },
@@ -62,20 +62,27 @@
     "durationMs": 432,
     "thread": "MainThread"
   },
-  {
-    "functionality": "tts_play",
-    "startTime": "2025-07-04T13:11:16.884176",
-    "endTime": "2025-07-04T13:11:20.286223",
-    "durationMs": 3402,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-07-04T13:11:22.061862",
-    "endTime": "2025-07-04T13:11:22.711105",
-    "durationMs": 649,
-    "thread": "Thread-6 (_sentence_producer)"
-  },
+    {
+      "functionality": "tts_play",
+      "startTime": "2025-07-04T13:11:16.884176",
+      "endTime": "2025-07-04T13:11:20.286223",
+      "durationMs": 3402,
+      "thread": "MainThread"
+    },
+    {
+      "functionality": "time_to_first_sentence",
+      "startTime": "2025-07-04T13:11:20.286223",
+      "endTime": "2025-07-04T13:11:22.061862",
+      "durationMs": 1775,
+      "thread": "MainThread"
+    },
+    {
+      "functionality": "sentence_created",
+      "startTime": "2025-07-04T13:11:22.061862",
+      "endTime": "2025-07-04T13:11:22.711105",
+      "durationMs": 649,
+      "thread": "Thread-6 (_sentence_producer)"
+    },
   {
     "functionality": "tts_clip_generated",
     "startTime": "2025-07-04T13:11:22.712113",
@@ -90,18 +97,11 @@
     "durationMs": 514,
     "thread": "MainThread"
   },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-07-04T13:11:23.416442",
-    "endTime": "2025-07-04T13:11:31.949005",
-    "durationMs": 8532,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "await_user_input",
-    "startTime": "2025-07-04T13:11:13.926544",
-    "endTime": "2025-07-04T13:11:39.794659",
-    "durationMs": 25868,
-    "thread": "MainThread"
-  }
-]
+    {
+      "functionality": "tts_clip_played",
+      "startTime": "2025-07-04T13:11:23.416442",
+      "endTime": "2025-07-04T13:11:31.949005",
+      "durationMs": 8532,
+      "thread": "PLAY_0"
+    }
+  ]
