@@ -8,6 +8,8 @@ Python ≥ 3.10 • google-api-python-client ≥ 2.116.0 • openai ≥ 1.15.0
 from __future__ import annotations
 
 import json
+import os
+import webbrowser
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -33,14 +35,40 @@ CONFIG_FILE = CONFIG_DIR / "config.yaml"
 class GoogleCalendarManager:
     """Thin wrapper around Google Calendar REST v3."""
 
+    class GoogleAuthCancelled(Exception):
+        """Raised when the user aborts interactive OAuth (KeyboardInterrupt)."""
+
     @staticmethod
     def _interactive_oauth_flow() -> Credentials:
         """Run the OAuth flow to get credentials interactively."""
         if not SECRET_FILE.exists():
             raise FileNotFoundError(f"OAuth client secret missing: {SECRET_FILE}")
         flow = InstalledAppFlow.from_client_secrets_file(SECRET_FILE, SCOPES)
-        # For headless servers use flow.run_console()
-        return flow.run_local_server(port=0, prompt="consent")
+
+        # Allow override via env var (export WHEATLEY_OAUTH_MODE=console) for headless usage
+        oauth_mode = os.environ.get("WHEATLEY_OAUTH_MODE", "auto").lower()
+
+        def browser_available() -> bool:
+            # Heuristic: DISPLAY (Linux), or default browser discovery
+            if os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"):
+                return True
+            try:
+                webbrowser.get()
+                return True
+            except Exception:
+                return False
+
+        try:
+            if oauth_mode == "console" or (oauth_mode == "auto" and not browser_available()):
+                print("⚠️  Using console OAuth flow.")
+                print("Open the provided URL in any browser, paste the code back here.")
+                return flow.run_console()
+
+            # Browser-based local server flow (opens a tab, then receives callback)
+            print("🌐 Launching browser for Google OAuth (set WHEATLEY_OAUTH_MODE=console to override)…")
+            return flow.run_local_server(port=0, prompt="consent")
+        except KeyboardInterrupt as ki:  # user aborted
+            raise GoogleCalendarManager.GoogleAuthCancelled() from ki
 
     @staticmethod
     def _store_token(creds: Credentials) -> None:
@@ -62,13 +90,24 @@ class GoogleCalendarManager:
                 creds.refresh(Request())
                 print("✅ Token refreshed.")
             except (RefreshError, Exception) as err:
-                print(f"🔄 Refresh failed ({err}); re-authenticating.")
+                msg = str(err)
+                print(f"🔄 Refresh failed ({msg}); re-authenticating.")
+                # If invalid_grant, the stored token is unusable; remove it.
+                if "invalid_grant" in msg and TOKEN_FILE.exists():
+                    try:
+                        TOKEN_FILE.unlink()
+                        print("🗑️  Removed expired/revoked token; new OAuth required.")
+                    except Exception:
+                        pass
                 creds = None
 
         # 3 · Fall back to OAuth browser flow
         if creds is None:
-            creds = self._interactive_oauth_flow()
-            print("✅ Obtained new credentials via OAuth.")
+            try:
+                creds = self._interactive_oauth_flow()
+                print("✅ Obtained new credentials via OAuth.")
+            except GoogleCalendarManager.GoogleAuthCancelled:
+                raise
 
         # 4 · Persist
         self._store_token(creds)
@@ -76,7 +115,11 @@ class GoogleCalendarManager:
 
     def __init__(self) -> None:
         """Initialize GoogleCalendarManager and load config."""
-        self.creds = self._get_google_credentials()
+        try:
+            self.creds = self._get_google_credentials()
+        except GoogleCalendarManager.GoogleAuthCancelled:
+            # Propagate for caller to optionally skip Google features
+            raise
         self.service = build("calendar", "v3", credentials=self.creds, cache_discovery=False)
 
         with CONFIG_FILE.open() as f:

@@ -74,17 +74,25 @@ def authenticate_services() -> Dict[str, bool]:
     config = _load_config()
     print("\nAuthenticating external services:")
 
-    # Google authentication
-    try:
-        GOOGLE_AGENT = GoogleAgent()
-        # Verify by listing calendars
-        GOOGLE_AGENT.calendar_manager.list_calendars()
-        print(Fore.GREEN + "✔ Google" + Style.RESET_ALL)
-        statuses["google"] = True
-    except Exception:
-        print(Fore.RED + "✘ Google" + Style.RESET_ALL)
+    # Google authentication (optional)
+    if os.environ.get("WHEATLEY_DISABLE_GOOGLE", "0") not in {"1", "true", "TRUE"}:
+        try:
+            GOOGLE_AGENT = GoogleAgent()
+            # Verify by listing calendars
+            GOOGLE_AGENT.calendar_manager.list_calendars()
+            print(Fore.GREEN + "✔ Google" + Style.RESET_ALL)
+            statuses["google"] = True
+        except KeyboardInterrupt:
+            print(Fore.YELLOW + "⚠ Google auth cancelled by user" + Style.RESET_ALL)
+            statuses["google"] = False
+            GOOGLE_AGENT = None
+        except Exception:
+            print(Fore.RED + "✘ Google" + Style.RESET_ALL)
+            statuses["google"] = False
+            GOOGLE_AGENT = None
+    else:
+        print(Fore.YELLOW + "↷ Google auth skipped (WHEATLEY_DISABLE_GOOGLE set)" + Style.RESET_ALL)
         statuses["google"] = False
-        GOOGLE_AGENT = None
 
     # Spotify authentication
     try:
