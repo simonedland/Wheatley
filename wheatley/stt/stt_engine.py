@@ -448,7 +448,7 @@ class SpeechToTextEngine:
             while hasattr(tts_engine, 'is_playing') and tts_engine.is_playing():
                 print("[STT] Waiting for TTS to finish before listening...")
                 time.sleep(0.1)
-        idx = self.listen_for_hotword()
+        idx = self.listen_for_hotword(keywords=["Wheatley"])
         if idx is None or self.is_paused():
             return ""
         self._play_hotword_greeting(tts_engine)
