@@ -20,9 +20,7 @@ import requests
 
 # =================== Imports: Third-Party Libraries ===================
 import yaml  # For reading YAML config files
-import openai  # For OpenAI API access
 from colorama import init, Fore, Style  # For colored terminal output
-import pathlib
 import threading  # already imported, but safe to repeat
 from concurrent.futures import ThreadPoolExecutor
 import re
@@ -66,7 +64,6 @@ file_handler.setFormatter(log_formatter)
 root_logger.addHandler(file_handler)
 
 # Suppress verbose HTTP logs from openai, httpx, and requests
-logging.getLogger("openai").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
@@ -717,12 +714,6 @@ def _handle_animation(gpt_client, manager, arduino):
     return anim
 
 
-async def _resume_hotword(last_in_type, stt_engine, q, hotword_task, stt_enabled):
-    return await handle_follow_up_after_stream(
-        last_in_type, stt_engine, q, hotword_task, stt_enabled
-    )
-
-
 def _log_stream_done(timing: dict) -> None:
     # record_timing("streaming_end")
     print("[Stream] Finished streaming")
@@ -794,7 +785,6 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             # The animation is applied during streaming so it matches the speech
             print(f"[Animation chosen]: {animation}")
 
-            print_async_tasks()
             arduino_interface.servo_controller.print_servo_status()
             print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
             print(Fore.LIGHTBLACK_EX + Style.BRIGHT + "\n»»» Ready for your input! Type below..." + Style.RESET_ALL)
@@ -820,48 +810,21 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
         print("👋 Exiting…")
 
 
-def print_async_tasks():
-    """Print a minimal list of currently running async tasks for debugging purposes."""
-    tasks = []
-    for t in asyncio.all_tasks():
-        f = getattr(t.get_coro(), 'cr_frame', None)
-        loc = f"{pathlib.Path(f.f_code.co_filename).name}:{f.f_lineno}" if f else ''
-        tasks.append({
-            "name": t.get_name(),
-            "state": t._state,
-            "coro": t.get_coro().__qualname__,
-            "loc": loc
-        })
-    if tasks:
-        print(Fore.CYAN + Style.BRIGHT + "\nAsync Tasks:")
-        for t in tasks:
-            name = f"{Fore.YELLOW}{t['name']}{Style.RESET_ALL}"
-            state = f"{Fore.GREEN if t['state'] == 'PENDING' else Fore.RED}{t['state']}{Style.RESET_ALL}"
-            print(f"  {name} | {state} | {t['coro']} | {t['loc']}")
-    else:
-        print(Fore.CYAN + Style.BRIGHT + "No async tasks running." + Style.RESET_ALL)
-
-
-# =================== Main Code ===================
-def main():
-    """CLI entry point for launching the Wheatley assistant and starting the main event loop."""
-    # --- Setup and configuration ---------------------------------------
+def initialize():
     clear_timings()
     atexit.register(export_timings)
-
     config = load_config()
-    openai.api_key = config["secrets"]["openai_api_key"]
 
-    # Initial feature flags from configuration file
+    #sett global TTS and STT booleans
     stt_enabled = config["stt"]["enabled"]
     tts_enabled = config["tts"]["enabled"]
+    
     print(feature_summary(stt_enabled, tts_enabled, "Feature Status"))
 
     # Authenticate external services and update feature flags accordingly
     stt_enabled, tts_enabled = authenticate_and_update_features(
         stt_enabled, tts_enabled
     )
-    print(feature_summary(stt_enabled, tts_enabled, "Final Feature Status"))
 
     # --- Initialise core subsystems ------------------------------------
     manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(
@@ -869,9 +832,7 @@ def main():
         stt_enabled=stt_enabled,
         tts_enabled=tts_enabled,
     )
-
-    print_welcome()
-
+    
     # Establish a neutral pose on startup and display servo status
     arduino_interface.set_animation("neutral")  # Set initial animation to neutral
     arduino_interface.servo_controller.print_servo_status()
@@ -890,6 +851,18 @@ def main():
         tts_engine.generate_and_play_advanced(gpt_text)
     else:
         print("Assistant:", gpt_text)
+
+    return stt_enabled, tts_enabled, manager, gpt_client, stt_engine, tts_engine, arduino_interface
+
+
+# =================== Main Code ===================
+def main():
+    """CLI entry point for launching the Wheatley assistant and starting the main event loop."""
+    # --- Setup and configuration --------------------------------------- 
+    
+    stt_enabled, tts_enabled, manager, gpt_client, stt_engine, tts_engine, arduino_interface = initialize()
+
+    print_welcome()
 
     try:
         # Start the async event-based conversation loop
