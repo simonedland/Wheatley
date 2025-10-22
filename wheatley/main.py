@@ -101,49 +101,6 @@ def print_welcome():
     print(f"{retro_color}Welcome to the AI Assistant!{reset}")
 
 
-# =================== Assistant Initialization ===================
-# Set up all assistant components (LLM, TTS, STT, Arduino, etc.)
-def initialize_assistant(
-    config: dict,
-    *,
-    stt_enabled: bool | None = None,
-    tts_enabled: bool | None = None,
-) -> Tuple[
-    "ConversationManager",
-    "GPTClient",
-    Optional["SpeechToTextEngine"],
-    Optional["TextToSpeechEngine"],
-    "ArduinoInterface",
-    bool,
-    bool,
-]:
-    """
-    Initialise and return ConversationManager, GPTClient, optional STT/TTS engines, Arduino interface and the final feature-flag booleans.
-
-    The function itself remains short; platform quirks and error handling are
-    delegated to helpers.
-    """
-    stt_enabled = config["stt"]["enabled"] if stt_enabled is None else stt_enabled
-    tts_enabled = config["tts"]["enabled"] if tts_enabled is None else tts_enabled
-
-    manager, gpt_client = _build_core(config)
-    stt_engine = SpeechToTextEngine() if stt_enabled else None
-    tts_engine = TextToSpeechEngine() if tts_enabled else None
-
-    port, dry_run = _detect_serial_port()
-    arduino_interface = _init_arduino(port, dry_run, stt_engine)
-
-    return (
-        manager,
-        gpt_client,
-        stt_engine,
-        tts_engine,
-        arduino_interface,
-        stt_enabled,
-        tts_enabled,
-    )
-
-
 # ────────────────────────── PRIVATE HELPERS ──────────────────────────── #
 
 def _build_core(config):
@@ -402,43 +359,7 @@ def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient
     return gpt_text, animation
 
 
-# =================== TTS and Follow-up Handling ===================
-# Play the assistant's speech and optionally capture a follow-up
-async def handle_tts_and_follow_up(gpt_text, last_input_type, tts_engine, stt_engine, event_queue, hotword_task, stt_enabled, tts_enabled):
-    """Play the assistant reply using TTS and optionally capture a quick follow-up from the user."""
-    # If TTS is disabled or engine is missing, do nothing here
-    if not (tts_enabled and tts_engine):
-        return hotword_task
-    # Always pause listening before TTS playback
-    if stt_enabled and stt_engine:
-        stt_engine.pause_listening()
-
-    # Optionally stop hotword detection task while speaking
-    if hotword_task:
-        hotword_task.cancel()
-        try:
-            await hotword_task
-        except Exception:
-            pass
-        hotword_task = None
-
-    tts_engine.generate_and_play_advanced(gpt_text)
-
-    # Resume listening after TTS playback
-    if stt_enabled and stt_engine:
-        stt_engine.resume_listening()
-
-    # Always listen for 5 seconds for follow-up after TTS, then resume hotword listener
-    if stt_enabled and stt_engine:
-        follow_start = time.time()
-        hotword_task = await handle_follow_up_after_stream(
-            last_input_type, stt_engine, event_queue, hotword_task, stt_enabled, tts_engine
-        )
-        record_timing("post_stream_follow_up", follow_start)
-    return hotword_task
-
-
-async def handle_follow_up_after_stream(last_input_type, stt_engine, event_queue, hotword_task, stt_enabled, tts_engine=None):
+async def handle_follow_up_after_stream(stt_engine, event_queue, hotword_task, stt_enabled, tts_engine=None):
     """Handle follow-up voice recording after streaming TTS playback."""
     if not stt_enabled:
         return hotword_task
@@ -479,7 +400,6 @@ async def stream_assistant_reply(
     manager,
     gpt_client,
     tts_engine,
-    last_input_type,
     stt_engine,
     queue,
     hotword_task,
@@ -526,7 +446,7 @@ async def stream_assistant_reply(
         stt_engine.resume_listening()
         follow_start = time.time()
         hotword_task = await handle_follow_up_after_stream(
-            last_input_type, stt_engine, queue, hotword_task, stt_enabled, tts_engine
+            stt_engine, queue, hotword_task, stt_enabled, tts_engine
         )
         record_timing("post_stream_follow_up", follow_start)
 
@@ -764,7 +684,6 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                     manager,
                     gpt_client,
                     tts_engine,
-                    last_input_type,
                     stt_engine,
                     queue,
                     hotword_task,
@@ -826,12 +745,12 @@ def initialize():
         stt_enabled, tts_enabled
     )
 
-    # --- Initialise core subsystems ------------------------------------
-    manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled = initialize_assistant(
-        config,
-        stt_enabled=stt_enabled,
-        tts_enabled=tts_enabled,
-    )
+    manager, gpt_client = _build_core(config)
+    stt_engine = SpeechToTextEngine() if stt_enabled else None
+    tts_engine = TextToSpeechEngine() if tts_enabled else None
+
+    port, dry_run = _detect_serial_port()
+    arduino_interface = _init_arduino(port, dry_run, stt_engine)
     
     # Establish a neutral pose on startup and display servo status
     arduino_interface.set_animation("neutral")  # Set initial animation to neutral
