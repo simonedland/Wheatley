@@ -320,7 +320,6 @@ def generate_assistant_reply(manager: ConversationManager, gpt_client: GPTClient
 
 async def handle_follow_up_after_stream(stt_engine, event_queue, hotword_task, stt_enabled, tts_engine=None):
     """Handle follow-up voice recording after streaming TTS playback."""
-
     stt_engine.resume_listening()
 
     # Always listen for follow-up without hotword for 5 seconds after TTS
