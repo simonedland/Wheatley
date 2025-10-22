@@ -24,7 +24,6 @@ from colorama import init, Fore, Style  # For colored terminal output
 import threading  # already imported, but safe to repeat
 from concurrent.futures import ThreadPoolExecutor
 import re
-import random
 from dataclasses import dataclass, field
 
 # =================== Imports: Local Modules ===================
@@ -515,7 +514,6 @@ def _fetch_tts_clip(
     text: str, prev: str, nxt: str, cfg: dict
 ) -> bytes | None:
     """Blocking call to ElevenLabs with retries."""
-
     t0 = time.time()
     resp = requests.post(
         cfg["api_url"],
