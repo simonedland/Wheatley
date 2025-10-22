@@ -738,7 +738,7 @@ def initialize():
     # sett global TTS and STT booleans
     stt_enabled = config["stt"]["enabled"]
     tts_enabled = config["tts"]["enabled"]
-    
+
     print(feature_summary(stt_enabled, tts_enabled, "Feature Status"))
 
     # Authenticate external services and update feature flags accordingly
