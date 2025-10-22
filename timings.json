@@ -1,107 +1,65 @@
 [
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-10-22T07:44:30.348403",
-    "endTime": "2025-10-22T07:44:33.478054",
-    "durationMs": 3129,
+    "startTime": "2025-10-22T11:43:10.317240",
+    "endTime": "2025-10-22T11:43:13.257264",
+    "durationMs": 2940,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_select_animation",
-    "startTime": "2025-10-22T07:44:33.486807",
-    "endTime": "2025-10-22T07:44:34.922736",
-    "durationMs": 1435,
+    "startTime": "2025-10-22T11:43:13.265119",
+    "endTime": "2025-10-22T11:43:15.113604",
+    "durationMs": 1848,
     "thread": "MainThread"
   },
   {
     "functionality": "user_turn_total",
-    "startTime": "2025-10-22T07:44:37.850338",
-    "endTime": "2025-10-22T07:44:42.124773",
-    "durationMs": 4274,
+    "startTime": "2025-10-22T11:43:17.244990",
+    "endTime": "2025-10-22T11:43:22.642154",
+    "durationMs": 5397,
     "thread": "MainThread"
   },
   {
     "functionality": "tool_workflow",
-    "startTime": "2025-10-22T07:44:37.854307",
-    "endTime": "2025-10-22T07:44:39.357394",
-    "durationMs": 1503,
+    "startTime": "2025-10-22T11:43:17.248932",
+    "endTime": "2025-10-22T11:43:18.735060",
+    "durationMs": 1486,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_workflow",
-    "startTime": "2025-10-22T07:44:37.854312",
-    "endTime": "2025-10-22T07:44:39.357222",
-    "durationMs": 1502,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "generate_assistant_reply",
-    "startTime": "2025-10-22T07:44:39.357435",
-    "endTime": "2025-10-22T07:44:42.120868",
-    "durationMs": 2763,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_text",
-    "startTime": "2025-10-22T07:44:39.357438",
-    "endTime": "2025-10-22T07:44:40.867480",
-    "durationMs": 1510,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_select_animation",
-    "startTime": "2025-10-22T07:44:40.876085",
-    "endTime": "2025-10-22T07:44:42.119856",
-    "durationMs": 1243,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "user_turn_total",
-    "startTime": "2025-10-22T07:44:46.134759",
-    "endTime": "2025-10-22T07:44:52.838121",
-    "durationMs": 6703,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tool_workflow",
-    "startTime": "2025-10-22T07:44:46.139513",
-    "endTime": "2025-10-22T07:44:48.307119",
-    "durationMs": 2167,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-10-22T07:44:46.139518",
-    "endTime": "2025-10-22T07:44:47.774928",
-    "durationMs": 1635,
+    "startTime": "2025-10-22T11:43:17.248938",
+    "endTime": "2025-10-22T11:43:18.213808",
+    "durationMs": 964,
     "thread": "MainThread"
   },
   {
     "functionality": "workflow_execute",
-    "startTime": "2025-10-22T07:44:47.794188",
-    "endTime": "2025-10-22T07:44:48.303016",
-    "durationMs": 508,
+    "startTime": "2025-10-22T11:43:18.235104",
+    "endTime": "2025-10-22T11:43:18.731115",
+    "durationMs": 496,
     "thread": "MainThread"
   },
   {
     "functionality": "generate_assistant_reply",
-    "startTime": "2025-10-22T07:44:48.307205",
-    "endTime": "2025-10-22T07:44:52.836041",
-    "durationMs": 4528,
+    "startTime": "2025-10-22T11:43:18.735123",
+    "endTime": "2025-10-22T11:43:22.639712",
+    "durationMs": 3904,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-10-22T07:44:48.307209",
-    "endTime": "2025-10-22T07:44:51.421278",
-    "durationMs": 3114,
+    "startTime": "2025-10-22T11:43:18.735126",
+    "endTime": "2025-10-22T11:43:20.103703",
+    "durationMs": 1368,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_select_animation",
-    "startTime": "2025-10-22T07:44:51.429419",
-    "endTime": "2025-10-22T07:44:52.835242",
-    "durationMs": 1405,
+    "startTime": "2025-10-22T11:43:20.113257",
+    "endTime": "2025-10-22T11:43:22.638895",
+    "durationMs": 2525,
     "thread": "MainThread"
   }
 ]

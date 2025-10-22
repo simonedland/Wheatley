@@ -103,19 +103,6 @@ def print_welcome():
 
 # ────────────────────────── PRIVATE HELPERS ──────────────────────────── #
 
-def _build_core(config):
-    """Conversation manager, GPT client and initial long-term memory."""
-    max_mem = config["app"].get("max_memory")
-    manager = ConversationManager(max_memory=max_mem)
-
-    gpt_model = config["llm"].get("model")
-    gpt_client = GPTClient(model=gpt_model)
-
-    initial_mem = Functions().read_long_term_memory()
-    manager.update_memory(f"LONG TERM MEMORY:\n{initial_mem}")
-    return manager, gpt_client
-
-
 def _detect_serial_port() -> tuple[str | None, bool]:
     """Return (best_port, dry_run_flag) based on OS and availability."""
     dry_run, port = False, None
@@ -191,12 +178,6 @@ async def user_input_producer(q: asyncio.Queue, input_allowed_event: asyncio.Eve
             break
 
 
-# Simple wrapper to print an event object
-def print_event(event: Event):
-    """Print an Event object to stdout in a readable format."""
-    print(event)
-
-
 async def get_event(queue: asyncio.Queue):
     """Retrieve the next event from the queue and normalize voice dicts to Event objects."""
     incoming = await queue.get()
@@ -263,12 +244,13 @@ def run_tool_workflow(
         stt_engine.pause_listening()
 
     for _ in range(MAX_CHAIN_RETRY):
-        workflow = _fetch_workflow(gpt_client, manager)
+        workflow = gpt_client.get_workflow(manager.get_conversation())
         if not workflow:
             return _resume_hotword_listener(stt_engine, stt_enabled, queue, tts_engine)
 
         _inject_context_from_search(workflow, manager)
-        _refresh_long_term_memory(manager)
+        mem = Functions().read_long_term_memory()
+        manager.update_memory(f"LONG TERM MEMORY:\n{mem}")
 
         try:
             _execute_workflow(workflow, queue, manager)
@@ -296,19 +278,6 @@ def _resume_hotword_listener(
     return None
 
 
-def _fetch_workflow(gpt_client, manager) -> List[Dict[str, Any]]:
-    """Try up to MAX_CHAIN_RETRY times to get a workflow from GPT."""
-    chain_retry = 0
-    while chain_retry < MAX_CHAIN_RETRY:
-        try:
-            wf = gpt_client.get_workflow(manager.get_conversation())
-            return wf or []                    # normalise None → []
-        except Exception as exc:
-            logging.error(f"Error getting GPT workflow: {exc}")
-            chain_retry += 1
-    return []                                  # exhausted retries
-
-
 def _inject_context_from_search(workflow, manager) -> None:
     """Move any `web_search_call_result` items into the conversation as system context, then strip them from the workflow list in-place."""
     for item in list(workflow):                # iterate over a static copy
@@ -317,11 +286,6 @@ def _inject_context_from_search(workflow, manager) -> None:
             if text:
                 manager.add_text_to_conversation("system", f"Info: {text}")
             workflow.remove(item)              # mutate original list
-
-
-def _refresh_long_term_memory(manager) -> None:
-    mem = Functions().read_long_term_memory()
-    manager.update_memory(f"LONG TERM MEMORY:\n{mem}")
 
 
 def _execute_workflow(
@@ -431,7 +395,6 @@ async def stream_assistant_reply(
     )
     producer_thread.start()
 
-    # Only need the sequencer now
     await _sequencer(ctx)
 
     gpt_text = _finalise_conversation(manager, ctx.sentences)
@@ -450,7 +413,7 @@ async def stream_assistant_reply(
         )
         record_timing("post_stream_follow_up", follow_start)
 
-    _log_stream_done(ctx.timing)
+    print("[Stream] Finished streaming")
     return gpt_text, animation, hotword_task
 
 
@@ -634,11 +597,6 @@ def _handle_animation(gpt_client, manager, arduino):
     return anim
 
 
-def _log_stream_done(timing: dict) -> None:
-    # record_timing("streaming_end")
-    print("[Stream] Finished streaming")
-
-
 # =================== Main Async Conversation Loop ===================
 async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, arduino_interface, stt_enabled, tts_enabled):
     """Run the main asynchronous interaction loop handling user events, tool calls, and assistant responses."""
@@ -657,7 +615,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
     try:
         while True:
             event = await get_event(queue)
-            print_event(event)
+            print(event)
             turn_start = time.time()
 
             exit_requested, last_input_type = process_event(event, manager, last_input_type)
@@ -746,7 +704,18 @@ def initialize():
         stt_enabled, tts_enabled
     )
 
-    manager, gpt_client = _build_core(config)
+    # Initialize core components
+    max_mem = config["app"].get("max_memory")
+    manager = ConversationManager(max_memory=max_mem)
+
+    gpt_model = config["llm"].get("model")
+    gpt_client = GPTClient(model=gpt_model)
+
+    initial_mem = Functions().read_long_term_memory()
+
+    manager.update_memory(f"LONG TERM MEMORY:\n{initial_mem}")
+
+    # Initialize STT and TTS engines if enabled
     stt_engine = SpeechToTextEngine() if stt_enabled else None
     tts_engine = TextToSpeechEngine() if tts_enabled else None
 
