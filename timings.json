@@ -1,65 +1,149 @@
 [
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-10-22T11:43:10.317240",
-    "endTime": "2025-10-22T11:43:13.257264",
-    "durationMs": 2940,
+    "startTime": "2025-10-22T11:52:23.539437",
+    "endTime": "2025-10-22T11:52:26.012102",
+    "durationMs": 2472,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_select_animation",
-    "startTime": "2025-10-22T11:43:13.265119",
-    "endTime": "2025-10-22T11:43:15.113604",
-    "durationMs": 1848,
+    "startTime": "2025-10-22T11:52:26.020640",
+    "endTime": "2025-10-22T11:52:27.586575",
+    "durationMs": 1565,
     "thread": "MainThread"
   },
   {
     "functionality": "user_turn_total",
-    "startTime": "2025-10-22T11:43:17.244990",
-    "endTime": "2025-10-22T11:43:22.642154",
-    "durationMs": 5397,
+    "startTime": "2025-10-22T11:52:32.463552",
+    "endTime": "2025-10-22T11:52:39.537374",
+    "durationMs": 7073,
     "thread": "MainThread"
   },
   {
     "functionality": "tool_workflow",
-    "startTime": "2025-10-22T11:43:17.248932",
-    "endTime": "2025-10-22T11:43:18.735060",
-    "durationMs": 1486,
+    "startTime": "2025-10-22T11:52:32.468555",
+    "endTime": "2025-10-22T11:52:35.447227",
+    "durationMs": 2978,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_workflow",
-    "startTime": "2025-10-22T11:43:17.248938",
-    "endTime": "2025-10-22T11:43:18.213808",
-    "durationMs": 964,
+    "startTime": "2025-10-22T11:52:32.468561",
+    "endTime": "2025-10-22T11:52:35.402201",
+    "durationMs": 2933,
     "thread": "MainThread"
   },
   {
     "functionality": "workflow_execute",
-    "startTime": "2025-10-22T11:43:18.235104",
-    "endTime": "2025-10-22T11:43:18.731115",
-    "durationMs": 496,
+    "startTime": "2025-10-22T11:52:35.425090",
+    "endTime": "2025-10-22T11:52:35.442760",
+    "durationMs": 17,
     "thread": "MainThread"
   },
   {
     "functionality": "generate_assistant_reply",
-    "startTime": "2025-10-22T11:43:18.735123",
-    "endTime": "2025-10-22T11:43:22.639712",
-    "durationMs": 3904,
+    "startTime": "2025-10-22T11:52:35.447304",
+    "endTime": "2025-10-22T11:52:39.533540",
+    "durationMs": 4086,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-10-22T11:43:18.735126",
-    "endTime": "2025-10-22T11:43:20.103703",
-    "durationMs": 1368,
+    "startTime": "2025-10-22T11:52:35.447307",
+    "endTime": "2025-10-22T11:52:36.994539",
+    "durationMs": 1547,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_select_animation",
-    "startTime": "2025-10-22T11:43:20.113257",
-    "endTime": "2025-10-22T11:43:22.638895",
-    "durationMs": 2525,
+    "startTime": "2025-10-22T11:52:37.009065",
+    "endTime": "2025-10-22T11:52:39.531905",
+    "durationMs": 2522,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "user_turn_total",
+    "startTime": "2025-10-22T11:52:41.923070",
+    "endTime": "2025-10-22T11:52:48.150610",
+    "durationMs": 6227,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tool_workflow",
+    "startTime": "2025-10-22T11:52:41.927005",
+    "endTime": "2025-10-22T11:52:44.306978",
+    "durationMs": 2379,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-10-22T11:52:41.927010",
+    "endTime": "2025-10-22T11:52:44.306759",
+    "durationMs": 2379,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-10-22T11:52:44.307033",
+    "endTime": "2025-10-22T11:52:48.146193",
+    "durationMs": 3839,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-10-22T11:52:44.307035",
+    "endTime": "2025-10-22T11:52:47.056561",
+    "durationMs": 2749,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-10-22T11:52:47.071692",
+    "endTime": "2025-10-22T11:52:48.145038",
+    "durationMs": 1073,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "user_turn_total",
+    "startTime": "2025-10-22T11:53:09.548602",
+    "endTime": "2025-10-22T11:53:13.715448",
+    "durationMs": 4166,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tool_workflow",
+    "startTime": "2025-10-22T11:53:09.553859",
+    "endTime": "2025-10-22T11:53:11.069586",
+    "durationMs": 1515,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-10-22T11:53:09.553863",
+    "endTime": "2025-10-22T11:53:11.069406",
+    "durationMs": 1515,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "generate_assistant_reply",
+    "startTime": "2025-10-22T11:53:11.069640",
+    "endTime": "2025-10-22T11:53:13.709560",
+    "durationMs": 2639,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_get_text",
+    "startTime": "2025-10-22T11:53:11.069641",
+    "endTime": "2025-10-22T11:53:12.375946",
+    "durationMs": 1306,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-10-22T11:53:12.390039",
+    "endTime": "2025-10-22T11:53:13.708472",
+    "durationMs": 1318,
     "thread": "MainThread"
   }
 ]

@@ -209,16 +209,15 @@ def handle_non_user_event(event: Event, manager: ConversationManager):
 
 
 # Update conversation history and return True if user requested to exit
-def process_event(event: Event, manager: ConversationManager, last_input: str):
+def process_event(event: Event, manager: ConversationManager):
     """Update conversation with the event and determine if exit was requested by the user."""
     if event.source == "user":
-        last_input = event.metadata.get("input_type", "text") if event.metadata else "text"
         manager.add_text_to_conversation("user", event.payload)
         if event.payload.lower() == "exit":
-            return True, last_input
+            return True
     else:
         handle_non_user_event(event, manager)
-    return False, last_input
+    return False
 
 
 def run_tool_workflow(
@@ -248,7 +247,14 @@ def run_tool_workflow(
         if not workflow:
             return _resume_hotword_listener(stt_engine, stt_enabled, queue, tts_engine)
 
-        _inject_context_from_search(workflow, manager)
+        # inject context from web search results into the conversation
+        for item in list(workflow):                # iterate over a static copy
+            if item.get("name") == "web_search_call_result":
+                text = item.get("arguments", {}).get("text", "")
+                if text:
+                    manager.add_text_to_conversation("system", f"Info: {text}")
+                workflow.remove(item)              # mutate original list
+
         mem = Functions().read_long_term_memory()
         manager.update_memory(f"LONG TERM MEMORY:\n{mem}")
 
@@ -276,16 +282,6 @@ def _resume_hotword_listener(
         loop = asyncio.get_running_loop()
         return loop.create_task(stt_engine.hotword_listener(queue, tts_engine=tts_engine))
     return None
-
-
-def _inject_context_from_search(workflow, manager) -> None:
-    """Move any `web_search_call_result` items into the conversation as system context, then strip them from the workflow list in-place."""
-    for item in list(workflow):                # iterate over a static copy
-        if item.get("name") == "web_search_call_result":
-            text = item.get("arguments", {}).get("text", "")
-            if text:
-                manager.add_text_to_conversation("system", f"Info: {text}")
-            workflow.remove(item)              # mutate original list
 
 
 def _execute_workflow(
@@ -459,7 +455,7 @@ def _make_context(cfg: dict, manager) -> _StreamContext:
     )
     # Thread pools -------------------------------------------------------
     ctx.tts_executor = ThreadPoolExecutor(max_workers=MAX_TTS_WORKERS, thread_name_prefix="TTS")
-    ctx.play_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="PLAY")  # 1 = sequential
+    ctx.play_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="PLAY")
     return ctx
 
 
@@ -511,42 +507,31 @@ async def _tts_job(idx, sent, ctx, sentences):
     return await loop.run_in_executor(
         ctx.tts_executor,
         _fetch_tts_clip,
-        sent, prev, nxt, idx, ctx.cfg,
+        sent, prev, nxt, ctx.cfg,
     )
 
 
 def _fetch_tts_clip(
-    text: str, prev: str, nxt: str, idx: float, cfg: dict
+    text: str, prev: str, nxt: str, cfg: dict
 ) -> bytes | None:
     """Blocking call to ElevenLabs with retries."""
 
-    def _post():
-        return requests.post(
-            cfg["api_url"],
-            headers={"xi-api-key": cfg["api_key"], "Content-Type": "application/json"},
-            params={"output_format": cfg["fmt"]},
-            json={
-                "text": text,
-                "model_id": cfg["model"],
-                "previous_text": prev or None,
-                "next_text": nxt or None,
-            },
-            timeout=60,
-        )
-
-    attempt, backoff = 1, 1
-    while attempt <= MAX_ATTEMPTS:
-        try:
-            t0 = time.time()
-            resp = _post()
-            resp.raise_for_status()
-            record_timing("tts_clip_generated", t0)
-            return resp.content
-        except Exception:
-            if attempt == MAX_ATTEMPTS:
-                return None
-            time.sleep(backoff + random.uniform(0, 0.5))
-            backoff, attempt = min(backoff * 2, 32), attempt + 1
+    t0 = time.time()
+    resp = requests.post(
+        cfg["api_url"],
+        headers={"xi-api-key": cfg["api_key"], "Content-Type": "application/json"},
+        params={"output_format": cfg["fmt"]},
+        json={
+            "text": text,
+            "model_id": cfg["model"],
+            "previous_text": prev or None,
+            "next_text": nxt or None,
+        },
+        timeout=60,
+    )
+    resp.raise_for_status()
+    record_timing("tts_clip_generated", t0)
+    return resp.content
 
 
 # ────────────────────────────── SEQUENCER ──────────────────────────────── #
@@ -610,7 +595,6 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
         asyncio.create_task(stt_engine.hotword_listener(queue, tts_engine=tts_engine)) if stt_enabled else None
     )
 
-    last_input_type = "text"
     print("🤖 Assistant running. Type 'exit' to quit. Type or say hotword to speak.\n")
     try:
         while True:
@@ -618,7 +602,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             print(event)
             turn_start = time.time()
 
-            exit_requested, last_input_type = process_event(event, manager, last_input_type)
+            exit_requested = process_event(event, manager)
             if exit_requested:
                 user_task.cancel()
                 if hotword_task:
