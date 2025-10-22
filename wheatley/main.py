@@ -730,11 +730,12 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
 
 
 def initialize():
+    """Initialize the assistant system and return core components."""
     clear_timings()
     atexit.register(export_timings)
     config = load_config()
 
-    #sett global TTS and STT booleans
+    # sett global TTS and STT booleans
     stt_enabled = config["stt"]["enabled"]
     tts_enabled = config["tts"]["enabled"]
     
@@ -751,7 +752,7 @@ def initialize():
 
     port, dry_run = _detect_serial_port()
     arduino_interface = _init_arduino(port, dry_run, stt_engine)
-    
+
     # Establish a neutral pose on startup and display servo status
     arduino_interface.set_animation("neutral")  # Set initial animation to neutral
     arduino_interface.servo_controller.print_servo_status()
@@ -777,8 +778,8 @@ def initialize():
 # =================== Main Code ===================
 def main():
     """CLI entry point for launching the Wheatley assistant and starting the main event loop."""
-    # --- Setup and configuration --------------------------------------- 
-    
+    # --- Setup and configuration ---------------------------------------
+
     stt_enabled, tts_enabled, manager, gpt_client, stt_engine, tts_engine, arduino_interface = initialize()
 
     print_welcome()
