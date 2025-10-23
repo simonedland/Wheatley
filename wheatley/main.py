@@ -48,7 +48,7 @@ ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 MAX_TTS_WORKERS = 2
 QUEUE_MAXSIZE = 100
 MAX_ATTEMPTS = 6
-MAX_CHAIN_RETRY = 3
+MAX_CHAIN_RETRY = 10
 
 # Robust logging setup: always log to file only
 log_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
