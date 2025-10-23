@@ -517,7 +517,6 @@ def _sentence_producer(gpt_client, manager, loop, q: asyncio.Queue) -> None:
         if ctx is not None and "stream_start" in ctx.timing and not ctx.timing.get("first_sentence_logged"):
             record_timing("time_to_first_sentence", ctx.timing["stream_start"])
             ctx.timing["first_sentence_logged"] = True
-        print(f"[Producer] Sentence {idx} created: {sentence}")
         record_timing("sentence_created", ts_start)
         if ctx is not None:
             ctx.sentences.append(sentence)
@@ -533,17 +532,16 @@ def _sentence_producer(gpt_client, manager, loop, q: asyncio.Queue) -> None:
 
 async def _tts_job(idx, sent, ctx, sentences):
     prev = sentences[int(idx - 1)] if idx >= 1 else ""
-    nxt = ""                                # still unknown at launch
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(
         ctx.tts_executor,
         _fetch_tts_clip,
-        sent, prev, nxt, ctx.cfg,
+        sent, prev, ctx.cfg,
     )
 
 
 def _fetch_tts_clip(
-    text: str, prev: str, nxt: str, cfg: dict
+    text: str, prev: str, cfg: dict
 ) -> bytes | None:
     """Blocking call to ElevenLabs with retries."""
     t0 = time.time()
@@ -555,7 +553,6 @@ def _fetch_tts_clip(
             "text": text,
             "model_id": cfg["model"],
             "previous_text": prev or None,
-            "next_text": nxt or None,
         },
         timeout=60,
     )
