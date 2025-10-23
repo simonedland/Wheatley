@@ -90,10 +90,10 @@ class TextToSpeechEngine:
 
     def elevenlabs_generate_audio_stream(self, text: str):
         """Return a generator yielding MP3-encoded audio chunks for `text`."""
-        print(f"Generating speech for: {text}")
-        print(f"Using voice ID: {self.voice_id}")
-        print(f"Using model ID: {self.model_id}")
-        print(f"Using output format: {self.output_format}")
+        # print(f"Generating speech for: {text}")
+        # print(f"Using voice ID: {self.voice_id}")
+        # print(f"Using model ID: {self.model_id}")
+        # print(f"Using output format: {self.output_format}")
         return self.client.text_to_speech.convert(
             text=text,
             voice_id=self.voice_id,

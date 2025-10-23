@@ -226,7 +226,6 @@ def run_tool_workflow(
     *,
     stt_engine: Optional["SpeechToTextEngine"] = None,
     tts_engine: Optional["TextToSpeechEngine"] = None,
-    stt_enabled: bool = False,
     hotword_task: Optional[asyncio.Task] = None,
 ) -> Optional[asyncio.Task]:
     """Ask GPT for a workflow, execute its tools, and add the results to the conversation.
@@ -238,13 +237,13 @@ def run_tool_workflow(
     if hotword_task:
         hotword_task.cancel()
         hotword_task = None
-    if stt_enabled and stt_engine:
+    if stt_engine:
         stt_engine.pause_listening()
 
     for _ in range(MAX_CHAIN_RETRY):
         workflow = gpt_client.get_workflow(manager.get_conversation())
         if not workflow:
-            return _resume_hotword_listener(stt_engine, stt_enabled, queue, tts_engine)
+            return _resume_hotword_listener(stt_engine, queue, tts_engine)
 
         # inject context from web search results into the conversation
         for item in list(workflow):                # iterate over a static copy
@@ -261,22 +260,21 @@ def run_tool_workflow(
             _execute_workflow(workflow, queue, manager)
         except Exception as exc:
             logging.error(f"Error executing workflow tools: {exc}")
-            return _resume_hotword_listener(stt_engine, stt_enabled, queue, tts_engine)
+            return _resume_hotword_listener(stt_engine, queue, tts_engine)
         break
 
-    return _resume_hotword_listener(stt_engine, stt_enabled, queue, tts_engine)
+    return _resume_hotword_listener(stt_engine, queue, tts_engine)
 
 
 # ────────────────────────────── Helpers ─────────────────────────────────── #
 
 def _resume_hotword_listener(
     stt_engine: Optional["SpeechToTextEngine"],
-    stt_enabled: bool,
     queue: asyncio.Queue,
     tts_engine: Optional["TextToSpeechEngine"],
 ) -> Optional[asyncio.Task]:
     """Resume listening and restart the hotword listener if needed."""
-    if stt_enabled and stt_engine:
+    if stt_engine:
         stt_engine.resume_listening()
         loop = asyncio.get_running_loop()
         return loop.create_task(stt_engine.hotword_listener(queue, tts_engine=tts_engine))
@@ -593,7 +591,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
     try:
         while True:
             event = await get_event(queue)
-            print(event)
+            # print(event)
             turn_start = time.time()
 
             exit_requested = process_event(event, manager)
@@ -608,7 +606,6 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
                 manager, gpt_client, queue,
                 stt_engine=stt_engine,
                 tts_engine=tts_engine,
-                stt_enabled=stt_enabled,
                 hotword_task=hotword_task,
             ) or hotword_task
             record_timing("tool_workflow", workflow_start)
@@ -640,7 +637,7 @@ async def async_conversation_loop(manager, gpt_client, stt_engine, tts_engine, a
             # The animation is applied during streaming so it matches the speech
             print(f"[Animation chosen]: {animation}")
 
-            arduino_interface.servo_controller.print_servo_status()
+            # arduino_interface.servo_controller.print_servo_status()
             print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
             print(Fore.LIGHTBLACK_EX + Style.BRIGHT + "\n»»» Ready for your input! Type below..." + Style.RESET_ALL)
 
@@ -702,7 +699,7 @@ def initialize():
 
     # Establish a neutral pose on startup and display servo status
     arduino_interface.set_animation("neutral")  # Set initial animation to neutral
-    arduino_interface.servo_controller.print_servo_status()
+    # arduino_interface.servo_controller.print_servo_status()
 
     # --- Warm-up conversation -----------------------------------------
     # Ask the assistant to introduce itself so we can verify everything works

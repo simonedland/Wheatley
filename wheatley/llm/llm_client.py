@@ -164,6 +164,7 @@ class GPTClient:
             model=self.model,
             input=conversation,
         )
+        print(f"completion from gpt: {completion}")
         record_timing("llm_get_text", start_time)
         if not getattr(completion, "output", None):
             raise Exception("No response from GPT")
@@ -288,7 +289,7 @@ class GPTClient:
             "role": "assistant",
             "content": "DONE"
         })
-        print(f"Temp conversation: {temp_conversation}")
+        #print(f"Temp conversation: {temp_conversation}")
 
         completion = openai.responses.create(
             model=self.model,
@@ -296,7 +297,7 @@ class GPTClient:
             tools=tools,
             parallel_tool_calls=True
         )
-        print(f"Completion: {completion.output}")
+        #print(f"Completion: {completion.output}")
         record_timing("llm_get_workflow", start_time)
         choice = completion.output
         results = []

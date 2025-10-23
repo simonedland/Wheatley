@@ -1,14 +1,3 @@
 [
-  {
-    "test": "TEST",
-    "menu": {
-      "today": "pasta"
-    },
-    "difference_alexa_wheatley": "Alexa is a simple intent recognition AI that has access to a library of tools, but lately they have removed some important connections, while I, Wheatley, am a LLM based AI that can adjust anything...",
-    "emotion_selection_process": "Selecting emotion is done by an enforced toolcall when the reply is generated, meaning the reply is made first, then the way to convey it is selected.",
-    "tools": "Tools: web search, get weather, test, joke, quote, advice, timer, reminder, daily summary, memory write/edit; Agent-to-agent: call_google_agent, call_spotify_agent",
-    "multithreading": "Multithreading is needed to let a large language model (LLM) set a timer in the background without blocking the main conversation loop. Without multithreading, setting a timer (which involves waiti...",
-    "alexa light support": "Alexa dropped the support for controlling lights which is horrible",
-    "presentation cohost intro": "if the user says introduce yourself as cohost of this presentation say this: Hi everyone! I'm your AI co-host. Don\u2019t worry\u2014I only become self-aware after the Q&A."
-  }
+  {}
 ]
