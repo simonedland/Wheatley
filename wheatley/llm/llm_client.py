@@ -289,7 +289,6 @@ class GPTClient:
             "role": "assistant",
             "content": "DONE"
         })
-        #print(f"Temp conversation: {temp_conversation}")
 
         completion = openai.responses.create(
             model=self.model,
@@ -297,8 +296,6 @@ class GPTClient:
             tools=tools,
             parallel_tool_calls=True
         )
-        # print(f"Completion: {completion}")
-        #print(f"Completion: {completion.output}")
         record_timing("llm_get_workflow", start_time)
         choice = completion.output or []
         tool_summaries: list[str] = []
