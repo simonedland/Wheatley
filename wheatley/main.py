@@ -250,12 +250,12 @@ def run_tool_workflow(
             return _resume_hotword_listener(stt_engine, queue, tts_engine)
 
         # inject context from web search results into the conversation
-        for item in list(workflow): # iterate over a static copy
+        for item in list(workflow):  # iterate over a static copy
             if item.get("name") == "web_search_call_result":
                 text = item.get("arguments", {}).get("text", "")
                 if text:
                     manager.add_text_to_conversation("system", f"Info: {text}")
-                workflow.remove(item) # mutate original list
+                workflow.remove(item)  # mutate original list
 
         if not workflow:
             logging.info("Tool workflow attempt %d had no executable calls after preprocessing.", attempt)
