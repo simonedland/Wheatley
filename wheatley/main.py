@@ -17,6 +17,7 @@ import sys
 import atexit
 from queue import Queue
 import requests
+import json
 
 # =================== Imports: Third-Party Libraries ===================
 import yaml  # For reading YAML config files
@@ -240,28 +241,46 @@ def run_tool_workflow(
     if stt_engine:
         stt_engine.pause_listening()
 
-    for _ in range(MAX_CHAIN_RETRY):
+    executed_workflows = 0
+    seen_signatures: set[tuple[str, ...]] = set()
+
+    for attempt in range(1, MAX_CHAIN_RETRY + 1):
         workflow = gpt_client.get_workflow(manager.get_conversation())
         if not workflow:
             return _resume_hotword_listener(stt_engine, queue, tts_engine)
 
         # inject context from web search results into the conversation
-        for item in list(workflow):                # iterate over a static copy
+        for item in list(workflow): # iterate over a static copy
             if item.get("name") == "web_search_call_result":
                 text = item.get("arguments", {}).get("text", "")
                 if text:
                     manager.add_text_to_conversation("system", f"Info: {text}")
-                workflow.remove(item)              # mutate original list
+                workflow.remove(item) # mutate original list
+
+        if not workflow:
+            logging.info("Tool workflow attempt %d had no executable calls after preprocessing.", attempt)
+            continue
+
+        signature = tuple(
+            sorted(
+                json.dumps({
+                    "name": item.get("name"),
+                    "arguments": item.get("arguments", {}),
+                }, sort_keys=True)
+                for item in workflow
+            )
+        )
+        if signature in seen_signatures:
+            logging.info("Duplicate workflow signature detected on attempt %d; stopping to avoid loops.", attempt)
+            break
+        seen_signatures.add(signature)
+        print(f"Seen signatures: {seen_signatures}")
 
         mem = Functions().read_long_term_memory()
         manager.update_memory(f"LONG TERM MEMORY:\n{mem}")
 
-        try:
-            _execute_workflow(workflow, queue, manager)
-        except Exception as exc:
-            logging.error(f"Error executing workflow tools: {exc}")
-            return _resume_hotword_listener(stt_engine, queue, tts_engine)
-        break
+        _execute_workflow(workflow, queue, manager)
+        executed_workflows += 1
 
     return _resume_hotword_listener(stt_engine, queue, tts_engine)
 
@@ -290,19 +309,38 @@ def _execute_workflow(
     if not workflow:
         return
 
-    # Pretty-print the proposed calls
+    logging.info(
+        "Executing workflow with %d call(s): %s",
+        len(workflow),
+        ", ".join(call.get("name", "unknown") for call in workflow),
+    )
+
+    # Pretty-print the proposed calls for console visibility
     for call in workflow:
         print(f"Tool Name: {call.get('name', 'unknown')}")
         print(f"Arguments: {call.get('arguments', {})}")
+        if call.get("call_id"):
+            print(f"Call ID: {call.get('call_id')}")
 
     start = time.time()
-    fn_results: List[Tuple[Dict[str, Any], Any]] = (
+    fn_results: List[Dict[str, Any]] = (
         Functions().execute_workflow(workflow, event_queue=queue) or []
     )
     record_timing("workflow_execute", start)
+    if not fn_results:
+        logging.info("Workflow returned no results.")
 
-    for _, result in fn_results:
-        manager.add_text_to_conversation("system", str(result))
+    for result_payload in fn_results:
+        name = result_payload.get("name", "unknown")
+        call_id = result_payload.get("call_id")
+        result_text = str(result_payload.get("result"))
+        logging.info(
+            "Tool '%s' (call_id=%s) result: %s",
+            name,
+            call_id,
+            result_text,
+        )
+        manager.add_text_to_conversation("system", result_text)
 
 
 # =================== Assistant Reply Generation ===================
