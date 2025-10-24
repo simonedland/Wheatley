@@ -26,33 +26,6 @@ from elevenlabs import VoiceSettings
 class TextToSpeechEngine:
     """Interface to ElevenLabs TTS with persistent playback stream."""
 
-    def is_playing(self) -> bool:
-        """Return True if TTS is currently playing audio."""
-        return self._playing.is_set()
-
-    def _load_config(self) -> None:
-        """Load voice settings from configuration file."""
-        config_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "config",
-            "config.yaml",
-        )
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-
-        tts_config = config.get("tts", {})
-        self.api_key = config["secrets"]["elevenlabs_api_key"]
-        self.voice_id = tts_config.get("voice_id", "4Jtuv4wBvd95o1hzNloV")
-        self.voice_settings = VoiceSettings(
-            stability=tts_config.get("stability", 0.3),
-            similarity_boost=tts_config.get("similarity_boost", 0.1),
-            style=tts_config.get("style", 0.0),
-            use_speaker_boost=tts_config.get("use_speaker_boost", True),
-            speed=tts_config.get("speed", 0.8),
-        )
-        self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
-        self.output_format = tts_config.get("output_format", "mp3_22050_32")
-
     def __init__(self):
         """Initialise the TTS engine and load configuration."""
         self._load_config()
@@ -83,6 +56,33 @@ class TextToSpeechEngine:
             daemon=True,
         )
         self._keep_thread.start()
+
+    def is_playing(self) -> bool:
+        """Return True if TTS is currently playing audio."""
+        return self._playing.is_set()
+
+    def _load_config(self) -> None:
+        """Load voice settings from configuration file."""
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "config",
+            "config.yaml",
+        )
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+
+        tts_config = config.get("tts", {})
+        self.api_key = config["secrets"]["elevenlabs_api_key"]
+        self.voice_id = tts_config.get("voice_id", "4Jtuv4wBvd95o1hzNloV")
+        self.voice_settings = VoiceSettings(
+            stability=tts_config.get("stability", 0.3),
+            similarity_boost=tts_config.get("similarity_boost", 0.1),
+            style=tts_config.get("style", 0.0),
+            use_speaker_boost=tts_config.get("use_speaker_boost", True),
+            speed=tts_config.get("speed", 0.8),
+        )
+        self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
+        self.output_format = tts_config.get("output_format", "mp3_22050_32")
 
     def reload_config(self) -> None:
         """Reload TTS settings from ``config.yaml`` at runtime."""
