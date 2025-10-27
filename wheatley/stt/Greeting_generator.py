@@ -83,6 +83,8 @@ HOTWORD_OUTPUT_DIR = Path(__file__).resolve().parent / "hotword_greetings"
 
 
 class GreetingGenerator:
+    """Render configured greetings to MP3 files using ElevenLabs TTS."""
+
     def __init__(self):
         """Initialise the ElevenLabs client and output directory."""
         self._load_config()
@@ -92,7 +94,7 @@ class GreetingGenerator:
 
         HOTWORD_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         self.output_dir = HOTWORD_OUTPUT_DIR
-    
+
     def _load_config(self) -> None:
         """Load voice settings from configuration file."""
         config_path = os.path.join(
