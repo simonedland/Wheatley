@@ -1,6 +1,7 @@
 """Speech-to-text utilities including hotword detection."""
 
 import os
+import sys
 import wave
 import numpy as np
 import pyaudio
@@ -10,9 +11,17 @@ import struct
 import pvporcupine
 import time
 import asyncio
+import random
+from pathlib import Path
 from threading import Event
-from utils.timing_logger import record_timing
 
+try:
+    from wheatley.utils.timing_logger import record_timing
+except ImportError:
+    _MODULE_ROOT = Path(__file__).resolve().parents[1]
+    if str(_MODULE_ROOT) not in sys.path:
+        sys.path.append(str(_MODULE_ROOT))
+    from utils.timing_logger import record_timing
 # ---------------------------------------------------------------------------
 # LED colour constants used to signal microphone state on the hardware.  The
 # values represent ``(R, G, B)`` tuples that are forwarded to the Arduino via
@@ -26,6 +35,11 @@ HOTWORD_COLOR = (0, 0, 255)         # blue
 RECORDING_COLOR = (0, 255, 0)       # green
 PROCESSING_COLOR = (255, 165, 0)    # orange
 PAUSED_COLOR = (255, 0, 0)          # red
+
+# Directory containing pre-recorded greetings played after hotword detection
+HOTWORD_GREETINGS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "stt", "hotword_greetings"
+)
 
 
 class SpeechToTextEngine:
@@ -186,6 +200,29 @@ class SpeechToTextEngine:
             print("[STT] Waiting for TTS to finish before recording...")
             time.sleep(0.1)
 
+    def _play_hotword_greeting(self, tts_engine) -> None:
+        """Play a random greeting from ``HOTWORD_GREETINGS_DIR`` if available."""
+        if tts_engine is None:
+            return
+        try:
+            files = [
+                f
+                for f in os.listdir(HOTWORD_GREETINGS_DIR)
+                if f.lower().endswith(".mp3")
+            ]
+        except FileNotFoundError:
+            return
+        if not files:
+            return
+        choice = random.choice(files)
+        path = os.path.join(HOTWORD_GREETINGS_DIR, choice)
+        try:
+            with open(path, "rb") as fh:
+                tts_engine.play_mp3_bytes(fh.read())
+            self._wait_for_tts(tts_engine)
+        except Exception as exc:
+            print(f"[STT] Failed to play greeting '{choice}': {exc}")
+
     def _should_abort(self, tts_engine) -> bool:
         if self.is_paused() or self._tts_playing(tts_engine):
             msg = (
@@ -196,15 +233,6 @@ class SpeechToTextEngine:
             print(msg)
             return True
         return False
-
-    def _open_input_stream(self, audio):
-        return audio.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            frames_per_buffer=self.CHUNK,
-        )
 
     def _monitor_for_sound(self, stream, start_time, max_wait_seconds, tts_engine):
         frames = []
@@ -251,7 +279,13 @@ class SpeechToTextEngine:
 
         audio = pyaudio.PyAudio()
         try:
-            stream = self._open_input_stream(audio)
+            stream = audio.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.RATE,
+                input=True,
+                frames_per_buffer=self.CHUNK,
+            )
             frames = []
             print("Monitoring...")
             self._update_mic_led(RECORDING_COLOR)
@@ -419,9 +453,10 @@ class SpeechToTextEngine:
             while hasattr(tts_engine, 'is_playing') and tts_engine.is_playing():
                 print("[STT] Waiting for TTS to finish before listening...")
                 time.sleep(0.1)
-        idx = self.listen_for_hotword()
+        idx = self.listen_for_hotword(keywords=["Wheatley"])
         if idx is None or self.is_paused():
             return ""
+        self._play_hotword_greeting(tts_engine)
         wav_file = self.record_until_silent(tts_engine=tts_engine)
         if not wav_file or self.is_paused():
             print("No audio detected or paused.")

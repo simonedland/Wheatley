@@ -26,3 +26,4 @@ google-api-python-client
 spotipy
 pvporcupine
 websockets>=10.0
+agent_framework

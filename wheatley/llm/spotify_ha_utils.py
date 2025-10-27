@@ -54,7 +54,7 @@ class SpotifyHA:  # ────────────────────
         *,
         scopes: str = _WRITE,
         config_path: str | Path | None = None,
-        redirect_uri: str = "http://127.0.0.1:5000/callback",
+        redirect_uri: str = "https://127.0.0.1",
         open_browser: bool = False,
     ):
         """Initialize SpotifyHA with authentication and configuration."""
