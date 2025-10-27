@@ -391,7 +391,6 @@ class ServoController:
                 "color": [128, 0, 255],
             },
         }
-        
 
     def print_servo_status(self):
         """Print the status of each servo in a formatted table with improved alignment."""
