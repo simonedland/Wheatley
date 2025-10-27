@@ -26,8 +26,8 @@ from datetime import datetime
 from glob import glob
 from queue import Queue
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-import threading as _threading
+from typing import Any, Dict, List, Optional, Tuple
+import threading
 
 import re
 import requests
@@ -58,6 +58,7 @@ MAX_CHAIN_RETRY = 10
 
 # =================== Logging Setup ===================
 
+
 class ColorConsoleFormatter(logging.Formatter):
     """Render log records with colorful, compact formatting for the terminal."""
 
@@ -70,9 +71,11 @@ class ColorConsoleFormatter(logging.Formatter):
     }
 
     def __init__(self) -> None:
+        """Initialise the formatter with the compact message template."""
         super().__init__("%(message)s")
 
     def format(self, record: logging.LogRecord) -> str:
+        """Return the formatted log record string with colour and icon."""
         icon, colour, intensity = self.LEVEL_STYLES.get(
             record.levelno, ("•", Fore.WHITE, Style.NORMAL)
         )
@@ -226,6 +229,7 @@ class Event:
     ts: Optional[datetime] = None
 
     def __str__(self) -> str:
+        """Return the event as a human readable string for logging/debugging."""
         meta = f" {self.metadata}" if self.metadata else ""
         ts = f" ({self.ts.isoformat()})" if self.ts else ""
         return f"[{self.source.upper()}] {self.payload}{meta}{ts}"
@@ -540,7 +544,7 @@ def _make_context(cfg: Dict[str, Any], manager: ConversationManager) -> _StreamC
     return ctx
 
 
-def _playback_worker(ctx: _StreamContext, playback_done_event: Optional["threading.Event"] = None) -> None:
+def _playback_worker(ctx: _StreamContext, playback_done_event: Optional[threading.Event] = None) -> None:
     """Playback worker runs in its own thread; plays clips in FIFO order. Signals when done."""
     q = ctx.playback_q
     tts_engine: TextToSpeechEngine = ctx.cfg["tts_engine"]
@@ -558,13 +562,8 @@ def _playback_worker(ctx: _StreamContext, playback_done_event: Optional["threadi
         record_timing("tts_clip_played", start)
         logger.info("Finished sentence %d/%s", clip_number, total or "?")
 
-    if playback_done_event is not None:
-        try:
-            import threading  # local import to avoid top-level cycle
-            if isinstance(playback_done_event, threading.Event):
-                playback_done_event.set()
-        except Exception:
-            pass
+    if playback_done_event is not None and isinstance(playback_done_event, threading.Event):
+        playback_done_event.set()
 
 
 # ────────────────────────────── PRODUCER ──────────────────────────────── #
@@ -691,9 +690,7 @@ async def async_conversation_loop(
     stt_enabled: bool,
     tts_enabled: bool,
 ) -> None:
-    """
-    Main asynchronous interaction loop handling user events, tool calls, and assistant responses.
-    """
+    """Run the asynchronous interaction loop handling events, tools, and replies."""
     queue: asyncio.Queue[Any] = asyncio.Queue()
     input_allowed_event = asyncio.Event()
     input_allowed_event.set()  # Allow input initially
@@ -735,7 +732,6 @@ async def async_conversation_loop(
             # ✅ Allow TTS to stream even when STT is disabled
             if tts_enabled and tts_engine:
                 input_allowed_event.clear()  # Block input while TTS is playing
-                import threading
                 playback_done_event = threading.Event()
 
                 response_start = time.time()
@@ -762,10 +758,8 @@ async def async_conversation_loop(
             logger.info("Animation selected: %s", animation)
             print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
             print(
-                Fore.LIGHTBLACK_EX
-                + Style.BRIGHT
-                + "\n»»» Ready for your input! Type below..."
-                + Style.RESET_ALL
+                f"{Fore.LIGHTBLACK_EX}{Style.BRIGHT}\n"
+                f"»»» Ready for your input! Type below...{Style.RESET_ALL}"
             )
 
             record_timing("user_turn_total", turn_start)
@@ -800,12 +794,9 @@ async def stream_assistant_reply(
     hotword_task: Optional[asyncio.Task],
     stt_enabled: bool,
     arduino_interface: ArduinoInterface,
-    playback_done_event: Optional["threading.Event"] = None,
+    playback_done_event: Optional[threading.Event] = None,
 ) -> Tuple[str, Any, Optional[asyncio.Task]]:
-    """
-    Stream GPT-generated sentences → TTS → audio output.
-    Hands control back to the hot-word listener afterwards.
-    """
+    """Stream GPT sentences to TTS playback and resume the hot-word listener."""
     stream_start = time.time()
 
     if stt_enabled and stt_engine:
@@ -819,7 +810,7 @@ async def stream_assistant_reply(
     ctx.sentence_q.ctx = ctx  # type: ignore[attr-defined]
 
     # Start the sentence producer in a thread
-    producer_thread = _threading.Thread(
+    producer_thread = threading.Thread(
         target=_sentence_producer,
         args=(gpt_client, manager, ctx.loop, ctx.sentence_q),
         daemon=True,
@@ -848,7 +839,6 @@ async def stream_assistant_reply(
 
     logger.info("Reply streaming complete")
     return gpt_text, animation, hotword_task
-
 
 
 # =================== Initialization / Main ===================
