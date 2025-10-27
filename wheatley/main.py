@@ -126,6 +126,7 @@ logger = _configure_logging()
 
 # =================== Configuration Loader ===================
 
+
 def load_config() -> Dict[str, Any]:
     """Load and return YAML config from config/config.yaml."""
     config_path = Path(__file__).parent / "config" / "config.yaml"
@@ -223,6 +224,7 @@ def _init_arduino(
 @dataclass
 class Event:
     """Simple event container used by the async event loop."""
+
     source: str              # e.g. "user", "timer", "gpio", "webhook"
     payload: str             # human-readable description
     metadata: Optional[Dict[str, Any]] = None
@@ -716,17 +718,16 @@ async def async_conversation_loop(
                 break
 
             workflow_start = time.time()
-            hotword_task = (
-                run_tool_workflow(
-                    manager,
-                    gpt_client,
-                    queue,
-                    stt_engine=stt_engine,
-                    tts_engine=tts_engine,
-                    hotword_task=hotword_task,
-                )
-                or hotword_task
+            workflow_hotword = run_tool_workflow(
+                manager,
+                gpt_client,
+                queue,
+                stt_engine=stt_engine,
+                tts_engine=tts_engine,
+                hotword_task=hotword_task,
             )
+            if workflow_hotword is not None:
+                hotword_task = workflow_hotword
             record_timing("tool_workflow", workflow_start)
 
             # ✅ Allow TTS to stream even when STT is disabled
@@ -781,9 +782,8 @@ async def async_conversation_loop(
 
         print("👋 Exiting…")
 
-
-
 # =================== Streaming Reply ===================
+
 
 async def stream_assistant_reply(
     manager: ConversationManager,
