@@ -35,7 +35,7 @@ CONFIG_FILE = CONFIG_DIR / "config.yaml"
 class GoogleCalendarManager:
     """Thin wrapper around Google Calendar REST v3."""
 
-    class GoogleAuthCancelled(Exception):
+    class GoogleAuthCancelledError(Exception):
         """Raised when the user aborts interactive OAuth (KeyboardInterrupt)."""
 
     @staticmethod
@@ -68,7 +68,7 @@ class GoogleCalendarManager:
             print("🌐 Launching browser for Google OAuth (set WHEATLEY_OAUTH_MODE=console to override)…")
             return flow.run_local_server(port=0, prompt="consent")
         except KeyboardInterrupt as ki:  # user aborted
-            raise GoogleCalendarManager.GoogleAuthCancelled() from ki
+            raise GoogleCalendarManager.GoogleAuthCancelledError() from ki
 
     @staticmethod
     def _store_token(creds: Credentials) -> None:
@@ -76,40 +76,45 @@ class GoogleCalendarManager:
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         TOKEN_FILE.write_text(creds.to_json())
 
+    def _load_saved_credentials(self) -> Credentials | None:
+        """Return cached credentials if the token file is present."""
+        if TOKEN_FILE.exists():
+            return Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+        return None
+
+    def _refresh_credentials(self, creds: Credentials | None) -> Credentials | None:
+        """Refresh the provided credentials when possible."""
+        if not creds or not creds.expired or not creds.refresh_token:
+            return creds
+
+        try:
+            creds.refresh(Request())
+            print("✅ Token refreshed.")
+            return creds
+        except (RefreshError, Exception) as err:
+            msg = str(err)
+            print(f"🔄 Refresh failed ({msg}); re-authenticating.")
+            if "invalid_grant" in msg and TOKEN_FILE.exists():
+                try:
+                    TOKEN_FILE.unlink()
+                    print("🗑️  Removed expired/revoked token; new OAuth required.")
+                except Exception:
+                    pass
+            return None
+
+    def _request_new_credentials(self) -> Credentials:
+        """Run the OAuth flow when no valid credentials exist."""
+        creds = self._interactive_oauth_flow()
+        print("✅ Obtained new credentials via OAuth.")
+        return creds
+
     def _get_google_credentials(self) -> Credentials:
         """Get or refresh Google credentials."""
-        creds: Credentials | None = None
-
-        # 1 · Load previously saved token
-        if TOKEN_FILE.exists():
-            creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-
-        # 2 · Refresh if possible
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-                print("✅ Token refreshed.")
-            except (RefreshError, Exception) as err:
-                msg = str(err)
-                print(f"🔄 Refresh failed ({msg}); re-authenticating.")
-                # If invalid_grant, the stored token is unusable; remove it.
-                if "invalid_grant" in msg and TOKEN_FILE.exists():
-                    try:
-                        TOKEN_FILE.unlink()
-                        print("🗑️  Removed expired/revoked token; new OAuth required.")
-                    except Exception:
-                        pass
-                creds = None
-
-        # 3 · Fall back to OAuth browser flow
+        creds = self._load_saved_credentials()
+        creds = self._refresh_credentials(creds)
         if creds is None:
-            try:
-                creds = self._interactive_oauth_flow()
-                print("✅ Obtained new credentials via OAuth.")
-            except GoogleCalendarManager.GoogleAuthCancelled:
-                raise
+            creds = self._request_new_credentials()
 
-        # 4 · Persist
         self._store_token(creds)
         return creds
 
@@ -117,7 +122,7 @@ class GoogleCalendarManager:
         """Initialize GoogleCalendarManager and load config."""
         try:
             self.creds = self._get_google_credentials()
-        except GoogleCalendarManager.GoogleAuthCancelled:
+        except GoogleCalendarManager.GoogleAuthCancelledError:
             # Propagate for caller to optionally skip Google features
             raise
         self.service = build("calendar", "v3", credentials=self.creds, cache_discovery=False)

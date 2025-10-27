@@ -1,6 +1,7 @@
 """Speech-to-text utilities including hotword detection."""
 
 import os
+import sys
 import wave
 import numpy as np
 import pyaudio
@@ -11,9 +12,16 @@ import pvporcupine
 import time
 import asyncio
 import random
+from pathlib import Path
 from threading import Event
-from utils.timing_logger import record_timing
 
+try:
+    from wheatley.utils.timing_logger import record_timing
+except ImportError:
+    _MODULE_ROOT = Path(__file__).resolve().parents[1]
+    if str(_MODULE_ROOT) not in sys.path:
+        sys.path.append(str(_MODULE_ROOT))
+    from utils.timing_logger import record_timing
 # ---------------------------------------------------------------------------
 # LED colour constants used to signal microphone state on the hardware.  The
 # values represent ``(R, G, B)`` tuples that are forwarded to the Arduino via
@@ -226,15 +234,6 @@ class SpeechToTextEngine:
             return True
         return False
 
-    def _open_input_stream(self, audio):
-        return audio.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            frames_per_buffer=self.CHUNK,
-        )
-
     def _monitor_for_sound(self, stream, start_time, max_wait_seconds, tts_engine):
         frames = []
         min_amplitude = float("inf")
@@ -280,7 +279,13 @@ class SpeechToTextEngine:
 
         audio = pyaudio.PyAudio()
         try:
-            stream = self._open_input_stream(audio)
+            stream = audio.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.RATE,
+                input=True,
+                frames_per_buffer=self.CHUNK,
+            )
             frames = []
             print("Monitoring...")
             self._update_mic_led(RECORDING_COLOR)

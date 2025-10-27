@@ -164,6 +164,7 @@ class GPTClient:
             model=self.model,
             input=conversation,
         )
+        # print(f"completion from gpt: {completion}")
         record_timing("llm_get_text", start_time)
         if not getattr(completion, "output", None):
             raise Exception("No response from GPT")
@@ -288,7 +289,6 @@ class GPTClient:
             "role": "assistant",
             "content": "DONE"
         })
-        print(f"Temp conversation: {temp_conversation}")
 
         completion = openai.responses.create(
             model=self.model,
@@ -296,34 +296,42 @@ class GPTClient:
             tools=tools,
             parallel_tool_calls=True
         )
-        print(f"Completion: {completion.output}")
         record_timing("llm_get_workflow", start_time)
-        choice = completion.output
-        results = []
-        if completion.output[0].type == "web_search_call":
-            # add content of completion.output[1]
-            for item in completion.output[1].content:
+        choice = completion.output or []
+        tool_summaries: list[str] = []
+        results: list[dict[str, Any]] = []
+
+        if choice and getattr(choice[0], "type", None) == "web_search_call":
+            tool_summaries.append("web_search_call")
+            for item in getattr(choice[1], "content", []) if len(choice) > 1 else []:
                 results.append({
-                    "arguments": {"text": item.text},
+                    "arguments": {"text": getattr(item, "text", "")},
                     "name": "web_search_call_result",
                     "call_id": getattr(item, "id", "")
                 })
 
         for msg in choice:
-            if msg.type == "function_call":
-                # print("function_call")
-                if hasattr(msg, "arguments"):
-                    results.append({
-                        "arguments": json.loads(msg.arguments),
-                        "name": msg.name,
-                        "call_id": msg.call_id
-                    })
-                else:
-                    results.append({
-                        "arguments": {},
-                        "name": msg.name,
-                        "call_id": msg.call_id
-                    })
+            if getattr(msg, "type", None) == "function_call":
+                call_id = getattr(msg, "call_id", None)
+                args_dict: Dict[str, Any] = {}
+                if hasattr(msg, "arguments") and msg.arguments:
+                    try:
+                        args_dict = json.loads(msg.arguments)
+                    except Exception:  # noqa: BLE001
+                        logging.warning("Failed to parse tool arguments for %s; using empty dict.", getattr(msg, "name", "unknown"))
+                        args_dict = {}
+                results.append({
+                    "arguments": args_dict,
+                    "name": getattr(msg, "name", "unknown"),
+                    "call_id": call_id,
+                })
+                tool_summaries.append(f"{getattr(msg, 'name', 'unknown')}@{call_id}")
+
+        logging.info(
+            "Workflow response produced %d tool call(s): %s",
+            len(results),
+            ", ".join(tool_summaries) if tool_summaries else "none",
+        )
         return results if results else None
 
 
@@ -387,22 +395,33 @@ class Functions:
     # ───────────────────────────────────────────────────────────────────
     # Public API
     # ───────────────────────────────────────────────────────────────────
-    def execute_workflow(self, workflow: List[Dict[str, Any]], event_queue: Any | None = None) -> List[Tuple[str, Any]]:
-        """Run each tool in *workflow* and return (name, result) tuples."""
-        results: list[tuple[str, Any]] = []
+    def execute_workflow(self, workflow: List[Dict[str, Any]], event_queue: Any | None = None) -> List[Dict[str, Any]]:
+        """Run each tool in *workflow* and return metadata dictionaries."""
+        results: list[dict[str, Any]] = []
 
         for item in workflow:
             name = item.get("name")
+            if not name:
+                logging.warning("Encountered workflow entry without a tool name; skipping: %s", item)
+                continue
             args = item.get("arguments", {})
+            call_id = item.get("call_id")
 
+            logging.info("Executing tool '%s' (call_id=%s) with args=%s", name, call_id, args)
             self._narrate(name, args)  # no branching inside
 
             handler = self._TOOLS.get(name, self._unsupported)
             try:
                 result = handler(args, event_queue)
             except Exception as exc:  # noqa: BLE001
+                logging.error("Tool '%s' (call_id=%s) raised an error: %s", name, call_id, exc)
                 result = f"Error executing {name}: {exc}"
-            results.append((name, result))
+
+            results.append({
+                "name": name,
+                "call_id": call_id,
+                "result": result,
+            })
 
         return results
 
