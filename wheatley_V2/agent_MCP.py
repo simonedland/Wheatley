@@ -61,7 +61,6 @@ def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     cfg["llm"]["model"] = model_env
     return cfg
 
-
 config = load_config()
 # Also export for any downstream libs that look in env
 os.environ["OPENAI_API_KEY"] = config["secrets"]["openai_api_key"]
@@ -98,10 +97,11 @@ async def restaurantagent(query: str) -> str:
     try:
         # Open a fresh MCP session to the Restaurant tools server for this single call.
         async with Tool(
-                    name="restaurant_mcp",
-                    url=RESTAURANT_MCP_URL,
-                    request_timeout=60,
-                ) as restaurant_tools:
+            name="restaurant_mcp",
+            url=RESTAURANT_MCP_URL,
+            request_timeout=60,
+        ) as restaurant_tools:
+
             return await _run_agent_text(restaurant_agent, query, tools=restaurant_tools)
     except Exception as e:  # noqa: BLE001
         logger.exception("RestaurantAgent run failed")
@@ -114,10 +114,10 @@ async def sommelieragent(query: str) -> str:
     logger.info("%sSommelierAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
     try:
         async with Tool(
-                    name="sommelier_mcp",
-                    url=SOMMELIER_MCP_URL,
-                    request_timeout=60,
-                ) as sommelier_tools:
+            name="sommelier_mcp",
+            url=SOMMELIER_MCP_URL,
+            request_timeout=60,
+        ) as sommelier_tools:
             return await _run_agent_text(sommelier_agent, query, tools=sommelier_tools)
     except Exception as e:  # noqa: BLE001
         logger.exception("SommelierAgent run failed")
