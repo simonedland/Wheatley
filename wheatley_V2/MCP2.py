@@ -1,5 +1,3 @@
-# Copyright (c) Microsoft. All rights reserved.
-
 from __future__ import annotations
 
 import logging
@@ -17,6 +15,9 @@ CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 
 # ───────────────────────── logging ─────────────────────────
 def setup_logging() -> logging.Logger:
+    """
+    Set up logging with colorama for colored output.
+    """
     colorama_init(autoreset=True)
     logger = logging.getLogger(f"{APP_NAME}.tools")
     logger.setLevel(logging.INFO)
