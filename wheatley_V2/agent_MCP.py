@@ -22,6 +22,7 @@ SOMMELIER_MCP_URL = os.getenv("SOMMELIER_MCP_URL", "http://localhost:8767/mcp")
 
 
 def setup_logging() -> logging.Logger:
+    """Set up logging with colorama for colored output."""
     colorama_init(autoreset=True)
     logger = logging.getLogger(f"{APP_NAME}.tools")
     logger.setLevel(logging.INFO)
@@ -37,6 +38,7 @@ logger = setup_logging()
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     """
     Load config/config.yaml with safe defaults.
+
     env OPENAI_API_KEY / OPENAI_RESPONSES_MODEL_ID override file values if present.
     """
     cfg: Dict[str, Any] = {"llm": {"model": DEFAULT_MODEL}, "secrets": {"openai_api_key": ""}}
@@ -79,6 +81,7 @@ sommelier_agent = _openai.create_agent(
 
 
 async def _run_agent_text(agent_obj, query: str, **kwargs) -> str:
+    """Run an agent and return the text response."""
     resp = agent_obj.run(query, **kwargs)
     if hasattr(resp, "__await__"):  # coroutine → await
         resp = await resp  # type: ignore[func-returns-value]
@@ -87,6 +90,7 @@ async def _run_agent_text(agent_obj, query: str, **kwargs) -> str:
 
 @mcp.tool(name="RestaurantAgent", description="Answers questions about the restaurant menu.")
 async def RestaurantAgent(query: str) -> str:
+    """Run the RestaurantAgent and return the response."""
     logger.info("%sRestaurantAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
     try:
         # Open a fresh MCP session to the Restaurant tools server for this single call.
@@ -104,6 +108,7 @@ async def RestaurantAgent(query: str) -> str:
 
 @mcp.tool(name="SommelierAgent", description="Recommends wine/drink pairings and explains the choice. it also has overview of the wine list.")
 async def SommelierAgent(query: str) -> str:
+    """Run the SommelierAgent and return the response."""
     logger.info("%sSommelierAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
     try:
         async with Tool(
@@ -127,6 +132,7 @@ server = mcp
 
 
 def main() -> None:
+    """Run the FastMCP server."""
     uvicorn.run(
         app,
         host="127.0.0.1",

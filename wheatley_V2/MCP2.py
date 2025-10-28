@@ -75,7 +75,6 @@ def main() -> None:
         ws="wsproto",
     )
 
-# Add a newline at the end of the file
 
 if __name__ == "__main__":
     main()
