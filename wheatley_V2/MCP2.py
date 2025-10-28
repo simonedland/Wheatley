@@ -1,3 +1,6 @@
+"""
+MCP2: A FastMCP server exposing tools for the RestaurantAgent.
+"""
 from __future__ import annotations
 
 import logging
@@ -27,6 +30,7 @@ def setup_logging() -> logging.Logger:
     logger.propagate = False
     return logger
 
+
 logger = setup_logging()
 mcp = FastMCP(name=APP_NAME)
 
@@ -53,7 +57,7 @@ def suggest_pairing(dish: str) -> str:
     ) else "Pinot Noir is a versatile red that won’t overpower most dishes."
     return base
 
-# ───────────────────────── server glue ─────────────────────────
+
 app = mcp.http_app(path="/mcp", transport="http")
 
 

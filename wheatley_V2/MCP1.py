@@ -1,3 +1,6 @@
+"""
+MCP1: A FastMCP server exposing tools for the RestaurantAgent.
+"""
 from __future__ import annotations
 
 import logging
@@ -26,6 +29,7 @@ def setup_logging() -> logging.Logger:
     logger.handlers[:] = [handler]
     logger.propagate = False
     return logger
+
 
 logger = setup_logging()
 mcp = FastMCP(name=APP_NAME)
