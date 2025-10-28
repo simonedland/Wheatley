@@ -61,6 +61,7 @@ def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     cfg["llm"]["model"] = model_env
     return cfg
 
+
 config = load_config()
 # Also export for any downstream libs that look in env
 os.environ["OPENAI_API_KEY"] = config["secrets"]["openai_api_key"]
