@@ -32,6 +32,7 @@ def setup_logging() -> logging.Logger:
     logger.propagate = False
     return logger
 
+
 logger = setup_logging()
 
 
@@ -89,7 +90,7 @@ async def _run_agent_text(agent_obj, query: str, **kwargs) -> str:
 
 
 @mcp.tool(name="RestaurantAgent", description="Answers questions about the restaurant menu.")
-async def RestaurantAgent(query: str) -> str:
+async def restaurantagent(query: str) -> str:
     """Run the RestaurantAgent and return the response."""
     logger.info("%sRestaurantAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
     try:
@@ -107,7 +108,7 @@ async def RestaurantAgent(query: str) -> str:
 
 
 @mcp.tool(name="SommelierAgent", description="Recommends wine/drink pairings and explains the choice. it also has overview of the wine list.")
-async def SommelierAgent(query: str) -> str:
+async def sommelieragent(query: str) -> str:
     """Run the SommelierAgent and return the response."""
     logger.info("%sSommelierAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
     try:
@@ -124,9 +125,11 @@ async def SommelierAgent(query: str) -> str:
 
 app = mcp.http_app(path="/mcp", transport="http")
 
+
 def create_server() -> FastMCP:
     """Factory used by FastMCP CLI when importing this module."""
     return mcp
+
 
 server = mcp
 
@@ -141,6 +144,7 @@ def main() -> None:
         access_log=False,
         ws="wsproto",
     )
+
 
 if __name__ == "__main__":
     main()
