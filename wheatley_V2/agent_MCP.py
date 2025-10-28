@@ -13,14 +13,14 @@ from fastmcp import FastMCP
 from agent_framework import MCPStreamableHTTPTool as Tool
 from agent_framework.openai import OpenAIResponsesClient as OpenAI
 
-# ───────────────────────── constants ─────────────────────────
+
 APP_NAME = "RestaurantAgent"
 DEFAULT_MODEL = "gpt-4"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 RESTAURANT_MCP_URL = os.getenv("RESTAURANT_MCP_URL", "http://localhost:8766/mcp")
 SOMMELIER_MCP_URL = os.getenv("SOMMELIER_MCP_URL", "http://localhost:8767/mcp")
 
-# ───────────────────────── logging ─────────────────────────
+
 def setup_logging() -> logging.Logger:
     colorama_init(autoreset=True)
     logger = logging.getLogger(f"{APP_NAME}.tools")
@@ -33,7 +33,7 @@ def setup_logging() -> logging.Logger:
 
 logger = setup_logging()
 
-# ───────────────────────── config ─────────────────────────
+
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     """
     Load config/config.yaml with safe defaults.
@@ -62,13 +62,11 @@ config = load_config()
 os.environ["OPENAI_API_KEY"] = config["secrets"]["openai_api_key"]
 os.environ["OPENAI_RESPONSES_MODEL_ID"] = config["llm"]["model"]
 
-# ───────────────────────── mcp & agents ─────────────────────────
+
 mcp = FastMCP(name=APP_NAME)
 _openai = OpenAI()  # reuse one client
 
 
-# ===== Create Agents =====
-# Important: DO NOT embed an MCP tool here. We'll attach it per-call with an async context.
 restaurant_agent = _openai.create_agent(
     name="RestaurantAgent",
     description="Answer questions about the menu by calling external Restaurant tools (via MCP)."
@@ -79,14 +77,14 @@ sommelier_agent = _openai.create_agent(
     description="Suggests wine and beverage pairings, and explains why."
 )
 
-# Shared runner util (awaits coroutines or handles sync)
+
 async def _run_agent_text(agent_obj, query: str, **kwargs) -> str:
     resp = agent_obj.run(query, **kwargs)
     if hasattr(resp, "__await__"):  # coroutine → await
         resp = await resp  # type: ignore[func-returns-value]
     return getattr(resp, "text", str(resp))
 
-# ── MCP tools exposed by THIS server ──
+
 @mcp.tool(name="RestaurantAgent", description="Answers questions about the restaurant menu.")
 async def RestaurantAgent(query: str) -> str:
     logger.info("%sRestaurantAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
@@ -103,6 +101,7 @@ async def RestaurantAgent(query: str) -> str:
         logger.exception("RestaurantAgent run failed")
         return f"Error: {e}"
 
+
 @mcp.tool(name="SommelierAgent", description="Recommends wine/drink pairings and explains the choice. it also has overview of the wine list.")
 async def SommelierAgent(query: str) -> str:
     logger.info("%sSommelierAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
@@ -117,7 +116,7 @@ async def SommelierAgent(query: str) -> str:
         logger.exception("SommelierAgent run failed")
         return f"Error: {e}"
 
-# ───────────────────────── server glue ─────────────────────────
+
 app = mcp.http_app(path="/mcp", transport="http")
 
 def create_server() -> FastMCP:
@@ -125,6 +124,7 @@ def create_server() -> FastMCP:
     return mcp
 
 server = mcp
+
 
 def main() -> None:
     uvicorn.run(

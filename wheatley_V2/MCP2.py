@@ -8,12 +8,12 @@ import uvicorn
 from colorama import Fore, Style, init as colorama_init
 from fastmcp import FastMCP
 
-# ───────────────────────── constants ─────────────────────────
+
 APP_NAME = "SommelierAgent_tools"
 DEFAULT_MODEL = "gpt-4"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 
-# ───────────────────────── logging ─────────────────────────
+
 def setup_logging() -> logging.Logger:
     """
     Set up logging with colorama for colored output.
@@ -28,9 +28,8 @@ def setup_logging() -> logging.Logger:
     return logger
 
 logger = setup_logging()
-
-# ───────────────────────── mcp & agent ─────────────────────────
 mcp = FastMCP(name=APP_NAME)
+
 
 # ===== Sommelier tools (local) =====
 @mcp.tool(name="list_wines", description="Returns a short wine list with styles.")
@@ -44,6 +43,7 @@ def list_wines() -> str:
         "Non-alcoholic: Sparkling tea, Verjus spritz"
     )
 
+
 @mcp.tool(name="suggest_pairing", description="Suggests a drink pairing for a dish.")
 def suggest_pairing(dish: str) -> str:
     """Suggests a drink pairing for a dish."""
@@ -55,6 +55,7 @@ def suggest_pairing(dish: str) -> str:
 
 # ───────────────────────── server glue ─────────────────────────
 app = mcp.http_app(path="/mcp", transport="http")
+
 
 def create_server() -> FastMCP:
     """Factory used by FastMCP CLI when importing this module."""

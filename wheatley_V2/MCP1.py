@@ -8,12 +8,12 @@ import uvicorn
 from colorama import Fore, Style, init as colorama_init
 from fastmcp import FastMCP
 
-# ───────────────────────── constants ─────────────────────────
+
 APP_NAME = "RestaurantAgent_tools"
 DEFAULT_MODEL = "gpt-4"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 
-# ───────────────────────── logging ─────────────────────────
+
 def setup_logging() -> logging.Logger:
     """
     Set up logging with colorama for colored output.
@@ -28,9 +28,8 @@ def setup_logging() -> logging.Logger:
     return logger
 
 logger = setup_logging()
-
-# ───────────────────────── mcp & agent ─────────────────────────
 mcp = FastMCP(name=APP_NAME)
+
 
 @mcp.tool(name="get_specials", description="Returns the specials from the menu.")
 def get_specials() -> str:
@@ -42,6 +41,7 @@ def get_specials() -> str:
         "Special Drink: Chai Tea"
     )
 
+
 @mcp.tool(name="get_item_price", description="Returns the price of the menu item.")
 def get_item_price(menu_item: str) -> str:
     """Returns the price of the menu item."""
@@ -49,8 +49,9 @@ def get_item_price(menu_item: str) -> str:
     # Demo price
     return "$9.99"
 
-# ───────────────────────── server glue ─────────────────────────
+
 app = mcp.http_app(path="/mcp", transport="http")
+
 
 def create_server() -> FastMCP:
     """Factory used by FastMCP CLI when importing this module."""

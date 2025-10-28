@@ -14,13 +14,13 @@ from agent_framework import ChatMessageStore as Store
 from agent_framework import MCPStreamableHTTPTool as Tool
 from agent_framework.openai import OpenAIResponsesClient as OpenAI
 
-# ───────────────────────── constants ─────────────────────────
+
 APP_NAME = "PlayfulHost"
 DEFAULT_MODEL = "gpt-4"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 MINI_TOOLS_URL = os.getenv("MINI_TOOLS_URL", "http://127.0.0.1:8765/mcp")
 
-# ───────────────────────── utils ─────────────────────────
+
 def log(msg: str) -> None:
     print(f"{S.BRIGHT}{C.YELLOW}[{APP_NAME}]{S.RESET_ALL} {msg}", flush=True)
 
@@ -53,7 +53,7 @@ def build_instructions() -> str:
         "Do NOT call tools for simple greetings or generic small talk."
     )
 
-# ───────────────────────── main ─────────────────────────
+
 async def main() -> None:
     color(autoreset=True)
     config = load_config()
@@ -115,7 +115,7 @@ async def main() -> None:
             print((text if text is not None else str(reply)))
             print()
 
-# ───────────────────────── entrypoint ─────────────────────────
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
