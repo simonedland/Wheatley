@@ -37,7 +37,7 @@ mcp = FastMCP(name=APP_NAME)
 
 @mcp.tool(name="get_specials", description="Returns the specials from the menu.")
 def get_specials() -> str:
-    """Returns the specials from the menu."""
+    """Return the specials from the menu."""
     logger.info("%sget_specials%s", Fore.CYAN, Style.RESET_ALL)
     return (
         "Special Soup: Clam Chowder\n"

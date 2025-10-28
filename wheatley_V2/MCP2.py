@@ -1,6 +1,4 @@
-"""
-MCP2: A FastMCP server exposing tools for the RestaurantAgent.
-"""
+"""MCP2: A FastMCP server exposing tools for the RestaurantAgent."""
 from __future__ import annotations
 
 import logging
@@ -38,7 +36,7 @@ mcp = FastMCP(name=APP_NAME)
 # ===== Sommelier tools (local) =====
 @mcp.tool(name="list_wines", description="Returns a short wine list with styles.")
 def list_wines() -> str:
-    """Returns a short wine list with styles."""
+    """Return a short wine list with styles."""
     logger.info("%slist_wines%s", Fore.CYAN, Style.RESET_ALL)
     return (
         "Whites: Sauvignon Blanc, Chardonnay (oaked/unoaked)\n"
@@ -50,7 +48,7 @@ def list_wines() -> str:
 
 @mcp.tool(name="suggest_pairing", description="Suggests a drink pairing for a dish.")
 def suggest_pairing(dish: str) -> str:
-    """Suggests a drink pairing for a dish."""
+    """Suggest a drink pairing for a dish."""
     logger.info("%ssuggest_pairing%s dish=%s", Fore.MAGENTA, Style.RESET_ALL, dish)
     base = "Try a Sauvignon Blanc for acidity and freshness." if any(
         k in dish.lower() for k in ["salad", "fish", "shellfish", "goat cheese"]
@@ -62,11 +60,14 @@ app = mcp.http_app(path="/mcp", transport="http")
 
 
 def create_server() -> FastMCP:
-    """Factory used by FastMCP CLI when importing this module."""
+    """Create a FastMCP server instance."""
     return mcp
 
 
+# Ensure two blank lines after function definitions
+
 def main() -> None:
+    """Run the FastMCP server."""
     uvicorn.run(
         app,
         host="127.0.0.1",
