@@ -1,0 +1,78 @@
+# Copyright (c) Microsoft. All rights reserved.
+
+from __future__ import annotations
+
+import logging
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import uvicorn
+import yaml
+from colorama import Fore, Style, init as colorama_init
+from fastmcp import FastMCP
+from agent_framework.openai import OpenAIResponsesClient as OpenAI
+
+# ───────────────────────── constants ─────────────────────────
+APP_NAME = "SommelierAgent_tools"
+DEFAULT_MODEL = "gpt-4"
+CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
+
+# ───────────────────────── logging ─────────────────────────
+def setup_logging() -> logging.Logger:
+    colorama_init(autoreset=True)
+    logger = logging.getLogger(f"{APP_NAME}.tools")
+    logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler(stream=sys.stderr)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.handlers[:] = [handler]
+    logger.propagate = False
+    return logger
+
+logger = setup_logging()
+
+# ───────────────────────── mcp & agent ─────────────────────────
+mcp = FastMCP(name=APP_NAME)
+
+# ===== Sommelier tools (local) =====
+@mcp.tool(name="list_wines", description="Returns a short wine list with styles.")
+def list_wines() -> str:
+    """Returns a short wine list with styles."""
+    logger.info("%slist_wines%s", Fore.CYAN, Style.RESET_ALL)
+    return (
+        "Whites: Sauvignon Blanc, Chardonnay (oaked/unoaked)\n"
+        "Reds: Pinot Noir, Merlot, Cabernet Sauvignon\n"
+        "Sparkling: Prosecco, Champagne\n"
+        "Non-alcoholic: Sparkling tea, Verjus spritz"
+    )
+
+@mcp.tool(name="suggest_pairing", description="Suggests a drink pairing for a dish.")
+def suggest_pairing(dish: str) -> str:
+    """Suggests a drink pairing for a dish."""
+    logger.info("%ssuggest_pairing%s dish=%s", Fore.MAGENTA, Style.RESET_ALL, dish)
+    base = "Try a Sauvignon Blanc for acidity and freshness." if any(
+        k in dish.lower() for k in ["salad", "fish", "shellfish", "goat cheese"]
+    ) else "Pinot Noir is a versatile red that won’t overpower most dishes."
+    return base
+
+# ───────────────────────── server glue ─────────────────────────
+app = mcp.http_app(path="/mcp", transport="http")
+
+def create_server() -> FastMCP:
+    """Factory used by FastMCP CLI when importing this module."""
+    return mcp
+
+
+def main() -> None:
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=8767,
+        log_level="info",
+        access_log=False,
+        ws="wsproto",
+    )
+
+if __name__ == "__main__":
+    main()
