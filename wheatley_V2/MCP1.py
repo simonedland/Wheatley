@@ -1,6 +1,4 @@
-"""
-MCP1: A FastMCP server exposing tools for the RestaurantAgent.
-"""
+"""MCP1: A FastMCP server exposing tools for the RestaurantAgent."""
 from __future__ import annotations
 
 import logging
@@ -48,7 +46,7 @@ def get_specials() -> str:
 
 @mcp.tool(name="get_item_price", description="Returns the price of the menu item.")
 def get_item_price(menu_item: str) -> str:
-    """Returns the price of the menu item."""
+    """Return the price of the menu item."""
     logger.info("%sget_item_price%s item=%s", Fore.MAGENTA, Style.RESET_ALL, menu_item)
     # Demo price
     return "$9.99"
@@ -58,11 +56,12 @@ app = mcp.http_app(path="/mcp", transport="http")
 
 
 def create_server() -> FastMCP:
-    """Factory used by FastMCP CLI when importing this module."""
+    """Create a FastMCP server instance."""
     return mcp
 
 
 def main() -> None:
+    """Run the FastMCP server."""
     uvicorn.run(
         app,
         host="127.0.0.1",

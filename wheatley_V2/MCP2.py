@@ -16,9 +16,7 @@ CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 
 
 def setup_logging() -> logging.Logger:
-    """
-    Set up logging with colorama for colored output.
-    """
+    """Set up logging with colorama for colored output."""
     colorama_init(autoreset=True)
     logger = logging.getLogger(f"{APP_NAME}.tools")
     logger.setLevel(logging.INFO)
@@ -76,6 +74,8 @@ def main() -> None:
         access_log=False,
         ws="wsproto",
     )
+
+# Add a newline at the end of the file
 
 if __name__ == "__main__":
     main()
