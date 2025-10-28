@@ -14,24 +14,17 @@ APP_NAME = "SommelierAgent_tools"
 DEFAULT_MODEL = "gpt-4"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 
+colorama_init(autoreset=True)
+logger = logging.getLogger(f"{APP_NAME}.tools")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(stream=sys.stderr)
+handler.setFormatter(logging.Formatter("%(message)s"))
+logger.handlers[:] = [handler]
+logger.propagate = False
 
-def setup_logging() -> logging.Logger:
-    """Set up logging with colorama for colored output."""
-    colorama_init(autoreset=True)
-    logger = logging.getLogger(f"{APP_NAME}.tools")
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler(stream=sys.stderr)
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    logger.handlers[:] = [handler]
-    logger.propagate = False
-    return logger
-
-
-logger = setup_logging()
 mcp = FastMCP(name=APP_NAME)
 
 
-# ===== Sommelier tools (local) =====
 @mcp.tool(name="list_wines", description="Returns a short wine list with styles.")
 def list_wines() -> str:
     """Return a short wine list with styles."""
@@ -56,13 +49,6 @@ def suggest_pairing(dish: str) -> str:
 
 app = mcp.http_app(path="/mcp", transport="http")
 
-
-def create_server() -> FastMCP:
-    """Create a FastMCP server instance."""
-    return mcp
-
-
-# Ensure two blank lines after function definitions
 
 def main() -> None:
     """Run the FastMCP server."""

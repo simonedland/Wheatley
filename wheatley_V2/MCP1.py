@@ -14,20 +14,14 @@ APP_NAME = "RestaurantAgent_tools"
 DEFAULT_MODEL = "gpt-4"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 
+colorama_init(autoreset=True)
+logger = logging.getLogger(f"{APP_NAME}.tools")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(stream=sys.stderr)
+handler.setFormatter(logging.Formatter("%(message)s"))
+logger.handlers[:] = [handler]
+logger.propagate = False
 
-def setup_logging() -> logging.Logger:
-    """Set up logging with colorama for colored output."""
-    colorama_init(autoreset=True)
-    logger = logging.getLogger(f"{APP_NAME}.tools")
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler(stream=sys.stderr)
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    logger.handlers[:] = [handler]
-    logger.propagate = False
-    return logger
-
-
-logger = setup_logging()
 mcp = FastMCP(name=APP_NAME)
 
 
@@ -46,16 +40,10 @@ def get_specials() -> str:
 def get_item_price(menu_item: str) -> str:
     """Return the price of the menu item."""
     logger.info("%sget_item_price%s item=%s", Fore.MAGENTA, Style.RESET_ALL, menu_item)
-    # Demo price
     return "$9.99"
 
 
 app = mcp.http_app(path="/mcp", transport="http")
-
-
-def create_server() -> FastMCP:
-    """Create a FastMCP server instance."""
-    return mcp
 
 
 def main() -> None:
