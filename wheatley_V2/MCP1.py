@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 import uvicorn
-import yaml
 from colorama import Fore, Style, init as colorama_init
 from fastmcp import FastMCP
-from agent_framework.openai import OpenAIResponsesClient as OpenAI
 
 # ───────────────────────── constants ─────────────────────────
 APP_NAME = "RestaurantAgent_tools"
