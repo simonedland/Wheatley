@@ -1,3 +1,4 @@
+"""Main MCP agent server for RestaurantAgent and SommelierAgent."""
 from __future__ import annotations
 
 import logging
