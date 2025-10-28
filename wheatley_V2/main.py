@@ -49,7 +49,7 @@ def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
 
 
 def build_instructions() -> str:
-    # Light policy: be playful and concise; only use tools when they’re truly needed.
+    """Build agent instructions for PlayfulHost."""
     return (
         "You are PlayfulHost — playful, concise, and helpful.\n"
         "Use the 'mini-tools' MCP tool for tasks that need external capabilities.\n"
