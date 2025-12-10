@@ -14,7 +14,7 @@ from agent_framework import ChatMessageStore as Store
 from agent_framework import MCPStreamableHTTPTool as Tool
 from agent_framework.openai import OpenAIResponsesClient as OpenAI
 
-from tts_helper import TTSHandler
+from helper.tts_helper import TTSHandler
 
 APP_NAME = "Wheatley"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
@@ -94,6 +94,7 @@ async def main() -> None:
         if tts:
             tts.start()
 
+        # Main interaction loop
         while True:
             user = await asyncio.to_thread(input, "User: ")
             user = (user or "").strip()
