@@ -27,3 +27,8 @@ spotipy
 pvporcupine
 websockets>=10.0
 agent_framework
+azure-identity
+azure-ai-projects
+azure-monitor-opentelemetry
+opentelemetry-sdk
+opentelemetry-instrumentation-openai-v2

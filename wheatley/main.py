@@ -534,7 +534,7 @@ def _make_context(cfg: Dict[str, Any], manager: ConversationManager) -> _StreamC
                 f"{conf['tts'].get('voice_id', '4Jtuv4wBvd95o1hzNloV')}"
             ),
             "api_key": conf["secrets"]["elevenlabs_api_key"],
-            "model": conf["tts"].get("model_id", "eleven_flash_v2_5"),
+            "model": conf["tts"].get("model_id", "eleven_v3"),
             "fmt": conf["tts"].get("output_format", "mp3_22050_32"),
             "tts_engine": cfg.get("tts_engine"),
         }
@@ -623,7 +623,7 @@ def _fetch_tts_clip(text: str, prev: str, cfg: Dict[str, Any]) -> Optional[bytes
         cfg["api_url"],
         headers={"xi-api-key": cfg["api_key"], "Content-Type": "application/json"},
         params={"output_format": cfg["fmt"]},
-        json={"text": text, "model_id": cfg["model"], "previous_text": prev or None},
+        json={"text": text, "model_id": cfg["model"]},# "previous_text": prev or None},
         timeout=60,
     )
     resp.raise_for_status()

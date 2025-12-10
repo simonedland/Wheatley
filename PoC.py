@@ -23,7 +23,7 @@ from pydub.playback import play
 
 # ───────── USER SETTINGS ────────────────────────────────────────────────────
 VOICE_ID = "4Jtuv4wBvd95o1hzNloV"
-MODEL_ID = "eleven_flash_v2_5"
+MODEL_ID = "eleven_v3"
 OUTPUT_FORMAT = "mp3_22050_32"
 
 MAX_TTS_WORKERS = 2
