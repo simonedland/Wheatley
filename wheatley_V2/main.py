@@ -14,6 +14,8 @@ from agent_framework import ChatMessageStore as Store
 from agent_framework import MCPStreamableHTTPTool as Tool
 from agent_framework.openai import OpenAIResponsesClient as OpenAI
 
+from tts_helper import TTSHandler
+
 APP_NAME = "Wheatley"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
@@ -60,6 +62,15 @@ async def main() -> None:
     log(f"Model: {Fore.CYAN}{config['llm']['model']}{Style.RESET_ALL}")
     log(f"MCP endpoint: {Fore.CYAN}{AGENT_MCP_URL}{Style.RESET_ALL}")
 
+    xi_key = config["secrets"].get("elevenlabs_api_key")
+    tts_cfg = config.get("tts", {})
+    voice_id = tts_cfg.get("voice_id", "4Jtuv4wBvd95o1hzNloV")
+    model_id = tts_cfg.get("model_id", "eleven_flash_v2_5")
+    tts_enabled = tts_cfg.get("enabled", True)
+
+    if not xi_key:
+        log(f"{Fore.RED}Warning: 'elevenlabs_api_key' not found in secrets.{Style.RESET_ALL}")
+
     # Build tool & agent contexts
     async with (
         Tool(
@@ -79,6 +90,10 @@ async def main() -> None:
         print(f"{Style.BRIGHT}{Fore.GREEN}Connected to {APP_NAME}. Type '/quit' to exit.{Style.RESET_ALL}")
         thread = agent.get_new_thread()
 
+        tts = TTSHandler(xi_key, voice_id=voice_id, model_id=model_id) if xi_key and tts_enabled else None
+        if tts:
+            tts.start()
+
         while True:
             user = await asyncio.to_thread(input, "User: ")
             user = (user or "").strip()
@@ -90,11 +105,21 @@ async def main() -> None:
                 print(f"{Fore.MAGENTA}Bye!{Style.RESET_ALL}")
                 break
 
-            reply = await agent.run(user, tools=tools, thread=thread)
-
-            text = getattr(reply, "text", None)
-            print((text if text is not None else str(reply)))
+            reply = agent.run_stream(user, tools=tools, thread=thread)
+            print("Wheatley: ", end="", flush=True)
+            async for chunk in reply:
+                if chunk.text:
+                    print(chunk.text, end="", flush=True)
+                    if tts:
+                        tts.process_text(chunk.text)
             print()
+
+            if tts:
+                await tts.flush_pending()
+                await tts.wait_idle()
+
+        if tts:
+            await tts.stop()
 
 if __name__ == "__main__":
     try:

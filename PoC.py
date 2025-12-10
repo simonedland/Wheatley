@@ -117,8 +117,8 @@ def set_phase(idx: float, phase: str, txt: Optional[str] = None,
 
 
 # ───────── BLOCKING HELPERS ────────────────────────────────────────────────
-def http_tts(text, previous_text, next_text, idx):
-    """Perform Elevenlabs POST with previous/next text and retry/back-off.
+def http_tts(text, idx):
+    """Perform Elevenlabs POST with retry/back-off.
 
     TODO: Refactor to reduce cognitive complexity.
     """
@@ -129,9 +129,7 @@ def http_tts(text, previous_text, next_text, idx):
             params={"output_format": OUTPUT_FORMAT},
             json={
                 "text": text,
-                "model_id": MODEL_ID,
-                "previous_text": previous_text or None,
-                "next_text": next_text or None
+                "model_id": MODEL_ID
             },
             timeout=60
         )
@@ -235,24 +233,21 @@ async def tts_dispatch(sq: asyncio.Queue, aq: asyncio.Queue, pool):
     """
     loop = asyncio.get_running_loop()
     sem = asyncio.Semaphore(MAX_TTS_WORKERS)
-    prev_text = ""
     pending: List[asyncio.Task] = []
 
-    async def handle(idx: float, cur: str, nxt: str, prev: str):
+    async def handle(idx: float, cur: str):
         async with sem:
             data = await asyncio.wrap_future(
-                loop.run_in_executor(pool, http_tts, cur, prev, nxt, idx)
+                loop.run_in_executor(pool, http_tts, cur, idx)
             )
             await aq.put((idx, data))
 
-    item = await sq.get()  # first sentence tuple
-    while item:
+    while True:
+        item = await sq.get()
+        if item is None:
+            break
         idx, cur = item
-        nxt_item = await sq.get()
-        nxt_txt = "" if nxt_item is None else nxt_item[1]
-        pending.append(asyncio.create_task(handle(idx, cur, nxt_txt, prev_text)))
-        prev_text = cur
-        item = nxt_item
+        pending.append(asyncio.create_task(handle(idx, cur)))
 
     await asyncio.gather(*pending)  # wait all workers
     await aq.put((-1, b""))

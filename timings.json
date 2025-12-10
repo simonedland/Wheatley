@@ -1,1185 +1,324 @@
 [
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-12-10T08:49:24.550227",
-    "endTime": "2025-12-10T08:49:32.231760",
-    "durationMs": 7681,
+    "startTime": "2025-12-10T12:08:50.675745",
+    "endTime": "2025-12-10T12:08:53.188563",
+    "durationMs": 2512,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:49:32.241209",
-    "endTime": "2025-12-10T08:49:33.117554",
-    "durationMs": 876,
+    "startTime": "2025-12-10T12:08:53.217627",
+    "endTime": "2025-12-10T12:08:54.392019",
+    "durationMs": 1174,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_generate",
-    "startTime": "2025-12-10T08:49:33.119476",
-    "endTime": "2025-12-10T08:49:50.283085",
-    "durationMs": 17163,
+    "startTime": "2025-12-10T12:08:54.397516",
+    "endTime": "2025-12-10T12:08:59.436615",
+    "durationMs": 5039,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_play",
-    "startTime": "2025-12-10T08:49:50.487907",
-    "endTime": "2025-12-10T08:50:36.483148",
-    "durationMs": 45995,
+    "startTime": "2025-12-10T12:09:02.030709",
+    "endTime": "2025-12-10T12:09:13.817412",
+    "durationMs": 11786,
     "thread": "MainThread"
   },
   {
     "functionality": "user_turn_total",
-    "startTime": "2025-12-10T08:50:36.486933",
-    "endTime": "2025-12-10T08:51:14.321345",
-    "durationMs": 37834,
+    "startTime": "2025-12-10T12:09:17.797788",
+    "endTime": "2025-12-10T12:09:46.206357",
+    "durationMs": 28408,
     "thread": "MainThread"
   },
   {
     "functionality": "tool_workflow",
-    "startTime": "2025-12-10T08:50:36.491399",
-    "endTime": "2025-12-10T08:50:58.004294",
-    "durationMs": 21512,
+    "startTime": "2025-12-10T12:09:17.812284",
+    "endTime": "2025-12-10T12:09:30.828073",
+    "durationMs": 13015,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:50:36.491409",
-    "endTime": "2025-12-10T08:50:37.661421",
-    "durationMs": 1170,
+    "startTime": "2025-12-10T12:09:17.812298",
+    "endTime": "2025-12-10T12:09:19.298016",
+    "durationMs": 1485,
     "thread": "MainThread"
   },
   {
     "functionality": "workflow_execute",
-    "startTime": "2025-12-10T08:50:37.685939",
-    "endTime": "2025-12-10T08:50:47.548695",
-    "durationMs": 9862,
+    "startTime": "2025-12-10T12:09:19.385952",
+    "endTime": "2025-12-10T12:09:29.037677",
+    "durationMs": 9651,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-12-10T08:50:37.695558",
-    "endTime": "2025-12-10T08:50:39.064444",
-    "durationMs": 1368,
+    "startTime": "2025-12-10T12:09:19.416078",
+    "endTime": "2025-12-10T12:09:21.203697",
+    "durationMs": 1787,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_generate",
-    "startTime": "2025-12-10T08:50:39.064860",
-    "endTime": "2025-12-10T08:50:41.583968",
-    "durationMs": 2519,
+    "startTime": "2025-12-10T12:09:21.205106",
+    "endTime": "2025-12-10T12:09:23.481795",
+    "durationMs": 2276,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_generate_audio",
-    "startTime": "2025-12-10T08:50:39.069483",
-    "endTime": "2025-12-10T08:50:39.069491",
+    "startTime": "2025-12-10T12:09:21.228203",
+    "endTime": "2025-12-10T12:09:21.228224",
     "durationMs": 0,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_play",
-    "startTime": "2025-12-10T08:50:41.584528",
-    "endTime": "2025-12-10T08:50:46.516899",
-    "durationMs": 4932,
+    "startTime": "2025-12-10T12:09:23.482873",
+    "endTime": "2025-12-10T12:09:28.198959",
+    "durationMs": 4716,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:50:47.554439",
-    "endTime": "2025-12-10T08:50:49.269018",
-    "durationMs": 1714,
+    "startTime": "2025-12-10T12:09:29.058388",
+    "endTime": "2025-12-10T12:09:30.826076",
+    "durationMs": 1767,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "stream_assistant_reply",
+    "startTime": "2025-12-10T12:09:30.828897",
+    "endTime": "2025-12-10T12:09:46.202415",
+    "durationMs": 15373,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "time_to_first_sentence",
+    "startTime": "2025-12-10T12:09:30.828903",
+    "endTime": "2025-12-10T12:09:32.139649",
+    "durationMs": 1310,
+    "thread": "Thread-10 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-12-10T12:09:31.985804",
+    "endTime": "2025-12-10T12:09:32.140812",
+    "durationMs": 155,
+    "thread": "Thread-10 (_sentence_producer)"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-12-10T12:09:32.143195",
+    "endTime": "2025-12-10T12:09:32.738753",
+    "durationMs": 595,
+    "thread": "Thread-10 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-12-10T12:09:32.144645",
+    "endTime": "2025-12-10T12:09:34.323813",
+    "durationMs": 2179,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-12-10T12:09:32.741119",
+    "endTime": "2025-12-10T12:09:36.728284",
+    "durationMs": 3987,
+    "thread": "TTS_1"
+  },
+  {
+    "functionality": "sentence_created",
+    "startTime": "2025-12-10T12:09:32.783153",
+    "endTime": "2025-12-10T12:09:32.821232",
+    "durationMs": 38,
+    "thread": "Thread-10 (_sentence_producer)"
+  },
+  {
+    "functionality": "tts_clip_generated",
+    "startTime": "2025-12-10T12:09:34.329047",
+    "endTime": "2025-12-10T12:09:36.252476",
+    "durationMs": 1923,
+    "thread": "TTS_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-12-10T12:09:34.331333",
+    "endTime": "2025-12-10T12:09:37.087320",
+    "durationMs": 2755,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "llm_select_animation",
+    "startTime": "2025-12-10T12:09:36.780710",
+    "endTime": "2025-12-10T12:09:37.588914",
+    "durationMs": 808,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-12-10T12:09:37.089277",
+    "endTime": "2025-12-10T12:09:43.727846",
+    "durationMs": 6638,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "tts_clip_played",
+    "startTime": "2025-12-10T12:09:43.730451",
+    "endTime": "2025-12-10T12:09:46.197469",
+    "durationMs": 2467,
+    "thread": "PLAY_0"
+  },
+  {
+    "functionality": "user_turn_total",
+    "startTime": "2025-12-10T12:10:10.569268",
+    "endTime": "2025-12-10T12:10:34.148080",
+    "durationMs": 23578,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "tool_workflow",
+    "startTime": "2025-12-10T12:10:10.587821",
+    "endTime": "2025-12-10T12:10:21.316085",
+    "durationMs": 10728,
+    "thread": "MainThread"
+  },
+  {
+    "functionality": "llm_get_workflow",
+    "startTime": "2025-12-10T12:10:10.587838",
+    "endTime": "2025-12-10T12:10:11.560125",
+    "durationMs": 972,
     "thread": "MainThread"
   },
   {
     "functionality": "workflow_execute",
-    "startTime": "2025-12-10T08:50:49.281531",
-    "endTime": "2025-12-10T08:50:56.072309",
-    "durationMs": 6790,
+    "startTime": "2025-12-10T12:10:11.641250",
+    "endTime": "2025-12-10T12:10:20.158925",
+    "durationMs": 8517,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_text",
-    "startTime": "2025-12-10T08:50:49.294085",
-    "endTime": "2025-12-10T08:50:50.513066",
-    "durationMs": 1218,
+    "startTime": "2025-12-10T12:10:11.681467",
+    "endTime": "2025-12-10T12:10:13.274496",
+    "durationMs": 1593,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_generate",
-    "startTime": "2025-12-10T08:50:50.513594",
-    "endTime": "2025-12-10T08:50:52.555525",
-    "durationMs": 2041,
+    "startTime": "2025-12-10T12:10:13.275632",
+    "endTime": "2025-12-10T12:10:14.965271",
+    "durationMs": 1689,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_generate_audio",
-    "startTime": "2025-12-10T08:50:50.518678",
-    "endTime": "2025-12-10T08:50:50.518684",
+    "startTime": "2025-12-10T12:10:13.293885",
+    "endTime": "2025-12-10T12:10:13.293908",
     "durationMs": 0,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_play",
-    "startTime": "2025-12-10T08:50:52.555924",
-    "endTime": "2025-12-10T08:50:56.063794",
-    "durationMs": 3507,
+    "startTime": "2025-12-10T12:10:14.968128",
+    "endTime": "2025-12-10T12:10:19.277134",
+    "durationMs": 4309,
     "thread": "MainThread"
   },
   {
     "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:50:56.095335",
-    "endTime": "2025-12-10T08:50:58.003643",
-    "durationMs": 1908,
+    "startTime": "2025-12-10T12:10:20.177395",
+    "endTime": "2025-12-10T12:10:21.311872",
+    "durationMs": 1134,
     "thread": "MainThread"
   },
   {
     "functionality": "stream_assistant_reply",
-    "startTime": "2025-12-10T08:50:58.004496",
-    "endTime": "2025-12-10T08:51:14.320799",
-    "durationMs": 16316,
+    "startTime": "2025-12-10T12:10:21.317826",
+    "endTime": "2025-12-10T12:10:34.147778",
+    "durationMs": 12829,
     "thread": "MainThread"
   },
   {
     "functionality": "time_to_first_sentence",
-    "startTime": "2025-12-10T08:50:58.004498",
-    "endTime": "2025-12-10T08:50:58.470869",
-    "durationMs": 466,
-    "thread": "Thread-14 (_sentence_producer)"
+    "startTime": "2025-12-10T12:10:21.317835",
+    "endTime": "2025-12-10T12:10:21.860319",
+    "durationMs": 542,
+    "thread": "Thread-27 (_sentence_producer)"
   },
   {
     "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:50:58.402969",
-    "endTime": "2025-12-10T08:50:58.471444",
-    "durationMs": 68,
-    "thread": "Thread-14 (_sentence_producer)"
+    "startTime": "2025-12-10T12:10:21.807443",
+    "endTime": "2025-12-10T12:10:21.861298",
+    "durationMs": 53,
+    "thread": "Thread-27 (_sentence_producer)"
   },
   {
     "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:50:58.472144",
-    "endTime": "2025-12-10T08:50:59.874506",
-    "durationMs": 1402,
+    "startTime": "2025-12-10T12:10:21.865503",
+    "endTime": "2025-12-10T12:10:23.674700",
+    "durationMs": 1809,
     "thread": "TTS_0"
   },
   {
     "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:50:58.491421",
-    "endTime": "2025-12-10T08:50:58.658195",
-    "durationMs": 166,
-    "thread": "Thread-14 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:50:58.658895",
-    "endTime": "2025-12-10T08:50:58.918078",
-    "durationMs": 259,
-    "thread": "Thread-14 (_sentence_producer)"
+    "startTime": "2025-12-10T12:10:21.896758",
+    "endTime": "2025-12-10T12:10:22.186014",
+    "durationMs": 289,
+    "thread": "Thread-27 (_sentence_producer)"
   },
   {
     "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:50:58.659428",
-    "endTime": "2025-12-10T08:51:01.387793",
-    "durationMs": 2728,
+    "startTime": "2025-12-10T12:10:22.188221",
+    "endTime": "2025-12-10T12:10:25.535901",
+    "durationMs": 3347,
     "thread": "TTS_1"
   },
   {
     "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:50:58.919132",
-    "endTime": "2025-12-10T08:50:58.942461",
-    "durationMs": 23,
-    "thread": "Thread-14 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:50:58.958735",
-    "endTime": "2025-12-10T08:50:59.018051",
-    "durationMs": 59,
-    "thread": "Thread-14 (_sentence_producer)"
+    "startTime": "2025-12-10T12:10:22.213037",
+    "endTime": "2025-12-10T12:10:22.481603",
+    "durationMs": 268,
+    "thread": "Thread-27 (_sentence_producer)"
   },
   {
     "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:50:59.875843",
-    "endTime": "2025-12-10T08:51:01.544387",
-    "durationMs": 1668,
+    "startTime": "2025-12-10T12:10:23.679828",
+    "endTime": "2025-12-10T12:10:26.121141",
+    "durationMs": 2441,
     "thread": "TTS_0"
   },
   {
     "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:50:59.876766",
-    "endTime": "2025-12-10T08:51:01.698396",
-    "durationMs": 1821,
+    "startTime": "2025-12-10T12:10:23.683722",
+    "endTime": "2025-12-10T12:10:24.848031",
+    "durationMs": 1164,
     "thread": "PLAY_0"
   },
   {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:51:01.389038",
-    "endTime": "2025-12-10T08:51:03.806714",
-    "durationMs": 2417,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:51:01.545722",
-    "endTime": "2025-12-10T08:51:03.058194",
-    "durationMs": 1512,
-    "thread": "TTS_0"
-  },
-  {
     "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:51:01.699910",
-    "endTime": "2025-12-10T08:51:06.378300",
-    "durationMs": 4678,
+    "startTime": "2025-12-10T12:10:25.541540",
+    "endTime": "2025-12-10T12:10:29.686869",
+    "durationMs": 4145,
     "thread": "PLAY_0"
   },
   {
     "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:51:03.820557",
-    "endTime": "2025-12-10T08:51:04.727423",
-    "durationMs": 906,
+    "startTime": "2025-12-10T12:10:26.157566",
+    "endTime": "2025-12-10T12:10:26.941507",
+    "durationMs": 783,
     "thread": "MainThread"
   },
   {
     "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:51:06.379138",
-    "endTime": "2025-12-10T08:51:09.328197",
-    "durationMs": 2949,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:51:09.328785",
-    "endTime": "2025-12-10T08:51:12.468227",
-    "durationMs": 3139,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:51:12.469386",
-    "endTime": "2025-12-10T08:51:14.318915",
-    "durationMs": 1849,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "user_turn_total",
-    "startTime": "2025-12-10T08:51:29.224653",
-    "endTime": "2025-12-10T08:51:50.159043",
-    "durationMs": 20934,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tool_workflow",
-    "startTime": "2025-12-10T08:51:29.229827",
-    "endTime": "2025-12-10T08:51:31.023756",
-    "durationMs": 1793,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:51:29.229832",
-    "endTime": "2025-12-10T08:51:31.023040",
-    "durationMs": 1793,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "stream_assistant_reply",
-    "startTime": "2025-12-10T08:51:31.023979",
-    "endTime": "2025-12-10T08:51:50.158491",
-    "durationMs": 19134,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "time_to_first_sentence",
-    "startTime": "2025-12-10T08:51:31.023981",
-    "endTime": "2025-12-10T08:51:31.571893",
-    "durationMs": 547,
-    "thread": "Thread-35 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:51:31.442122",
-    "endTime": "2025-12-10T08:51:31.572302",
-    "durationMs": 130,
-    "thread": "Thread-35 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:51:31.573080",
-    "endTime": "2025-12-10T08:51:33.255119",
-    "durationMs": 1682,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:51:31.602926",
-    "endTime": "2025-12-10T08:51:32.146455",
-    "durationMs": 543,
-    "thread": "Thread-35 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:51:32.147464",
-    "endTime": "2025-12-10T08:51:36.786530",
-    "durationMs": 4639,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:51:32.180316",
-    "endTime": "2025-12-10T08:51:32.333399",
-    "durationMs": 153,
-    "thread": "Thread-35 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:51:32.334725",
-    "endTime": "2025-12-10T08:51:32.419681",
-    "durationMs": 84,
-    "thread": "Thread-35 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:51:33.256286",
-    "endTime": "2025-12-10T08:51:35.086840",
-    "durationMs": 1830,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:51:33.256799",
-    "endTime": "2025-12-10T08:51:35.767220",
-    "durationMs": 2510,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:51:35.088591",
-    "endTime": "2025-12-10T08:51:36.401968",
-    "durationMs": 1313,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:51:36.787857",
-    "endTime": "2025-12-10T08:51:44.837380",
-    "durationMs": 8049,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:51:36.801548",
-    "endTime": "2025-12-10T08:51:38.979882",
-    "durationMs": 2178,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:51:44.838012",
-    "endTime": "2025-12-10T08:51:48.577141",
-    "durationMs": 3739,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:51:48.577869",
-    "endTime": "2025-12-10T08:51:50.157421",
-    "durationMs": 1579,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "user_turn_total",
-    "startTime": "2025-12-10T08:52:11.918052",
-    "endTime": "2025-12-10T08:52:31.444076",
-    "durationMs": 19526,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tool_workflow",
-    "startTime": "2025-12-10T08:52:11.922362",
-    "endTime": "2025-12-10T08:52:13.446471",
-    "durationMs": 1524,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:52:11.922367",
-    "endTime": "2025-12-10T08:52:13.445826",
-    "durationMs": 1523,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "stream_assistant_reply",
-    "startTime": "2025-12-10T08:52:13.446812",
-    "endTime": "2025-12-10T08:52:31.443519",
-    "durationMs": 17996,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "time_to_first_sentence",
-    "startTime": "2025-12-10T08:52:13.446814",
-    "endTime": "2025-12-10T08:52:13.895004",
-    "durationMs": 448,
-    "thread": "Thread-52 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:52:13.812427",
-    "endTime": "2025-12-10T08:52:13.895310",
-    "durationMs": 82,
-    "thread": "Thread-52 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:52:13.896082",
-    "endTime": "2025-12-10T08:52:14.301936",
-    "durationMs": 405,
-    "thread": "Thread-52 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:52:13.896143",
-    "endTime": "2025-12-10T08:52:15.123231",
-    "durationMs": 1227,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:52:14.303008",
-    "endTime": "2025-12-10T08:52:14.494699",
-    "durationMs": 191,
-    "thread": "Thread-52 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:52:14.303135",
-    "endTime": "2025-12-10T08:52:17.120164",
-    "durationMs": 2817,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:52:14.508404",
-    "endTime": "2025-12-10T08:52:14.708225",
-    "durationMs": 199,
-    "thread": "Thread-52 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:52:15.124464",
-    "endTime": "2025-12-10T08:52:17.431641",
-    "durationMs": 2307,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:52:15.124965",
-    "endTime": "2025-12-10T08:52:16.440222",
-    "durationMs": 1315,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:52:17.121396",
-    "endTime": "2025-12-10T08:52:19.806244",
-    "durationMs": 2684,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:52:17.121906",
-    "endTime": "2025-12-10T08:52:23.322951",
-    "durationMs": 6201,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:52:19.824335",
-    "endTime": "2025-12-10T08:52:20.857231",
-    "durationMs": 1032,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:52:23.323586",
-    "endTime": "2025-12-10T08:52:26.682946",
-    "durationMs": 3359,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:52:26.683639",
-    "endTime": "2025-12-10T08:52:31.442234",
-    "durationMs": 4758,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "user_turn_total",
-    "startTime": "2025-12-10T08:52:37.792789",
-    "endTime": "2025-12-10T08:53:01.312769",
-    "durationMs": 23519,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tool_workflow",
-    "startTime": "2025-12-10T08:52:37.798091",
-    "endTime": "2025-12-10T08:52:46.840543",
-    "durationMs": 9042,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:52:37.798096",
-    "endTime": "2025-12-10T08:52:38.883580",
-    "durationMs": 1085,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "workflow_execute",
-    "startTime": "2025-12-10T08:52:38.907735",
-    "endTime": "2025-12-10T08:52:46.049744",
-    "durationMs": 7142,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_text",
-    "startTime": "2025-12-10T08:52:38.918506",
-    "endTime": "2025-12-10T08:52:39.939331",
-    "durationMs": 1020,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_generate",
-    "startTime": "2025-12-10T08:52:39.939922",
-    "endTime": "2025-12-10T08:52:41.914302",
-    "durationMs": 1974,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_generate_audio",
-    "startTime": "2025-12-10T08:52:39.943879",
-    "endTime": "2025-12-10T08:52:39.943884",
-    "durationMs": 0,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_play",
-    "startTime": "2025-12-10T08:52:41.914669",
-    "endTime": "2025-12-10T08:52:46.041054",
-    "durationMs": 4126,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:52:46.073147",
-    "endTime": "2025-12-10T08:52:46.839621",
-    "durationMs": 766,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "stream_assistant_reply",
-    "startTime": "2025-12-10T08:52:46.840773",
-    "endTime": "2025-12-10T08:53:01.312093",
-    "durationMs": 14471,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "time_to_first_sentence",
-    "startTime": "2025-12-10T08:52:46.840775",
-    "endTime": "2025-12-10T08:52:47.725430",
-    "durationMs": 884,
-    "thread": "Thread-73 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:52:47.383372",
-    "endTime": "2025-12-10T08:52:47.725815",
-    "durationMs": 342,
-    "thread": "Thread-73 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:52:47.726515",
-    "endTime": "2025-12-10T08:52:51.849377",
-    "durationMs": 4122,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:52:47.728301",
-    "endTime": "2025-12-10T08:52:48.022875",
-    "durationMs": 294,
-    "thread": "Thread-73 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:52:48.023973",
-    "endTime": "2025-12-10T08:52:49.585319",
-    "durationMs": 1561,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:52:51.851138",
-    "endTime": "2025-12-10T08:52:59.640342",
-    "durationMs": 7789,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:52:51.867471",
-    "endTime": "2025-12-10T08:52:53.101010",
-    "durationMs": 1233,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:52:59.641011",
-    "endTime": "2025-12-10T08:53:01.310389",
-    "durationMs": 1669,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "user_turn_total",
-    "startTime": "2025-12-10T08:53:02.237920",
-    "endTime": "2025-12-10T08:53:51.272754",
-    "durationMs": 49034,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tool_workflow",
-    "startTime": "2025-12-10T08:53:02.244517",
-    "endTime": "2025-12-10T08:53:25.526392",
-    "durationMs": 23281,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:53:02.244521",
-    "endTime": "2025-12-10T08:53:03.581253",
-    "durationMs": 1336,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "workflow_execute",
-    "startTime": "2025-12-10T08:53:03.606972",
-    "endTime": "2025-12-10T08:53:13.487243",
-    "durationMs": 9880,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_text",
-    "startTime": "2025-12-10T08:53:03.618206",
-    "endTime": "2025-12-10T08:53:05.055215",
-    "durationMs": 1437,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_generate",
-    "startTime": "2025-12-10T08:53:05.055612",
-    "endTime": "2025-12-10T08:53:07.007131",
-    "durationMs": 1951,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_generate_audio",
-    "startTime": "2025-12-10T08:53:05.060087",
-    "endTime": "2025-12-10T08:53:05.060091",
-    "durationMs": 0,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_play",
-    "startTime": "2025-12-10T08:53:07.007494",
-    "endTime": "2025-12-10T08:53:12.679656",
-    "durationMs": 5672,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:53:13.492038",
-    "endTime": "2025-12-10T08:53:15.116379",
-    "durationMs": 1624,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "workflow_execute",
-    "startTime": "2025-12-10T08:53:15.129146",
-    "endTime": "2025-12-10T08:53:24.832321",
-    "durationMs": 9703,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_text",
-    "startTime": "2025-12-10T08:53:15.138546",
-    "endTime": "2025-12-10T08:53:16.205989",
-    "durationMs": 1067,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_generate",
-    "startTime": "2025-12-10T08:53:16.206340",
-    "endTime": "2025-12-10T08:53:18.590621",
-    "durationMs": 2384,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_generate_audio",
-    "startTime": "2025-12-10T08:53:16.211038",
-    "endTime": "2025-12-10T08:53:16.211041",
-    "durationMs": 0,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_play",
-    "startTime": "2025-12-10T08:53:18.591019",
-    "endTime": "2025-12-10T08:53:24.505235",
-    "durationMs": 5914,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:53:24.837350",
-    "endTime": "2025-12-10T08:53:25.525727",
-    "durationMs": 688,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "stream_assistant_reply",
-    "startTime": "2025-12-10T08:53:25.526680",
-    "endTime": "2025-12-10T08:53:51.272112",
-    "durationMs": 25745,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "time_to_first_sentence",
-    "startTime": "2025-12-10T08:53:25.526683",
-    "endTime": "2025-12-10T08:53:28.101058",
-    "durationMs": 2574,
-    "thread": "Thread-90 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:53:26.355479",
-    "endTime": "2025-12-10T08:53:28.101379",
-    "durationMs": 1745,
-    "thread": "Thread-90 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:53:28.102001",
-    "endTime": "2025-12-10T08:53:34.075639",
-    "durationMs": 5973,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:53:34.077436",
-    "endTime": "2025-12-10T08:53:51.271069",
-    "durationMs": 17193,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:53:34.097637",
-    "endTime": "2025-12-10T08:53:36.349626",
-    "durationMs": 2251,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "user_turn_total",
-    "startTime": "2025-12-10T08:53:53.730228",
-    "endTime": "2025-12-10T08:55:01.691797",
-    "durationMs": 67961,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tool_workflow",
-    "startTime": "2025-12-10T08:53:53.735205",
-    "endTime": "2025-12-10T08:53:57.051776",
-    "durationMs": 3316,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:53:53.735210",
-    "endTime": "2025-12-10T08:53:57.051060",
-    "durationMs": 3315,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "stream_assistant_reply",
-    "startTime": "2025-12-10T08:53:57.052041",
-    "endTime": "2025-12-10T08:55:01.690773",
-    "durationMs": 64638,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "time_to_first_sentence",
-    "startTime": "2025-12-10T08:53:57.052043",
-    "endTime": "2025-12-10T08:53:58.108577",
-    "durationMs": 1056,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:53:57.600889",
-    "endTime": "2025-12-10T08:53:58.109107",
-    "durationMs": 508,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:53:58.110608",
-    "endTime": "2025-12-10T08:53:58.357461",
-    "durationMs": 246,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:53:58.110693",
-    "endTime": "2025-12-10T08:54:02.144066",
-    "durationMs": 4033,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:53:58.358439",
-    "endTime": "2025-12-10T08:53:58.682142",
-    "durationMs": 323,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:53:58.358585",
-    "endTime": "2025-12-10T08:54:00.512357",
-    "durationMs": 2153,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:53:58.707108",
-    "endTime": "2025-12-10T08:53:59.211685",
-    "durationMs": 504,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:53:59.230382",
-    "endTime": "2025-12-10T08:53:59.548904",
-    "durationMs": 318,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:53:59.549575",
-    "endTime": "2025-12-10T08:53:59.819079",
-    "durationMs": 269,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:53:59.843925",
-    "endTime": "2025-12-10T08:54:00.048045",
-    "durationMs": 204,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:54:00.075243",
-    "endTime": "2025-12-10T08:54:00.216563",
-    "durationMs": 141,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:54:00.217491",
-    "endTime": "2025-12-10T08:54:00.363717",
-    "durationMs": 146,
-    "thread": "Thread-95 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:54:00.513531",
-    "endTime": "2025-12-10T08:54:03.227595",
-    "durationMs": 2714,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:54:02.145530",
-    "endTime": "2025-12-10T08:54:06.786783",
-    "durationMs": 4641,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:02.146310",
-    "endTime": "2025-12-10T08:54:13.369113",
-    "durationMs": 11222,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:54:03.229635",
-    "endTime": "2025-12-10T08:54:06.469728",
-    "durationMs": 3240,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:54:06.470860",
-    "endTime": "2025-12-10T08:54:08.980668",
-    "durationMs": 2509,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:54:06.787924",
-    "endTime": "2025-12-10T08:54:09.277221",
-    "durationMs": 2489,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:54:08.982217",
-    "endTime": "2025-12-10T08:54:10.194679",
-    "durationMs": 1212,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:54:09.278845",
-    "endTime": "2025-12-10T08:54:10.884054",
-    "durationMs": 1605,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:54:10.903345",
-    "endTime": "2025-12-10T08:54:11.721601",
-    "durationMs": 818,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:13.369669",
-    "endTime": "2025-12-10T08:54:17.929189",
-    "durationMs": 4559,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:17.929669",
-    "endTime": "2025-12-10T08:54:24.879207",
-    "durationMs": 6949,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:24.879721",
-    "endTime": "2025-12-10T08:54:38.049413",
-    "durationMs": 13169,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:38.050163",
-    "endTime": "2025-12-10T08:54:45.909350",
-    "durationMs": 7859,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:45.910298",
-    "endTime": "2025-12-10T08:54:51.699250",
-    "durationMs": 5788,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:51.700067",
-    "endTime": "2025-12-10T08:54:56.949234",
-    "durationMs": 5249,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:56.949877",
-    "endTime": "2025-12-10T08:54:59.029392",
-    "durationMs": 2079,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:54:59.030414",
-    "endTime": "2025-12-10T08:55:01.689251",
-    "durationMs": 2658,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "user_turn_total",
-    "startTime": "2025-12-10T08:55:11.801136",
-    "endTime": "2025-12-10T08:55:24.517081",
-    "durationMs": 12715,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tool_workflow",
-    "startTime": "2025-12-10T08:55:11.806335",
-    "endTime": "2025-12-10T08:55:12.633437",
-    "durationMs": 827,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:55:11.806342",
-    "endTime": "2025-12-10T08:55:12.632691",
-    "durationMs": 826,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "stream_assistant_reply",
-    "startTime": "2025-12-10T08:55:12.633668",
-    "endTime": "2025-12-10T08:55:24.516510",
-    "durationMs": 11882,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "time_to_first_sentence",
-    "startTime": "2025-12-10T08:55:12.633670",
-    "endTime": "2025-12-10T08:55:13.578942",
-    "durationMs": 945,
-    "thread": "Thread-132 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:55:13.060920",
-    "endTime": "2025-12-10T08:55:13.579372",
-    "durationMs": 518,
-    "thread": "Thread-132 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:55:13.580161",
-    "endTime": "2025-12-10T08:55:17.264172",
-    "durationMs": 3684,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:55:13.599113",
-    "endTime": "2025-12-10T08:55:13.632869",
-    "durationMs": 33,
-    "thread": "Thread-132 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:55:13.633805",
-    "endTime": "2025-12-10T08:55:15.019276",
-    "durationMs": 1385,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:55:17.265718",
-    "endTime": "2025-12-10T08:55:23.075193",
-    "durationMs": 5809,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:55:17.289041",
-    "endTime": "2025-12-10T08:55:18.061572",
-    "durationMs": 772,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:55:23.075917",
-    "endTime": "2025-12-10T08:55:24.515196",
-    "durationMs": 1439,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "user_turn_total",
-    "startTime": "2025-12-10T08:55:24.517450",
-    "endTime": "2025-12-10T08:55:31.443366",
-    "durationMs": 6925,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tool_workflow",
-    "startTime": "2025-12-10T08:55:24.521740",
-    "endTime": "2025-12-10T08:55:25.387963",
-    "durationMs": 866,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "llm_get_workflow",
-    "startTime": "2025-12-10T08:55:24.521745",
-    "endTime": "2025-12-10T08:55:25.387456",
-    "durationMs": 865,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "stream_assistant_reply",
-    "startTime": "2025-12-10T08:55:25.388439",
-    "endTime": "2025-12-10T08:55:31.442720",
-    "durationMs": 6054,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "time_to_first_sentence",
-    "startTime": "2025-12-10T08:55:25.388442",
-    "endTime": "2025-12-10T08:55:25.864785",
-    "durationMs": 476,
-    "thread": "Thread-141 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:55:25.806592",
-    "endTime": "2025-12-10T08:55:25.865229",
-    "durationMs": 58,
-    "thread": "Thread-141 (_sentence_producer)"
-  },
-  {
-    "functionality": "sentence_created",
-    "startTime": "2025-12-10T08:55:25.866048",
-    "endTime": "2025-12-10T08:55:26.017652",
-    "durationMs": 151,
-    "thread": "Thread-141 (_sentence_producer)"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:55:25.866105",
-    "endTime": "2025-12-10T08:55:27.412852",
-    "durationMs": 1546,
-    "thread": "TTS_0"
-  },
-  {
-    "functionality": "tts_clip_generated",
-    "startTime": "2025-12-10T08:55:26.018563",
-    "endTime": "2025-12-10T08:55:28.140057",
-    "durationMs": 2121,
-    "thread": "TTS_1"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:55:27.414565",
-    "endTime": "2025-12-10T08:55:28.241170",
-    "durationMs": 826,
-    "thread": "PLAY_0"
-  },
-  {
-    "functionality": "llm_select_animation",
-    "startTime": "2025-12-10T08:55:28.160627",
-    "endTime": "2025-12-10T08:55:28.930487",
-    "durationMs": 769,
-    "thread": "MainThread"
-  },
-  {
-    "functionality": "tts_clip_played",
-    "startTime": "2025-12-10T08:55:28.242546",
-    "endTime": "2025-12-10T08:55:31.441381",
-    "durationMs": 3198,
+    "startTime": "2025-12-10T12:10:29.778003",
+    "endTime": "2025-12-10T12:10:34.146794",
+    "durationMs": 4368,
     "thread": "PLAY_0"
   }
 ]

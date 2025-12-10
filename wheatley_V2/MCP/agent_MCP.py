@@ -16,7 +16,7 @@ from agent_framework.openai import OpenAIResponsesClient as OpenAI
 
 
 APP_NAME = "Agents_MCP"
-CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
+CONFIG_PATH = Path(__file__).parent / ".." / "config" / "config.yaml"
 SPOTIFY_MCP_URL = os.getenv("SPOTIFY_MCP_URL", "http://localhost:8766/mcp")
 CALENDAR_MCP_URL = os.getenv("CALENDAR_MCP_URL", "http://localhost:8767/mcp")
 
