@@ -28,6 +28,7 @@ try:
 except ImportError:
     from spotify_ha_utils import SpotifyHA
 
+
 # ── tools visible to the LLM ──────────────────────────────────────────
 SPOTIFY_TOOLS = [
     {
