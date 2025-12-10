@@ -87,7 +87,6 @@ async def main() -> None:
             chat_client=OpenAI(),
         ) as agent,
     ):
-        print(f"{Style.BRIGHT}{Fore.GREEN}Connected to {APP_NAME}. Type '/quit' to exit.{Style.RESET_ALL}")
         thread = agent.get_new_thread()
 
         tts = TTSHandler(xi_key, voice_id=voice_id, model_id=model_id) if xi_key and tts_enabled else None
@@ -100,11 +99,6 @@ async def main() -> None:
             user = (user or "").strip()
             if not user:
                 continue
-
-            lower = user.lower()
-            if lower in {"/quit", "quit", "exit"}:
-                print(f"{Fore.MAGENTA}Bye!{Style.RESET_ALL}")
-                break
 
             reply = agent.run_stream(user, tools=tools, thread=thread)
             print("Wheatley: ", end="", flush=True)
