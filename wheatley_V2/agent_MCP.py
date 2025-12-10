@@ -28,7 +28,6 @@ handler.setFormatter(logging.Formatter("%(message)s"))
 logger.handlers[:] = [handler]
 logger.propagate = False
 
-
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     """Load config/config.yaml with safe defaults."""
     cfg: Dict[str, Any] = {"llm": {"model"}, "secrets": {"openai_api_key": ""}}

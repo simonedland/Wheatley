@@ -24,7 +24,6 @@ logger.propagate = False
 
 mcp = FastMCP(name=APP_NAME)
 
-
 @mcp.tool(name="list_wines", description="Returns a short wine list with styles.")
 def list_wines() -> str:
     """Return a short wine list with styles."""

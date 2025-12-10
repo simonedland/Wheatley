@@ -96,7 +96,6 @@ async def main() -> None:
             print((text if text is not None else str(reply)))
             print()
 
-
 if __name__ == "__main__":
     try:
         asyncio.run(main())

@@ -24,7 +24,6 @@ logger.propagate = False
 
 mcp = FastMCP(name=APP_NAME)
 
-
 @mcp.tool(name="get_specials", description="Returns the specials from the menu.")
 def get_specials() -> str:
     """Return the specials from the menu."""
