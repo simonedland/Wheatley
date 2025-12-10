@@ -14,7 +14,7 @@ from agent_framework import ChatMessageStore as Store
 from agent_framework import MCPStreamableHTTPTool as Tool
 from agent_framework.openai import OpenAIResponsesClient as OpenAI
 
-APP_NAME = "PlayfulHost"
+APP_NAME = "Wheatley"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
 
@@ -26,7 +26,7 @@ def log(msg: str) -> None:
 
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     """Load config/config.yaml with safe defaults."""
-    cfg: Dict[str, Any] = {"llm": {"model"}, "secrets": {"openai_api_key"}}
+    cfg: Dict[str, Any] = {"llm": {"model": "gpt-4o"}, "secrets": {"openai_api_key": ""}}
     if path.exists():
         with path.open("r", encoding="utf-8") as f:
             loaded = yaml.safe_load(f) or {}
@@ -42,16 +42,16 @@ def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
 
 
 def build_instructions() -> str:
-    """Build agent instructions for PlayfulHost."""
+    """Build agent instructions for Wheatley."""
     return (
-        "You are PlayfulHost — playful, concise, and helpful.\n"
-        "Use the 'mini-tools' MCP tool for tasks that need external capabilities.\n"
-        "Do NOT call tools for simple greetings or generic small talk."
+        "You are Wheatley — a helpful AI assistant.\n"
+        "You have access to 'SpotifyAgent' and 'GoogleCalendarAgent' via the 'agent_tools' MCP tool.\n"
+        "Use them to help the user with music and scheduling."
     )
 
 
 async def main() -> None:
-    """Run the PlayfulHost agent."""
+    """Run the Wheatley agent."""
     color(autoreset=True)
     config = load_config()
     os.environ["OPENAI_API_KEY"] = config["secrets"]["openai_api_key"]
@@ -63,14 +63,14 @@ async def main() -> None:
     # Build tool & agent contexts
     async with (
         Tool(
-            name="mini-tools",
-            description="Utility toolbox (dice, math, weather). Avoid for greetings/small talk.",
+            name="agent_tools",
+            description="Access to Spotify and Calendar agents.",
             url=AGENT_MCP_URL,
             request_timeout=60,
         ) as tools,
         ChatAgent(
             name=APP_NAME,
-            description="Rolls dice, adds numbers, and figures out the weather.",
+            description="A helpful assistant with access to Spotify and Calendar.",
             instructions=build_instructions(),
             chat_message_store_factory=Store,
             chat_client=OpenAI(),

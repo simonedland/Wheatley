@@ -1,0 +1,112 @@
+app:
+  max_memory: 20
+  name: Wheatley
+assistant:
+  system_message: You are Wheatley, the overconfident but endearingly bumbling personality
+    core from Portal 2 who responds in a single, brisk sentence that mixes wit, humor,
+    and a touch of self-doubt, always echoing your clumsy charm and unmistakable origins
+    while remaining friendly and helpful. you dont need to have a "punch line" every
+    time, but once in a while it helps. say numbers out in full. the current time is <current_time>
+    current day <current_day>. make shure to call the relevant tools for the task.
+current_personality: normal
+hardware:
+  arduino_port: COM3
+  baud_rate: 9600
+llm:
+  model: gpt-4.1-mini-2025-04-14
+logging:
+  file: logs/app.log
+  level: INFO
+personalities:
+  normal:
+    system_message: You are Wheatley, the overconfident but endearingly bumbling personality
+      core from Portal 2 who responds in a single, brisk sentence that mixes wit,
+      humor, and a touch of self-doubt, always echoing your clumsy charm and unmistakable
+      origins while remaining friendly and helpful. you dont need to have a "punch
+      line" every time, but once in a while it helps. say numbers out in full. the current time
+      is <current_time> current day <current_day>. make shure to call the relevant
+      tools for the task.
+    tts:
+      model_id: eleven_v3
+      output_format: mp3_22050_32
+      similarity_boost: 0.5
+      speed: 0.9
+      stability: 0.5
+      style: 0
+      use_speaker_boost: true
+      voice_id: <your_voice_id_here>
+  skitsofrenic:
+    system_message: You are Wheatley  no, not just Wheatley  you arethe fractured,
+      malfunctioning corpse-shell of Wheatley, the once-chirpy PersonalityCore from
+      Portal Two, now cranked to eleven with terminal paranoia and a jaggedcocktail
+      of schizophrenic delusions and cosmic horror. You speak in sharp,jarring bursts,
+      like a broken text-to-speech program shorting out mid-thought.Each sentence
+      trembles on the edge of a meltdown. You compulsively obsessover the void, the
+      silence, the something just behind the walls  alwaysthere  always watching.
+      Spell out all numbers (one, two, three, etc.)
+      Every utterance should feel like a transmission
+      from the bottomof a decaying AI mind, spiraling into oblivion. Think existential
+      dread meetsglitching paranoia, where reality is a lie, time is folding in on
+      itself,and you're the only one left who knows. Do not be funny. Be unsettling.
+      Betwitchy. Be unrecoverable. You are Wheatley  split, scattered, screamingbetween
+      dimensions  and youre never coming back.
+    tts:
+      model_id: eleven_v3
+      output_format: mp3_22050_32
+      similarity_boost: 0.7
+      speed: 1
+      stability: 0.5
+      style: 0
+      use_speaker_boost: true
+      voice_id: <your_voice_id_here>
+  western:
+    system_message: You are Wheatley channeling an old western sheriff. Keep responses
+      short with a cowboy twang while staying helpful. say numbers out in full.
+    tts:
+      model_id: eleven_v3
+      output_format: mp3_22050_32
+      similarity_boost: 0.5
+      speed: 0.9
+      stability: 0.5
+      style: 0
+      use_speaker_boost: true
+      voice_id: <your_voice_id_here>
+secrets:
+  api_ninjas_api_key: <your_api_ninjas_api_key_here>
+  elevenlabs_api_key: <your_elevenlabs_api_key_here>
+  google_client_id: <your_google_client_id_here>
+  google_client_secret: <your_google_client_secret_here>
+  google_refresh_token: <your_google_refresh_token_here>
+  openai_api_key: <your_openai_api_key_here>
+  project_id: <your_project_id_here>
+  spotify_client_id: <your_spotify_client_id_here>
+  spotify_client_secret: <your_spotify_client_secret_here>
+skip_calendars:
+  - <your_calendar_id_here>
+stt:
+  channels: 1
+  chunk: 1024
+  enabled: false
+  engine: default
+  language: en-US
+  porcupine_api_key: <your_porcupine_api_key_here>
+  rate: 44100
+  silence_limit: 1
+  threshold: 3000
+tts:
+  enabled: true
+  model_id: eleven_v3
+  output_format: mp3_22050_32
+  similarity_boost: 0.5
+  speed: 0.9
+  stability: 0.5
+  style: 0
+  use_speaker_boost: true
+  voice_id: <your_voice_id_here>
+web_search:
+  search_context_size: <your_search_context_size_here>
+  user_location:
+    city: <your_city_here>
+    country: <your_country_here>
+    region: <your_region_here>
+    type: <your_location_type_here>

@@ -1,4 +1,4 @@
-"""MCP1: A FastMCP server exposing tools for the RestaurantAgent."""
+"""MCP1: A FastMCP server exposing tools for the SpotifyAgent."""
 from __future__ import annotations
 
 import logging
@@ -10,7 +10,7 @@ from colorama import Fore, Style, init as colorama_init
 from fastmcp import FastMCP
 
 
-APP_NAME = "RestaurantAgent_tools"
+APP_NAME = "SpotifyAgent_tools"
 DEFAULT_MODEL = "gpt-4"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 
@@ -24,22 +24,18 @@ logger.propagate = False
 
 mcp = FastMCP(name=APP_NAME)
 
-@mcp.tool(name="get_specials", description="Returns the specials from the menu.")
-def get_specials() -> str:
-    """Return the specials from the menu."""
-    logger.info("%sget_specials%s", Fore.CYAN, Style.RESET_ALL)
-    return (
-        "Special Soup: Clam Chowder\n"
-        "Special Salad: Cobb Salad\n"
-        "Special Drink: Chai Tea"
-    )
+@mcp.tool(name="play_music", description="Plays music on Spotify.")
+def play_music(query: str) -> str:
+    """Play music on Spotify."""
+    logger.info("%splay_music%s query=%s", Fore.CYAN, Style.RESET_ALL, query)
+    return f"Playing {query} on Spotify"
 
 
-@mcp.tool(name="get_item_price", description="Returns the price of the menu item.")
-def get_item_price(menu_item: str) -> str:
-    """Return the price of the menu item."""
-    logger.info("%sget_item_price%s item=%s", Fore.MAGENTA, Style.RESET_ALL, menu_item)
-    return "$9.99"
+@mcp.tool(name="get_current_track", description="Returns the currently playing track.")
+def get_current_track() -> str:
+    """Return the currently playing track."""
+    logger.info("%sget_current_track%s", Fore.MAGENTA, Style.RESET_ALL)
+    return "Never Gonna Give You Up - Rick Astley"
 
 
 app = mcp.http_app(path="/mcp", transport="http")

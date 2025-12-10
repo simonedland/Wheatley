@@ -1,4 +1,4 @@
-"""MCP2: A FastMCP server exposing tools for the RestaurantAgent."""
+"""MCP2: A FastMCP server exposing tools for the GoogleCalendarAgent."""
 from __future__ import annotations
 
 import logging
@@ -10,7 +10,7 @@ from colorama import Fore, Style, init as colorama_init
 from fastmcp import FastMCP
 
 
-APP_NAME = "SommelierAgent_tools"
+APP_NAME = "GoogleCalendarAgent_tools"
 DEFAULT_MODEL = "gpt-4"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 
@@ -24,26 +24,22 @@ logger.propagate = False
 
 mcp = FastMCP(name=APP_NAME)
 
-@mcp.tool(name="list_wines", description="Returns a short wine list with styles.")
-def list_wines() -> str:
-    """Return a short wine list with styles."""
-    logger.info("%slist_wines%s", Fore.CYAN, Style.RESET_ALL)
+@mcp.tool(name="list_events", description="Returns a list of upcoming calendar events.")
+def list_events() -> str:
+    """Return a list of upcoming calendar events."""
+    logger.info("%slist_events%s", Fore.CYAN, Style.RESET_ALL)
     return (
-        "Whites: Sauvignon Blanc, Chardonnay (oaked/unoaked)\n"
-        "Reds: Pinot Noir, Merlot, Cabernet Sauvignon\n"
-        "Sparkling: Prosecco, Champagne\n"
-        "Non-alcoholic: Sparkling tea, Verjus spritz"
+        "10:00 AM - Team Meeting\n"
+        "12:30 PM - Lunch with Sarah\n"
+        "03:00 PM - Project Review"
     )
 
 
-@mcp.tool(name="suggest_pairing", description="Suggests a drink pairing for a dish.")
-def suggest_pairing(dish: str) -> str:
-    """Suggest a drink pairing for a dish."""
-    logger.info("%ssuggest_pairing%s dish=%s", Fore.MAGENTA, Style.RESET_ALL, dish)
-    base = "Try a Sauvignon Blanc for acidity and freshness." if any(
-        k in dish.lower() for k in ["salad", "fish", "shellfish", "goat cheese"]
-    ) else "Pinot Noir is a versatile red that won’t overpower most dishes."
-    return base
+@mcp.tool(name="add_event", description="Adds a new event to the calendar.")
+def add_event(event_details: str) -> str:
+    """Add a new event to the calendar."""
+    logger.info("%sadd_event%s details=%s", Fore.MAGENTA, Style.RESET_ALL, event_details)
+    return f"Event '{event_details}' added to your calendar."
 
 
 app = mcp.http_app(path="/mcp", transport="http")

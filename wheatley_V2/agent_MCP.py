@@ -1,4 +1,4 @@
-"""Main MCP agent server for RestaurantAgent and SommelierAgent."""
+"""Main MCP agent server for SpotifyAgent and GoogleCalendarAgent."""
 from __future__ import annotations
 
 import logging
@@ -17,8 +17,8 @@ from agent_framework.openai import OpenAIResponsesClient as OpenAI
 
 APP_NAME = "Agents_MCP"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
-RESTAURANT_MCP_URL = os.getenv("RESTAURANT_MCP_URL", "http://localhost:8766/mcp")
-SOMMELIER_MCP_URL = os.getenv("SOMMELIER_MCP_URL", "http://localhost:8767/mcp")
+SPOTIFY_MCP_URL = os.getenv("SPOTIFY_MCP_URL", "http://localhost:8766/mcp")
+CALENDAR_MCP_URL = os.getenv("CALENDAR_MCP_URL", "http://localhost:8767/mcp")
 
 colorama_init(autoreset=True)
 logger = logging.getLogger(f"{APP_NAME}.tools")
@@ -30,7 +30,7 @@ logger.propagate = False
 
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     """Load config/config.yaml with safe defaults."""
-    cfg: Dict[str, Any] = {"llm": {"model"}, "secrets": {"openai_api_key": ""}}
+    cfg: Dict[str, Any] = {"llm": {"model": "gpt-4o"}, "secrets": {"openai_api_key": ""}}
     if path.exists():
         with path.open("r", encoding="utf-8") as f:
             loaded = yaml.safe_load(f) or {}
@@ -54,14 +54,14 @@ mcp = FastMCP(name=APP_NAME)
 _openai = OpenAI()
 
 
-restaurant_agent = _openai.create_agent(
-    name="RestaurantAgent",
-    description="Answer questions about the menu by calling external Restaurant tools (via MCP)."
+spotify_agent = _openai.create_agent(
+    name="SpotifyAgent",
+    description="Answer questions about music and control playback by calling external Spotify tools (via MCP)."
 )
 
-sommelier_agent = _openai.create_agent(
-    name="SommelierAgent",
-    description="Suggests wine and beverage pairings, and explains why."
+calendar_agent = _openai.create_agent(
+    name="GoogleCalendarAgent",
+    description="Manages calendar events and schedules."
 )
 
 
@@ -73,28 +73,28 @@ async def _run_agent_text(agent_obj, query: str, **kwargs) -> str:
     return getattr(resp, "text", str(resp))
 
 
-@mcp.tool(name="RestaurantAgent", description="Answers questions about the restaurant menu.")
-async def restaurantagent(query: str) -> str:
-    """Run the RestaurantAgent and return the response."""
-    logger.info("%sRestaurantAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
+@mcp.tool(name="SpotifyAgent", description="Controls Spotify music playback.")
+async def spotify_agent_tool(query: str) -> str:
+    """Run the SpotifyAgent and return the response."""
+    logger.info("%sSpotifyAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
     async with Tool(
-        name="restaurant_mcp",
-        url=RESTAURANT_MCP_URL,
+        name="spotify_mcp",
+        url=SPOTIFY_MCP_URL,
         request_timeout=60,
-    ) as restaurant_tools:
-        return await _run_agent_text(restaurant_agent, query, tools=restaurant_tools)
+    ) as spotify_tools:
+        return await _run_agent_text(spotify_agent, query, tools=spotify_tools)
 
 
-@mcp.tool(name="SommelierAgent", description="Recommends wine/drink pairings and explains the choice. it also has overview of the wine list.")
-async def sommelieragent(query: str) -> str:
-    """Run the SommelierAgent and return the response."""
-    logger.info("%sSommelierAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
+@mcp.tool(name="GoogleCalendarAgent", description="Manages Google Calendar events.")
+async def calendar_agent_tool(query: str) -> str:
+    """Run the GoogleCalendarAgent and return the response."""
+    logger.info("%sGoogleCalendarAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
     async with Tool(
-        name="sommelier_mcp",
-        url=SOMMELIER_MCP_URL,
+        name="calendar_mcp",
+        url=CALENDAR_MCP_URL,
         request_timeout=60,
-    ) as sommelier_tools:
-        return await _run_agent_text(sommelier_agent, query, tools=sommelier_tools)
+    ) as calendar_tools:
+        return await _run_agent_text(calendar_agent, query, tools=calendar_tools)
 
 
 app = mcp.http_app(path="/mcp", transport="http")
