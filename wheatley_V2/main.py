@@ -68,9 +68,6 @@ async def main() -> None:
     model_id = tts_cfg.get("model_id", "eleven_flash_v2_5")
     tts_enabled = tts_cfg.get("enabled", True)
 
-    if not xi_key:
-        log(f"{Fore.RED}Warning: 'elevenlabs_api_key' not found in secrets.{Style.RESET_ALL}")
-
     # Build tool & agent contexts
     async with (
         Tool(
@@ -112,9 +109,6 @@ async def main() -> None:
             if tts:
                 await tts.flush_pending()
                 await tts.wait_idle()
-
-        if tts:
-            await tts.stop()
 
 if __name__ == "__main__":
     try:

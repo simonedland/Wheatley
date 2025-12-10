@@ -50,13 +50,6 @@ class TTSHandler:
             asyncio.create_task(self._play_audio())
         ]
 
-    async def stop(self):
-        """Flushes pending text, signals workers to stop, and waits for them to finish."""
-        await self.flush_pending()
-        await self.text_queue.put(None) # Signal TTS worker to stop
-        if self.tasks:
-            await asyncio.gather(*self.tasks)
-
     async def flush_pending(self):
         """Forces any remaining text in the buffer to be processed as a sentence."""
         if self.text_buffer.strip():
