@@ -28,26 +28,39 @@ handler.setFormatter(logging.Formatter("%(message)s"))
 logger.handlers[:] = [handler]
 logger.propagate = False
 
+def _require(cfg: Dict[str, Any], path: list[str]) -> Any:
+    """Return nested config value or raise a clear error if missing."""
+    cur: Any = cfg
+    for key in path:
+        if not isinstance(cur, dict) or key not in cur:
+            joined = "/".join(path)
+            raise KeyError(f"Missing required config key: {joined}")
+        cur = cur[key]
+    return cur
+
+
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
-    """Load config/config.yaml with safe defaults."""
-    cfg: Dict[str, Any] = {"llm": {"model": "gpt-4o"}, "secrets": {"openai_api_key": ""}}
-    if path.exists():
-        with path.open("r", encoding="utf-8") as f:
-            loaded = yaml.safe_load(f) or {}
-            if isinstance(loaded, dict):
-                cfg = {**cfg, **loaded}
+    """Load config/config.yaml and require all referenced values."""
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found: {path}")
 
-    key_env = cfg["secrets"].get("openai_api_key")
-    model_env = cfg["llm"].get("model")
+    with path.open("r", encoding="utf-8") as f:
+        loaded = yaml.safe_load(f)
 
-    cfg["secrets"]["openai_api_key"] = key_env
-    cfg["llm"]["model"] = model_env
-    return cfg
+    if not isinstance(loaded, dict):
+        raise ValueError("Config file must contain a YAML mapping")
+
+    _require(loaded, ["secrets", "openai_api_key"])
+    _require(loaded, ["llm", "model"])
+
+    return loaded
 
 
 config = load_config()
-os.environ["OPENAI_API_KEY"] = config["secrets"]["openai_api_key"]
-os.environ["OPENAI_RESPONSES_MODEL_ID"] = config["llm"]["model"]
+openai_key = _require(config, ["secrets", "openai_api_key"])
+llm_model = _require(config, ["llm", "model"])
+os.environ["OPENAI_API_KEY"] = openai_key
+os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
 
 
 mcp = FastMCP(name=APP_NAME)

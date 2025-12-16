@@ -132,9 +132,25 @@ class TTSHandler:
         """Worker: Plays audio segments in the correct order."""
         buf = {}
         expect = 0
-        while (item := await self.audio_queue.get())[0] != -1:
-            buf[item[0]] = item[1]
-            # Play available segments that match the expected sequence order
+        stream_done = False
+        started = False
+
+        while True:
+            idx, audio = await self.audio_queue.get()
+            if idx == -1:
+                stream_done = True
+            else:
+                buf[idx] = audio
+
+            # Wait until we have two sentences (or the stream ended early)
+            if not started:
+                have_first = expect in buf
+                have_second = (expect + 1) in buf
+                # Start only when first and second are ready, or if stream ended and only one exists
+                if not (have_first and (have_second or stream_done)):
+                    continue
+                started = True
+
             while expect in buf:
                 if data := buf.pop(expect):
                     await asyncio.get_running_loop().run_in_executor(None, self._play, data)
@@ -142,6 +158,9 @@ class TTSHandler:
                 if self.pending_audio:
                     self.pending_audio -= 1
                     self._maybe_idle()
+
+            if stream_done and not buf:
+                break
         self._maybe_idle()
 
     def _api_call(self, text, prev=None, nxt=None):
