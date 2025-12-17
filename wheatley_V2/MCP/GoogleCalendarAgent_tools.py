@@ -24,6 +24,7 @@ logger.propagate = False
 
 mcp = FastMCP(name=APP_NAME)
 
+
 @mcp.tool(name="list_events", description="Returns a list of upcoming calendar events.")
 def list_events() -> str:
     """Return a list of upcoming calendar events."""

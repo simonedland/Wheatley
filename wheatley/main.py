@@ -623,7 +623,7 @@ def _fetch_tts_clip(text: str, prev: str, cfg: Dict[str, Any]) -> Optional[bytes
         cfg["api_url"],
         headers={"xi-api-key": cfg["api_key"], "Content-Type": "application/json"},
         params={"output_format": cfg["fmt"]},
-        json={"text": text, "model_id": cfg["model"]},# "previous_text": prev or None},
+        json={"text": text, "model_id": cfg["model"]},  # "previous_text": prev or None
         timeout=60,
     )
     resp.raise_for_status()

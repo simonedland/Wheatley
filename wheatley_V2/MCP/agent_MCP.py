@@ -28,6 +28,7 @@ handler.setFormatter(logging.Formatter("%(message)s"))
 logger.handlers[:] = [handler]
 logger.propagate = False
 
+
 def _require(cfg: Dict[str, Any], path: list[str]) -> Any:
     """Return nested config value or raise a clear error if missing."""
     cur: Any = cfg
@@ -37,6 +38,8 @@ def _require(cfg: Dict[str, Any], path: list[str]) -> Any:
             raise KeyError(f"Missing required config key: {joined}")
         cur = cur[key]
     return cur
+
+
 
 
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:

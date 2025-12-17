@@ -24,6 +24,7 @@ logger.propagate = False
 
 mcp = FastMCP(name=APP_NAME)
 
+
 @mcp.tool(name="play_music", description="Plays music on Spotify.")
 def play_music(query: str) -> str:
     """Play music on Spotify."""

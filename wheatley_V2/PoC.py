@@ -1,7 +1,7 @@
+"""Basic OpenAI Assistants streaming example for weather queries."""
+
 # Copyright (c) Microsoft. All rights reserved.
 
-import asyncio
-import os
 import asyncio
 import os
 from pathlib import Path
@@ -21,6 +21,7 @@ assistant lifecycle management, showing streaming responses.
 """
 
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
+
 
 def _require(cfg: Dict[str, Any], path: list[str]) -> Any:
     """Return nested config value or raise a clear error if missing."""
@@ -49,12 +50,14 @@ def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
 
     return loaded
 
+
 config = load_config()
 openai_key = _require(config, ["secrets", "openai_api_key"])
 llm_model = _require(config, ["llm", "model"])
 os.environ["OPENAI_API_KEY"] = openai_key
 os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
 os.environ["OPENAI_CHAT_MODEL_ID"] = llm_model
+
 
 def get_weather(
     location: Annotated[str, Field(description="The location to get the weather for.")],
@@ -65,7 +68,7 @@ def get_weather(
 
 
 async def streaming_example() -> None:
-    """Example of streaming response (get results as they are generated)."""
+    """Stream responses as they are generated."""
     print("=== Streaming Response Example ===")
 
     # Since no assistant ID is provided, the assistant will be automatically created
@@ -85,6 +88,7 @@ async def streaming_example() -> None:
 
 
 async def main() -> None:
+    """Run the streaming example."""
     print("=== Basic OpenAI Assistants Chat Client Agent Example ===")
 
     await streaming_example()

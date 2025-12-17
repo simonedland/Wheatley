@@ -11,12 +11,16 @@ ENABLE_CONTEXT_AWARE_TTS = False
 SENTENCE_END_RE = re.compile(r"[.!?]\s+")
 ABBREVIATIONS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
+
 class TTSHandler:
     """
-    Handles streaming text-to-speech using ElevenLabs API.
+    Stream text-to-speech using ElevenLabs API.
+
     Manages sentence splitting, concurrent audio generation, and sequential playback.
     """
+
     def __init__(self, xi_api_key: str, voice_id: str = "4Jtuv4wBvd95o1hzNloV", model_id: str = "eleven_flash_v2_5"):
+        """Initialize handler with API credentials and defaults."""
         self.api_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         self.headers = {"xi-api-key": xi_api_key, "Content-Type": "application/json"}
         self.model_id = model_id
@@ -39,24 +43,24 @@ class TTSHandler:
         self.idle_event.set()
 
     def _maybe_idle(self):
-        """Checks if all queues and counters are empty/zero, then sets the idle event."""
+        """Check queues and counters then set the idle event when clear."""
         if not (self.pending_sent or self.pending_audio or not self.text_queue.empty() or not self.audio_queue.empty() or self.buffered_item):
             self.idle_event.set()
 
     def start(self):
-        """Starts the background worker tasks for TTS generation and audio playback."""
+        """Start background worker tasks for TTS generation and playback."""
         self.tasks = [
             asyncio.create_task(self._proc_tts()),
             asyncio.create_task(self._play_audio())
         ]
 
     async def flush_pending(self):
-        """Forces any remaining text in the buffer to be processed as a sentence."""
+        """Force any remaining buffered text to be processed as a sentence."""
         if self.text_buffer.strip():
             self._push_sentence(self.text_buffer.strip())
             self.text_buffer = ""
             self.scan_index = 0
-        
+
         if self.buffered_item:
             idx, txt = self.buffered_item
             self.text_queue.put_nowait((idx, txt, self.last_text, None))
@@ -67,8 +71,7 @@ class TTSHandler:
 
     def process_text(self, chunk: str):
         """
-        Accumulates text chunks and splits them into sentences.
-        Puts complete sentences into the text_queue for processing.
+        Accumulate text chunks, split into sentences, and enqueue for processing.
         """
         self.text_buffer += chunk
         while (match := SENTENCE_END_RE.search(self.text_buffer, self.scan_index)):
@@ -78,7 +81,7 @@ class TTSHandler:
             if pre and (pre[-1].lower() in ABBREVIATIONS or pre[-1].isdigit()):
                 self.scan_index = end
                 continue
-            
+
             # Extract sentence and update buffer
             sent = self.text_buffer[:end].strip()
             self.text_buffer = self.text_buffer[end:].lstrip()
@@ -87,7 +90,7 @@ class TTSHandler:
                 self._push_sentence(sent)
 
     def _push_sentence(self, sent: str):
-        """Buffers sentence to determine next_text, then enqueues previous buffered sentence."""
+        """Buffer sentence to determine next_text, then enqueue previous buffered sentence."""
         if not ENABLE_CONTEXT_AWARE_TTS:
             self.text_queue.put_nowait((self.sent_count, sent, None, None))
             self.sent_count += 1
@@ -100,15 +103,16 @@ class TTSHandler:
             self.text_queue.put_nowait((idx, txt, self.last_text, sent))
             self.last_text = txt
             self.pending_sent += 1
-        
+
         self.buffered_item = (self.sent_count, sent)
         self.sent_count += 1
         self.idle_event.clear()
 
     async def _proc_tts(self):
-        """Worker: Fetches audio for sentences concurrently (limited by semaphore)."""
+        """Fetch audio for sentences concurrently (limited by semaphore)."""
         sem = asyncio.Semaphore(2)
         tasks = []
+
         async def _fetch(idx, txt, prev, nxt):
             async with sem:
                 # Run blocking API call in executor
@@ -126,10 +130,10 @@ class TTSHandler:
         if tasks:
             await asyncio.gather(*tasks)
         await self.audio_queue.put((-1, b""))
-        self._maybe_idle() # Signal playback worker to stop
+        self._maybe_idle()  # Signal playback worker to stop
 
     async def _play_audio(self):
-        """Worker: Plays audio segments in the correct order."""
+        """Play audio segments in the correct order."""
         buf = {}
         expect = 0
         stream_done = False
@@ -164,17 +168,19 @@ class TTSHandler:
         self._maybe_idle()
 
     def _api_call(self, text, prev=None, nxt=None):
-        """Blocking wrapper for ElevenLabs API call."""
+        """Call ElevenLabs API and return audio bytes."""
         payload = {"text": text, "model_id": self.model_id}
-        if prev: payload["previous_text"] = prev
-        if nxt: payload["next_text"] = nxt
-        
+        if prev:
+            payload["previous_text"] = prev
+        if nxt:
+            payload["next_text"] = nxt
+
         try:
             r = requests.post(
-                self.api_url, 
-                headers=self.headers, 
-                json=payload, 
-                params={"output_format": "mp3_22050_32"}, 
+                self.api_url,
+                headers=self.headers,
+                json=payload,
+                params={"output_format": "mp3_22050_32"},
                 timeout=60
             )
             r.raise_for_status()
@@ -185,12 +191,12 @@ class TTSHandler:
                 print(f"[TTS Error Details] {r.text}")
 
     def _play(self, data):
-        """Blocking wrapper for audio playback."""
+        """Play audio bytes using pydub."""
         try:
             play(AudioSegment.from_file(io.BytesIO(data), format="mp3"))
         except Exception as e:
             print(f"[Playback Error] {e}")
 
-    async def wait_idle(self): 
-        """Waits until all text is processed and audio is played."""
+    async def wait_idle(self):
+        """Wait until all text is processed and audio playback finishes."""
         await self.idle_event.wait()
