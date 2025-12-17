@@ -1,13 +1,20 @@
 """Small helper to stream text chunks to ElevenLabs TTS and play audio."""
 
 import asyncio
+import importlib
 import io
 import re
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import requests
-from pydub import AudioSegment  # type: ignore[import-not-found]
-from pydub.playback import play  # type: ignore[import-not-found]
+
+if TYPE_CHECKING:
+    # Minimal typing surface; runtime modules are loaded dynamically below.
+    class AudioSegment:
+        @staticmethod
+        def from_file(file: Any, format: str): ...
+
+    def play(segment: Any) -> None: ...
 
 ENABLE_CONTEXT_AWARE_TTS = False
 
