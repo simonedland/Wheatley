@@ -27,19 +27,8 @@ def log(msg: str) -> None:
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
 
 
-def _require(cfg: Dict[str, Any], path: list[str]) -> Any:
-    """Return nested config value or raise a clear error if missing."""
-    cur: Any = cfg
-    for key in path:
-        if not isinstance(cur, dict) or key not in cur:
-            joined = "/".join(path)
-            raise KeyError(f"Missing required config key: {joined}")
-        cur = cur[key]
-    return cur
-
-
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
-    """Load config/config.yaml and require all values to be present."""
+    """Load config/config.yaml."""
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
 
@@ -48,14 +37,6 @@ def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
 
     if not isinstance(loaded, dict):
         raise ValueError("Config file must contain a YAML mapping")
-
-    # Validate required top-level sections early for clearer errors
-    _require(loaded, ["secrets", "openai_api_key"])
-    _require(loaded, ["llm", "model"])
-    _require(loaded, ["secrets", "elevenlabs_api_key"])
-    _require(loaded, ["tts", "voice_id"])
-    _require(loaded, ["tts", "model_id"])
-    _require(loaded, ["tts", "enabled"])
 
     return loaded
 
@@ -81,19 +62,19 @@ async def main() -> None:
     """Run the Wheatley agent."""
     color(autoreset=True)
     config = load_config()
-    openai_key = _require(config, ["secrets", "openai_api_key"])
-    llm_model = _require(config, ["llm", "model"])
+    openai_key = config["secrets"]["openai_api_key"]
+    llm_model = config["llm"]["model"]
     os.environ["OPENAI_API_KEY"] = openai_key
     os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
 
     log(f"Model: {Fore.CYAN}{llm_model}{Style.RESET_ALL}")
     log(f"MCP endpoint: {Fore.CYAN}{AGENT_MCP_URL}{Style.RESET_ALL}")
 
-    xi_key = _require(config, ["secrets", "elevenlabs_api_key"])
-    tts_cfg = _require(config, ["tts"])
-    voice_id = _require(tts_cfg, ["voice_id"])
-    model_id = _require(tts_cfg, ["model_id"])
-    tts_enabled = _require(tts_cfg, ["enabled"])
+    xi_key = config["secrets"]["elevenlabs_api_key"]
+    tts_cfg = config["tts"]
+    voice_id = tts_cfg["voice_id"]
+    model_id = tts_cfg["model_id"]
+    tts_enabled = tts_cfg["enabled"]
 
     # Build tool & agent contexts
     async with (
