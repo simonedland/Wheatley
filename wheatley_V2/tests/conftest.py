@@ -181,6 +181,7 @@ def _stub_yaml():
     """Provide a minimal yaml module using json for CI environments without PyYAML."""
     try:
         import yaml  # noqa: F401
+
         return
     except ImportError:
         pass
