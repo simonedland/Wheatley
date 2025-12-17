@@ -3,7 +3,7 @@ import importlib
 import sys
 import types
 
-import pytest
+import pytest  # type: ignore[import-not-found]
 
 
 def _import_tts(monkeypatch):

@@ -1,5 +1,5 @@
 import yaml
-import pytest
+import pytest  # type: ignore[import-not-found]
 
 from wheatley_V2 import main as v2_main
 
