@@ -6,8 +6,8 @@ import re
 from typing import Any, Optional
 
 import requests
-from pydub import AudioSegment
-from pydub.playback import play
+from pydub import AudioSegment  # type: ignore[import-not-found]
+from pydub.playback import play  # type: ignore[import-not-found]
 
 ENABLE_CONTEXT_AWARE_TTS = False
 
@@ -33,7 +33,9 @@ class TTSHandler:
         self.headers = {"xi-api-key": xi_api_key, "Content-Type": "application/json"}
         self.model_id = model_id
         # Queues for passing data between workers
-        self.text_queue: asyncio.Queue[tuple[int, str, Optional[str], Optional[str]]] = asyncio.Queue()
+        self.text_queue: asyncio.Queue[
+            tuple[int, str, Optional[str], Optional[str]]
+        ] = asyncio.Queue()
         self.audio_queue: asyncio.Queue[tuple[int, Optional[bytes]]] = asyncio.Queue()
         # Buffer for accumulating text chunks until a full sentence is formed
         self.text_buffer = ""

@@ -10,8 +10,8 @@ from random import randint
 from typing import Annotated
 import yaml
 
-from agent_framework.openai import OpenAIAssistantsClient
-from pydantic import Field
+from agent_framework.openai import OpenAIAssistantsClient  # type: ignore[import-not-found]
+from pydantic import Field  # type: ignore[import-not-found]
 
 """
 OpenAI Assistants Basic Example
