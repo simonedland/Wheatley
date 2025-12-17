@@ -1,31 +1,31 @@
 # This file lists the dependencies for the project.
-openai
-numpy
-pandas
-scikit-learn
-tensorflow==2.19.0
-torch
-flask
-requests
-pyserial
-pydub
+#openai
+#numpy
+#pandas
+#scikit-learn
+#tensorflow==2.19.0
+#torch
+#flask
+#requests
+#pyserial
+#pydub
 pytest
-matplotlib
-pyyaml
-pyttsx3
-elevenlabs
+#matplotlib
+#pyyaml
+#pyttsx3
+#elevenlabs
 #pyaudio
 colorama
-pydantic
+#pydantic
 # RPi.GPIO is for Raspberry Pi hardware and will not work in standard containers
 # Commented out for Docker builds:
 # RPi.GPIO
-google-auth
-google-auth-oauthlib
-google-api-python-client
-spotipy
-pvporcupine
-websockets>=10.0
+#google-auth
+#google-auth-oauthlib
+#google-api-python-client
+#spotipy
+#pvporcupine
+#websockets>=10.0
 #agent_framework
 #azure-identity
 #azure-ai-projects
