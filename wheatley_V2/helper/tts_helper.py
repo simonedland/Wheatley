@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
     def play(segment: Any) -> None: ...
 
+
 ENABLE_CONTEXT_AWARE_TTS = False
 
 SENTENCE_END_RE = re.compile(r"[.!?]\s+")

@@ -139,7 +139,9 @@ class PuppetGUI(Tk):
         self.geometry("1280x860")
         self.anim_file = "animations.json"
         self.animations = self._load_json()
-        self.row_vars: list[Any] = []  # List of row variables (scale, vel, idle, intv, canvas)
+        self.row_vars: list[
+            Any
+        ] = []  # List of row variables (scale, vel, idle, intv, canvas)
         self.servo_min = list(DEFAULT_MIN)
         self.servo_max = list(DEFAULT_MAX)
         self._theme()

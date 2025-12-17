@@ -39,7 +39,9 @@ def test_process_text_splits_sentences_respects_abbreviations(monkeypatch):
         handler.process_text("Hi there. Mr. Smith arrived. Bye.")
         await handler.flush_pending()
 
-        items = [await handler.text_queue.get() for _ in range(handler.text_queue.qsize())]
+        items = [
+            await handler.text_queue.get() for _ in range(handler.text_queue.qsize())
+        ]
         texts = [item[1] for item in items]
 
         assert texts == [
