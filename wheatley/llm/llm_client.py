@@ -40,7 +40,7 @@ from utils.timing_logger import record_timing
 
 logging.basicConfig(level=logging.WARN)
 
-PUNCT_RE = re.compile(r'[.!?]\s+')
+PUNCT_RE = re.compile(r"[.!?]\s+")
 ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 
@@ -71,6 +71,7 @@ class TextToSpeech:
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
 
     """Minimal wrapper around the ElevenLabs API for speech synthesis."""
+
     def __init__(self):
         """Initialise the ElevenLabs client using values from ``config.yaml``."""
         self._load_config()
@@ -87,7 +88,7 @@ class TextToSpeech:
             voice_id=self.voice_id,
             voice_settings=self.voice_settings,
             model_id=self.model_id,
-            output_format=self.output_format
+            output_format=self.output_format,
         )
         record_timing("tts_generate_audio", start_time)
         return audio
@@ -115,11 +116,7 @@ class TextToSpeech:
         try:
             audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
             pcm_data = (
-                audio
-                .set_frame_rate(22050)
-                .set_channels(1)
-                .set_sample_width(2)
-                .raw_data
+                audio.set_frame_rate(22050).set_channels(1).set_sample_width(2).raw_data
             )
             p = pyaudio.PyAudio()
             stream = p.open(format=pyaudio.paInt16, channels=1, rate=22050, output=True)
@@ -138,6 +135,7 @@ class TextToSpeech:
 # =================== LLM Client ===================
 # This class is responsible for interacting with the OpenAI API
 
+
 class GPTClient:
     """Wrapper for OpenAI chat interactions tailored for Wheatley."""
 
@@ -150,7 +148,9 @@ class GPTClient:
         openai.api_key = self.api_key
         self.last_mood = "neutral"  # Track last selected mood
         # Load emotion counter from file
-        emotion_counter_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "llm", "emotion_counter.json")
+        emotion_counter_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "llm", "emotion_counter.json"
+        )
         try:
             with open(emotion_counter_path, "r") as f:
                 self.emotion_counter = json.load(f)
@@ -200,7 +200,7 @@ class GPTClient:
                     scan = m.end()
                     continue
                 sent = buf[: m.end()].strip()
-                buf = buf[m.end():].lstrip()
+                buf = buf[m.end() :].lstrip()
                 scan = 0
                 end_time = time.time()
                 yield sent, sentence_start or end_time, end_time
@@ -218,7 +218,14 @@ class GPTClient:
             self.emotion_counter[animation] = 1
         # Save the updated emotion counter to the file
         try:
-            with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "llm", "emotion_counter.json"), "w") as f:
+            with open(
+                os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)),
+                    "llm",
+                    "emotion_counter.json",
+                ),
+                "w",
+            ) as f:
                 json.dump(self.emotion_counter, f, indent=2)
         except Exception as e:
             logging.error(f"Failed to update emotion_counter.json: {e}")
@@ -229,7 +236,9 @@ class GPTClient:
         # Compose context about emotion counter for the LLM
         if self.emotion_counter:
             most_common = max(self.emotion_counter, key=self.emotion_counter.get)
-            counter_str = ", ".join(f"{k}: {v}" for k, v in self.emotion_counter.items())
+            counter_str = ", ".join(
+                f"{k}: {v}" for k, v in self.emotion_counter.items()
+            )
             counter_context = f"Emotion usage counts: {counter_str}. Most used: {most_common}. Prefer less used emotions for more variation. Never use the most used one."
         else:
             counter_context = "No emotion usage data available."
@@ -239,14 +248,15 @@ class GPTClient:
                 **set_animation_tool[0],
                 "description": set_animation_tool[0]["description"].replace(
                     "{last_mood}", self.last_mood
-                ) + f" {counter_context}"
+                )
+                + f" {counter_context}",
             }
         ]
         completion = openai.responses.create(
             model=self.model,
             input=conversation,
             tools=dynamic_set_animation_tool,
-            tool_choice={"name": "set_animation", "type": "function"}
+            tool_choice={"name": "set_animation", "type": "function"},
         )
         record_timing("llm_select_animation", start_time)
         choice = completion.output[0]
@@ -255,7 +265,10 @@ class GPTClient:
             args = json.loads(choice.arguments)
             animation = args.get("animation", "")
         except Exception:
-            if hasattr(choice.arguments, "function_call") and choice.arguments.function_call:
+            if (
+                hasattr(choice.arguments, "function_call")
+                and choice.arguments.function_call
+            ):
                 func_call = choice.arguments.function_call
                 try:
                     args = json.loads(func_call.arguments)
@@ -274,27 +287,23 @@ class GPTClient:
         temp_conversation = conversation.copy()
         temp_conversation[0] = {
             "role": "system",
-            "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. look at earlier conversation to see if the information is there already. like for example dont call get joke, if there is already a joke fresh in memory. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE. NEVER summarize data."
+            "content": "call a relevant function to answer the question. if no function is relevant, just answer nothing. make shure that if you dont do a function call return nothing. return DONE when enough information is gained to answer the users question. look at earlier conversation to see if the information is there already. like for example dont call get joke, if there is already a joke fresh in memory. DO NOT ANSWER THE QUESTION. JUST WRITE DONE WHEN YOU ARE DONE. NEVER summarize data.",
         }
         # pop message 1
         temp_conversation.pop(1)
         # remove all the messages from assistant
-        temp_conversation = [msg for msg in temp_conversation if msg["role"] != "assistant"]
+        temp_conversation = [
+            msg for msg in temp_conversation if msg["role"] != "assistant"
+        ]
         # add one shot example after the first system message
-        temp_conversation.insert(1, {
-            "role": "user",
-            "content": "hello mister!"
-        })
-        temp_conversation.insert(2, {
-            "role": "assistant",
-            "content": "DONE"
-        })
+        temp_conversation.insert(1, {"role": "user", "content": "hello mister!"})
+        temp_conversation.insert(2, {"role": "assistant", "content": "DONE"})
 
         completion = openai.responses.create(
             model=self.model,
             input=temp_conversation,
             tools=tools,
-            parallel_tool_calls=True
+            parallel_tool_calls=True,
         )
         record_timing("llm_get_workflow", start_time)
         choice = completion.output or []
@@ -304,11 +313,13 @@ class GPTClient:
         if choice and getattr(choice[0], "type", None) == "web_search_call":
             tool_summaries.append("web_search_call")
             for item in getattr(choice[1], "content", []) if len(choice) > 1 else []:
-                results.append({
-                    "arguments": {"text": getattr(item, "text", "")},
-                    "name": "web_search_call_result",
-                    "call_id": getattr(item, "id", "")
-                })
+                results.append(
+                    {
+                        "arguments": {"text": getattr(item, "text", "")},
+                        "name": "web_search_call_result",
+                        "call_id": getattr(item, "id", ""),
+                    }
+                )
 
         for msg in choice:
             if getattr(msg, "type", None) == "function_call":
@@ -318,13 +329,18 @@ class GPTClient:
                     try:
                         args_dict = json.loads(msg.arguments)
                     except Exception:  # noqa: BLE001
-                        logging.warning("Failed to parse tool arguments for %s; using empty dict.", getattr(msg, "name", "unknown"))
+                        logging.warning(
+                            "Failed to parse tool arguments for %s; using empty dict.",
+                            getattr(msg, "name", "unknown"),
+                        )
                         args_dict = {}
-                results.append({
-                    "arguments": args_dict,
-                    "name": getattr(msg, "name", "unknown"),
-                    "call_id": call_id,
-                })
+                results.append(
+                    {
+                        "arguments": args_dict,
+                        "name": getattr(msg, "name", "unknown"),
+                        "call_id": call_id,
+                    }
+                )
                 tool_summaries.append(f"{getattr(msg, 'name', 'unknown')}@{call_id}")
 
         logging.info(
@@ -355,10 +371,12 @@ _TIME_AMPM = re.compile(r"^(\d{1,2})(am|pm)$", re.I)
 # --------------------------------------------------------------------------- #
 def tool(name: str) -> Callable[[Callable], Callable]:
     """Register *func* under *name* in Functions._TOOLS."""
+
     def decorator(func: Callable) -> Callable:
         # We can't touch Functions._TOOLS yet (class not created), so stash name
         func._tool_name = name  # type: ignore[attr-defined]
         return func
+
     return decorator
 
 
@@ -382,7 +400,9 @@ class Functions:
         self.google_agent = GOOGLE_AGENT if SERVICE_STATUS.get("google") else None
         self.spotify_agent = SPOTIFY_AGENT if SERVICE_STATUS.get("spotify") else None
 
-        self.memory_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json")
+        self.memory_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json"
+        )
 
         # Build dispatch table from @tool-decorated methods
         # In other words, create a dictionary of everything that has the @tool decorator
@@ -395,33 +415,43 @@ class Functions:
     # ───────────────────────────────────────────────────────────────────
     # Public API
     # ───────────────────────────────────────────────────────────────────
-    def execute_workflow(self, workflow: List[Dict[str, Any]], event_queue: Any | None = None) -> List[Dict[str, Any]]:
+    def execute_workflow(
+        self, workflow: List[Dict[str, Any]], event_queue: Any | None = None
+    ) -> List[Dict[str, Any]]:
         """Run each tool in *workflow* and return metadata dictionaries."""
         results: list[dict[str, Any]] = []
 
         for item in workflow:
             name = item.get("name")
             if not name:
-                logging.warning("Encountered workflow entry without a tool name; skipping: %s", item)
+                logging.warning(
+                    "Encountered workflow entry without a tool name; skipping: %s", item
+                )
                 continue
             args = item.get("arguments", {})
             call_id = item.get("call_id")
 
-            logging.info("Executing tool '%s' (call_id=%s) with args=%s", name, call_id, args)
+            logging.info(
+                "Executing tool '%s' (call_id=%s) with args=%s", name, call_id, args
+            )
             self._narrate(name, args)  # no branching inside
 
             handler = self._TOOLS.get(name, self._unsupported)
             try:
                 result = handler(args, event_queue)
             except Exception as exc:  # noqa: BLE001
-                logging.error("Tool '%s' (call_id=%s) raised an error: %s", name, call_id, exc)
+                logging.error(
+                    "Tool '%s' (call_id=%s) raised an error: %s", name, call_id, exc
+                )
                 result = f"Error executing {name}: {exc}"
 
-            results.append({
-                "name": name,
-                "call_id": call_id,
-                "result": result,
-            })
+            results.append(
+                {
+                    "name": name,
+                    "call_id": call_id,
+                    "result": result,
+                }
+            )
 
         return results
 
@@ -449,9 +479,7 @@ class Functions:
 
         tts_engine.generate_and_play_advanced(text)
 
-    def _unsupported(
-        self, _args: Dict[str, Any], _queue: Any | None = None
-    ) -> str:
+    def _unsupported(self, _args: Dict[str, Any], _queue: Any | None = None) -> str:
         return "Unsupported function name"
 
     # ───────────────────────────────────────────────────────────────────
@@ -556,7 +584,16 @@ class Functions:
     def _edit_ltm(self, args: Dict[str, Any], _q: Any | None) -> str:
         return self.edit_long_term_memory(args["index"], args.get("data", {}))
 
-    def get_weather(self, lat, lon, include_forecast=False, forecast_days=7, extra_hourly=None, temperature_unit="celsius", wind_speed_unit="kmh"):
+    def get_weather(
+        self,
+        lat,
+        lon,
+        include_forecast=False,
+        forecast_days=7,
+        extra_hourly=None,
+        temperature_unit="celsius",
+        wind_speed_unit="kmh",
+    ):
         """Retrieve weather information from the Open-Meteo API."""
         if extra_hourly is None:
             extra_hourly = ["temperature_2m", "weathercode"]
@@ -585,7 +622,9 @@ class Functions:
         # Interpret the current weather code.
         weather_code = cw.get("weathercode")
         weather_code_int = int(weather_code)
-        description = WEATHER_CODE_DESCRIPTIONS.get(weather_code_int, "Unknown weather condition")
+        description = WEATHER_CODE_DESCRIPTIONS.get(
+            weather_code_int, "Unknown weather condition"
+        )
         summary += f"\nWeather Condition: {description} (Code: {weather_code_int})"
         # Process extended forecast if requested.
         if include_forecast and extra_hourly:
@@ -613,6 +652,7 @@ class Functions:
         """Schedule an async timer that posts an event when it expires. Minimal error handling, print when event is notified."""
         import asyncio
         from datetime import datetime
+
         try:
             from ..main import Event
         except Exception:
@@ -629,9 +669,9 @@ class Functions:
                 metadata={
                     "set_by": "llm_agent",
                     "duration": duration,
-                    "set_at": str(datetime.utcnow())
+                    "set_at": str(datetime.utcnow()),
                 },
-                ts=datetime.utcnow()
+                ts=datetime.utcnow(),
             )
             if event_queue:
                 await event_queue.put(timer_event)
@@ -642,17 +682,20 @@ class Functions:
     def write_long_term_memory(self, data: dict) -> str:
         """Persist ``data`` to the long term memory JSON file."""
         from utils.long_term_memory import overwrite_memory
+
         overwrite_memory(data, path=self.memory_path)
         return "memory written"
 
     def read_long_term_memory(self) -> dict:
         """Return the contents of the long term memory file."""
         from utils.long_term_memory import read_memory
+
         return {"memory": read_memory(path=self.memory_path)}
 
     def edit_long_term_memory(self, index: int, data: dict) -> str:
         """Update the memory entry at ``index`` with ``data``."""
         from utils.long_term_memory import edit_memory
+
         success = edit_memory(index, data, path=self.memory_path)
         return "memory updated" if success else "memory index out of range"
 
@@ -675,10 +718,10 @@ class Functions:
         Raises:
             ValueError: if *time_str* is not in a supported format.
         """
-        if (m := _TIME_24H.match(time_str)):
+        if m := _TIME_24H.match(time_str):
             return int(m.group(1)), int(m.group(2))
 
-        if (m := _TIME_AMPM.match(time_str)):
+        if m := _TIME_AMPM.match(time_str):
             hour = int(m.group(1)) % 12
             if m.group(2).lower() == "pm":
                 hour += 12
@@ -689,7 +732,9 @@ class Functions:
     def _seconds_until(self, target_hour: int, target_min: int) -> float:
         """Seconds from *now* until the next occurrence of *target_hour:target_min*."""
         now = datetime.now()
-        target = now.replace(hour=target_hour, minute=target_min, second=0, microsecond=0)
+        target = now.replace(
+            hour=target_hour, minute=target_min, second=0, microsecond=0
+        )
         if target <= now:
             target += timedelta(days=1)
         return (target - now).total_seconds()
@@ -731,12 +776,13 @@ class Functions:
                 metadata={
                     "set_by": "llm_agent",
                     "reminder_time": time_str,
-                    "set_at": str(now)
+                    "set_at": str(now),
                 },
-                ts=datetime.now()
+                ts=datetime.now(),
             )
             if event_queue:
                 await event_queue.put(reminder_event)
+
         asyncio.create_task(reminder_task())
 
     def set_personality(self, mode: str) -> str:

@@ -1,4 +1,5 @@
 """Main application file for PlayfulHost agent using MCP tools."""
+
 from __future__ import annotations
 
 import asyncio
@@ -112,7 +113,11 @@ async def main() -> None:
     ):
         thread = agent.get_new_thread()
 
-        tts = TTSHandler(xi_key, voice_id=voice_id, model_id=model_id) if xi_key and tts_enabled else None
+        tts = (
+            TTSHandler(xi_key, voice_id=voice_id, model_id=model_id)
+            if xi_key and tts_enabled
+            else None
+        )
         if tts:
             tts.start()
 
@@ -135,6 +140,7 @@ async def main() -> None:
             if tts:
                 await tts.flush_pending()
                 await tts.wait_idle()
+
 
 if __name__ == "__main__":
     try:

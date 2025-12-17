@@ -1,4 +1,5 @@
 """MCP1: A FastMCP server exposing tools for the SpotifyAgent."""
+
 from __future__ import annotations
 
 import logging

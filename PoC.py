@@ -31,7 +31,7 @@ QUEUE_MAXSIZE = 100
 TOKEN_FLUSH_MS = 200
 MAX_ATTEMPTS = 6
 
-PUNCT_RE = re.compile(r'[.!?]\s+')
+PUNCT_RE = re.compile(r"[.!?]\s+")
 ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 # ───────── OPTIONAL RICH UI ────────────────────────────────────────────────
@@ -40,6 +40,7 @@ try:
     from rich.table import Table
     from rich.console import Console
     from rich.text import Text
+
     console, USE_RICH = Console(), True
 except ImportError:
     USE_RICH = False
@@ -53,7 +54,7 @@ COL = dict(
     ready="green",
     play="bright_blue",
     end="magenta",
-    err="bright_red"
+    err="bright_red",
 )
 
 
@@ -66,11 +67,7 @@ def render(rows: List[Dict]):
     tbl.add_column("Sentence", overflow="fold")
     tbl.add_column("Status", width=18)
     for r in rows:
-        tbl.add_row(
-            str(r["idx"]),
-            r["text"],
-            Text(r["status"], style=COL[r["phase"]])
-        )
+        tbl.add_row(str(r["idx"]), r["text"], Text(r["status"], style=COL[r["phase"]]))
     live.update(tbl, refresh=True)
 
 
@@ -96,23 +93,27 @@ def add_row(idx: float, txt=""):
     render(rows)
 
 
-def set_phase(idx: float, phase: str, txt: Optional[str] = None,
-              status: Optional[str] = None):
+def set_phase(
+    idx: float, phase: str, txt: Optional[str] = None, status: Optional[str] = None
+):
     """Update the phase and status of a row in the live table and render it."""
     r = next(r for r in rows if r["idx"] == idx)
     if txt is not None:
         r["text"] = txt
     r["phase"] = phase
-    r["status"] = status or dict(
-        build="building",
-        tts="→ TTS",
-        retry="RETRY",
-        done="complete",
-        ready="ready",
-        play="playing",
-        end="played",
-        err="ERROR"
-    )[phase]
+    r["status"] = (
+        status
+        or dict(
+            build="building",
+            tts="→ TTS",
+            retry="RETRY",
+            done="complete",
+            ready="ready",
+            play="playing",
+            end="played",
+            err="ERROR",
+        )[phase]
+    )
     render(rows)
 
 
@@ -122,16 +123,14 @@ def http_tts(text, idx):
 
     TODO: Refactor to reduce cognitive complexity.
     """
+
     def _post() -> requests.Response:
         return requests.post(
             API_URL,
             headers=HEADERS,
             params={"output_format": OUTPUT_FORMAT},
-            json={
-                "text": text,
-                "model_id": MODEL_ID
-            },
-            timeout=60
+            json={"text": text, "model_id": MODEL_ID},
+            timeout=60,
         )
 
     attempt = 1
@@ -141,7 +140,7 @@ def http_tts(text, idx):
         set_phase(
             idx,
             phase,
-            status=f"{'RETRY' if attempt > 1 else '→ TTS'} ({attempt}/{MAX_ATTEMPTS})"
+            status=f"{'RETRY' if attempt > 1 else '→ TTS'} ({attempt}/{MAX_ATTEMPTS})",
         )
         try:
             resp = _post()
@@ -154,16 +153,16 @@ def http_tts(text, idx):
                 body = getattr(e.response, "text", "")[:160]
             else:
                 body = str(e)
-            print(textwrap.fill(
-                f"[TTS ERROR] idx {idx} | attempt {attempt}/{MAX_ATTEMPTS} "
-                f"| {'HTTP ' + str(code) if code else e.__class__.__name__}\n→ {body}",
-                100
-            ))
+            print(
+                textwrap.fill(
+                    f"[TTS ERROR] idx {idx} | attempt {attempt}/{MAX_ATTEMPTS} "
+                    f"| {'HTTP ' + str(code) if code else e.__class__.__name__}\n→ {body}",
+                    100,
+                )
+            )
             if attempt == MAX_ATTEMPTS:
                 set_phase(
-                    idx,
-                    "err",
-                    status=f"ERR {code or ''} ({MAX_ATTEMPTS}×)".strip()
+                    idx, "err", status=f"ERR {code or ''} ({MAX_ATTEMPTS}×)".strip()
                 )
                 return None
             time.sleep(backoff + random.uniform(0, 0.5))
@@ -190,8 +189,7 @@ def gpt_thread(prompt: str, q: asyncio.Queue, loop):
     idx = 0.0
     scan = 0
     stream = openai.chat.completions.create(
-        model="gpt-4o", stream=True,
-        messages=[{"role": "user", "content": prompt}]
+        model="gpt-4o", stream=True, messages=[{"role": "user", "content": prompt}]
     )
     for ch in stream:
         tok = getattr(ch.choices[0].delta, "content", "") or ""
@@ -207,12 +205,12 @@ def gpt_thread(prompt: str, q: asyncio.Queue, loop):
             m = PUNCT_RE.search(buf, scan)
             if not m:
                 break
-            word = re.findall(r'\b\w+\b', buf[:m.start() + 1])[-1].lower()
-            if word in ABBREVS or re.fullmatch(r'\d+', word):
+            word = re.findall(r"\b\w+\b", buf[: m.start() + 1])[-1].lower()
+            if word in ABBREVS or re.fullmatch(r"\d+", word):
                 scan = m.end()
                 continue
-            sent = buf[:m.end()].strip()
-            buf = buf[m.end():].lstrip()
+            sent = buf[: m.end()].strip()
+            buf = buf[m.end() :].lstrip()
             scan = 0
             add_row(idx, sent)
             asyncio.run_coroutine_threadsafe(q.put((idx, sent)), loop)
@@ -277,13 +275,10 @@ async def chat(prompt: str):
     threading.Thread(
         target=gpt_thread,
         args=(prompt, q_sent, asyncio.get_running_loop()),
-        daemon=True
+        daemon=True,
     ).start()
     with ThreadPoolExecutor(MAX_TTS_WORKERS) as pool:
-        await asyncio.gather(
-            tts_dispatch(q_sent, q_audio, pool),
-            sequencer(q_audio)
-        )
+        await asyncio.gather(tts_dispatch(q_sent, q_audio, pool), sequencer(q_audio))
 
 
 # ───────── CLI ENTRY ───────────────────────────────────────────────────────
@@ -293,9 +288,7 @@ if __name__ == "__main__":
             prompt = console.input("[bold green]Prompt » [/bold green]")
             console.print(f"[bold]You:[/bold] {prompt}\n")
             live = Live(
-                console=console,
-                refresh_per_second=10,
-                vertical_overflow="visible"
+                console=console, refresh_per_second=10, vertical_overflow="visible"
             )
             with live:
                 asyncio.run(chat(prompt))

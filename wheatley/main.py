@@ -136,6 +136,7 @@ def load_config() -> Dict[str, Any]:
 
 # =================== Welcome Banner ===================
 
+
 def print_welcome() -> None:
     """Print a retro ASCII art welcome banner."""
     reset = "\033[0m"
@@ -164,6 +165,7 @@ def print_welcome() -> None:
 
 # ────────────────────────── PRIVATE HELPERS ──────────────────────────── #
 
+
 def _detect_serial_port() -> Tuple[Optional[str], bool]:
     """
     Return (best_port, dry_run_flag) based on OS and availability.
@@ -181,6 +183,7 @@ def _detect_serial_port() -> Tuple[Optional[str], bool]:
 
     elif sys.platform.startswith("win"):
         from serial.tools import list_ports  # type: ignore
+
         ports = list(list_ports.comports())
         logger.info("Available ports:")
         for p in ports:
@@ -221,12 +224,13 @@ def _init_arduino(
 
 # =================== Event Dataclass ===================
 
+
 @dataclass
 class Event:
     """Simple event container used by the async event loop."""
 
-    source: str              # e.g. "user", "timer", "gpio", "webhook"
-    payload: str             # human-readable description
+    source: str  # e.g. "user", "timer", "gpio", "webhook"
+    payload: str  # human-readable description
     metadata: Optional[Dict[str, Any]] = None
     ts: Optional[datetime] = None
 
@@ -238,6 +242,7 @@ class Event:
 
 
 # =================== Async Event Handling ===================
+
 
 async def user_input_producer(
     q: asyncio.Queue[Event],
@@ -273,6 +278,7 @@ async def get_event(queue: asyncio.Queue[Event | Dict[str, Any]]) -> Event:
 
 # =================== System Event Handling ===================
 
+
 def handle_non_user_event(event: Event, manager: ConversationManager) -> None:
     """Add system messages for timers/reminders/other events."""
     if event.source == "timer":
@@ -307,6 +313,7 @@ def process_event(event: Event, manager: ConversationManager) -> bool:
 
 
 # =================== Tool Workflow ===================
+
 
 def run_tool_workflow(
     manager: ConversationManager,
@@ -394,7 +401,9 @@ def _resume_hotword_listener(
     if stt_engine:
         stt_engine.resume_listening()
         loop = asyncio.get_running_loop()
-        return loop.create_task(stt_engine.hotword_listener(queue, tts_engine=tts_engine))
+        return loop.create_task(
+            stt_engine.hotword_listener(queue, tts_engine=tts_engine)
+        )
     return None
 
 
@@ -422,9 +431,9 @@ def _execute_workflow(
             logger.info("         call_id=%s", call_id)
 
     start = time.time()
-    fn_results: List[Dict[str, Any]] = Functions().execute_workflow(
-        workflow, event_queue=queue
-    ) or []
+    fn_results: List[Dict[str, Any]] = (
+        Functions().execute_workflow(workflow, event_queue=queue) or []
+    )
     record_timing("workflow_execute", start)
     if not fn_results:
         logging.info("Workflow returned no results.")
@@ -438,6 +447,7 @@ def _execute_workflow(
 
 
 # =================== Assistant Replies ===================
+
 
 def generate_assistant_reply(
     manager: ConversationManager, gpt_client: GPTClient
@@ -494,6 +504,7 @@ async def handle_follow_up_after_stream(
 
 # ────────────────────────────── DATA STRUCTS ──────────────────────────── #
 
+
 @dataclass
 class _StreamContext:
     sentences: List[str] = field(default_factory=list)
@@ -503,9 +514,7 @@ class _StreamContext:
     tts_futures: Dict[float, asyncio.Future] = field(default_factory=dict)
     playback_q: Queue = field(default_factory=lambda: Queue(QUEUE_MAXSIZE))
     timing: Dict[str, float] = field(default_factory=dict)
-    loop: asyncio.AbstractEventLoop = field(
-        default_factory=asyncio.get_running_loop
-    )
+    loop: asyncio.AbstractEventLoop = field(default_factory=asyncio.get_running_loop)
     tts_executor: Optional[ThreadPoolExecutor] = None
     play_executor: Optional[ThreadPoolExecutor] = None
     cfg: Dict[str, Any] = field(default_factory=dict)
@@ -514,8 +523,11 @@ class _StreamContext:
 
 # ────────────────────────────── SET-UP HELPERS ────────────────────────── #
 
+
 def _prepare_stream(
-    stt_enabled: bool, stt_engine: Optional[SpeechToTextEngine], hotword_task: Optional[asyncio.Task]
+    stt_enabled: bool,
+    stt_engine: Optional[SpeechToTextEngine],
+    hotword_task: Optional[asyncio.Task],
 ) -> Dict[str, Any]:
     """Pause hot-word + STT and return config with possibly canceled hotword_task."""
     if hotword_task:
@@ -546,7 +558,9 @@ def _make_context(cfg: Dict[str, Any], manager: ConversationManager) -> _StreamC
     return ctx
 
 
-def _playback_worker(ctx: _StreamContext, playback_done_event: Optional[threading.Event] = None) -> None:
+def _playback_worker(
+    ctx: _StreamContext, playback_done_event: Optional[threading.Event] = None
+) -> None:
     """Playback worker runs in its own thread; plays clips in FIFO order. Signals when done."""
     q = ctx.playback_q
     tts_engine: TextToSpeechEngine = ctx.cfg["tts_engine"]
@@ -564,14 +578,20 @@ def _playback_worker(ctx: _StreamContext, playback_done_event: Optional[threadin
         record_timing("tts_clip_played", start)
         logger.info("Finished sentence %d/%s", clip_number, total or "?")
 
-    if playback_done_event is not None and isinstance(playback_done_event, threading.Event):
+    if playback_done_event is not None and isinstance(
+        playback_done_event, threading.Event
+    ):
         playback_done_event.set()
 
 
 # ────────────────────────────── PRODUCER ──────────────────────────────── #
 
+
 def _sentence_producer(
-    gpt_client: GPTClient, manager: ConversationManager, loop: asyncio.AbstractEventLoop, q: asyncio.Queue
+    gpt_client: GPTClient,
+    manager: ConversationManager,
+    loop: asyncio.AbstractEventLoop,
+    q: asyncio.Queue,
 ) -> None:
     """Stream sentences from GPT, push to queue, and launch TTS jobs immediately."""
     idx = 0.0
@@ -579,8 +599,10 @@ def _sentence_producer(
 
     conv = manager.get_conversation()
     for sentence, ts_start, _ in gpt_client.sentence_stream(conv):
-        if ctx is not None and "stream_start" in ctx.timing and not ctx.timing.get(
-            "first_sentence_logged"
+        if (
+            ctx is not None
+            and "stream_start" in ctx.timing
+            and not ctx.timing.get("first_sentence_logged")
         ):
             record_timing("time_to_first_sentence", ctx.timing["stream_start"])
             ctx.timing["first_sentence_logged"] = True
@@ -603,7 +625,9 @@ def _sentence_producer(
     asyncio.run_coroutine_threadsafe(q.put(None), loop)  # sentinel
 
 
-async def _tts_job(idx: float, sent: str, ctx: _StreamContext, sentences: List[str]) -> Optional[bytes]:
+async def _tts_job(
+    idx: float, sent: str, ctx: _StreamContext, sentences: List[str]
+) -> Optional[bytes]:
     """Submit blocking TTS fetch to executor."""
     prev = sentences[int(idx - 1)] if idx >= 1 else ""
     loop = asyncio.get_running_loop()
@@ -632,6 +656,7 @@ def _fetch_tts_clip(text: str, prev: str, cfg: Dict[str, Any]) -> Optional[bytes
 
 
 # ────────────────────────────── SEQUENCER ──────────────────────────────── #
+
 
 async def _sequencer(ctx: _StreamContext) -> None:
     """Deliver clips to the playback thread in original order."""
@@ -668,6 +693,7 @@ async def _sequencer(ctx: _StreamContext) -> None:
 
 # ────────────────────────────── TEAR-DOWN HELPERS ──────────────────────── #
 
+
 def _finalise_conversation(manager: ConversationManager, sentences: List[str]) -> str:
     gpt_text = " ".join(sentences)
     manager.add_text_to_conversation("assistant", gpt_text)
@@ -675,13 +701,16 @@ def _finalise_conversation(manager: ConversationManager, sentences: List[str]) -
     return gpt_text
 
 
-def _handle_animation(gpt_client: GPTClient, manager: ConversationManager, arduino: ArduinoInterface) -> Any:
+def _handle_animation(
+    gpt_client: GPTClient, manager: ConversationManager, arduino: ArduinoInterface
+) -> Any:
     anim = gpt_client.reply_with_animation(manager.get_conversation())
     arduino.set_animation(anim)
     return anim
 
 
 # =================== Main Async Conversation Loop ===================
+
 
 async def async_conversation_loop(
     manager: ConversationManager,
@@ -740,7 +769,7 @@ async def async_conversation_loop(
                     manager,
                     gpt_client,
                     tts_engine,
-                    stt_engine,            # may be None
+                    stt_engine,  # may be None
                     queue,
                     hotword_task,
                     stt_enabled,
@@ -757,7 +786,9 @@ async def async_conversation_loop(
                 record_timing("generate_assistant_reply", response_start)
 
             logger.info("Animation selected: %s", animation)
-            print(Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL)
+            print(
+                Fore.GREEN + Style.BRIGHT + f"\nAssistant: {gpt_text}" + Style.RESET_ALL
+            )
             print(
                 f"{Fore.LIGHTBLACK_EX}{Style.BRIGHT}\n"
                 f"»»» Ready for your input! Type below...{Style.RESET_ALL}"
@@ -782,6 +813,7 @@ async def async_conversation_loop(
 
         print("👋 Exiting…")
 
+
 # =================== Streaming Reply ===================
 
 
@@ -789,7 +821,7 @@ async def stream_assistant_reply(
     manager: ConversationManager,
     gpt_client: GPTClient,
     tts_engine: TextToSpeechEngine,
-    stt_engine: Optional[SpeechToTextEngine],   # <- now Optional
+    stt_engine: Optional[SpeechToTextEngine],  # <- now Optional
     queue: asyncio.Queue[Any],
     hotword_task: Optional[asyncio.Task],
     stt_enabled: bool,
@@ -843,7 +875,16 @@ async def stream_assistant_reply(
 
 # =================== Initialization / Main ===================
 
-def initialize() -> Tuple[bool, bool, ConversationManager, GPTClient, Optional[SpeechToTextEngine], Optional[TextToSpeechEngine], ArduinoInterface]:
+
+def initialize() -> Tuple[
+    bool,
+    bool,
+    ConversationManager,
+    GPTClient,
+    Optional[SpeechToTextEngine],
+    Optional[TextToSpeechEngine],
+    ArduinoInterface,
+]:
     """
     Initialize the assistant system and return core components.
 
@@ -860,7 +901,9 @@ def initialize() -> Tuple[bool, bool, ConversationManager, GPTClient, Optional[S
     print(feature_summary(stt_enabled, tts_enabled, "Feature Status"))
 
     # Authenticate external services and update feature flags accordingly
-    stt_enabled, tts_enabled = authenticate_and_update_features(stt_enabled, tts_enabled)
+    stt_enabled, tts_enabled = authenticate_and_update_features(
+        stt_enabled, tts_enabled
+    )
 
     # Initialize core components
     max_mem = config["app"].get("max_memory")
@@ -896,12 +939,28 @@ def initialize() -> Tuple[bool, bool, ConversationManager, GPTClient, Optional[S
     else:
         print("Assistant:", gpt_text)
 
-    return stt_enabled, tts_enabled, manager, gpt_client, stt_engine, tts_engine, arduino_interface
+    return (
+        stt_enabled,
+        tts_enabled,
+        manager,
+        gpt_client,
+        stt_engine,
+        tts_engine,
+        arduino_interface,
+    )
 
 
 def main() -> None:
     """CLI entry point for launching the Wheatley assistant and starting the main event loop."""
-    stt_enabled, tts_enabled, manager, gpt_client, stt_engine, tts_engine, arduino_interface = initialize()
+    (
+        stt_enabled,
+        tts_enabled,
+        manager,
+        gpt_client,
+        stt_engine,
+        tts_engine,
+        arduino_interface,
+    ) = initialize()
     print_welcome()
 
     try:

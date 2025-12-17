@@ -91,7 +91,11 @@ def authenticate_services() -> Dict[str, bool]:
             statuses["google"] = False
             GOOGLE_AGENT = None
     else:
-        print(Fore.YELLOW + "↷ Google auth skipped (WHEATLEY_DISABLE_GOOGLE set)" + Style.RESET_ALL)
+        print(
+            Fore.YELLOW
+            + "↷ Google auth skipped (WHEATLEY_DISABLE_GOOGLE set)"
+            + Style.RESET_ALL
+        )
         statuses["google"] = False
 
     # Spotify authentication

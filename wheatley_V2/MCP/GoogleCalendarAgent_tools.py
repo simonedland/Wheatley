@@ -1,4 +1,5 @@
 """MCP2: A FastMCP server exposing tools for the GoogleCalendarAgent."""
+
 from __future__ import annotations
 
 import logging
@@ -39,7 +40,9 @@ def list_events() -> str:
 @mcp.tool(name="add_event", description="Adds a new event to the calendar.")
 def add_event(event_details: str) -> str:
     """Add a new event to the calendar."""
-    logger.info("%sadd_event%s details=%s", Fore.MAGENTA, Style.RESET_ALL, event_details)
+    logger.info(
+        "%sadd_event%s details=%s", Fore.MAGENTA, Style.RESET_ALL, event_details
+    )
     return f"Event '{event_details}' added to your calendar."
 
 

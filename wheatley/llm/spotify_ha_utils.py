@@ -27,9 +27,7 @@ except ModuleNotFoundError:
     _RICH_AVAILABLE = False
 
 
-_READ = (
-    "user-read-playback-state user-read-currently-playing user-read-recently-played"
-)
+_READ = "user-read-playback-state user-read-currently-playing user-read-recently-played"
 _WRITE = (
     _READ + " user-modify-playback-state playlist-modify-public playlist-modify-private"
 )
@@ -70,7 +68,9 @@ class SpotifyHA:  # ────────────────────
                 )
             )
         except Exception:
-            print("❌ ERROR: Authentication failed for Spotify! Please check your credentials or login again.")
+            print(
+                "❌ ERROR: Authentication failed for Spotify! Please check your credentials or login again."
+            )
             raise
 
     @classmethod
@@ -107,7 +107,11 @@ class SpotifyHA:  # ────────────────────
     @classmethod
     def _fmt_track(cls, t: Dict[str, Any] | None):
         """Format track for display."""
-        return "∅" if t is None else f"{t['name']} – {t['artists']}  ({cls._ms_to_mmss(t['duration_ms'])})"
+        return (
+            "∅"
+            if t is None
+            else f"{t['name']} – {t['artists']}  ({cls._ms_to_mmss(t['duration_ms'])})"
+        )
 
     # ── playback – read ───────────────────────────────────────────────
     def get_current_playback(self):
@@ -302,7 +306,9 @@ class SpotifyHA:  # ────────────────────
         return [self._flat(t) for t in tracks] if simple else tracks
 
     # ── album playback ────────────────────────────────────────────────
-    def play_album_by_name(self, album_name: str, artist: str = None, device_id: str | None = None):
+    def play_album_by_name(
+        self, album_name: str, artist: str = None, device_id: str | None = None
+    ):
         """Search for an album by name (and optional artist) and start playback of that album."""
         query = album_name
         if artist:
@@ -310,7 +316,9 @@ class SpotifyHA:  # ────────────────────
         results = self._sp.search(q=query, type="album", limit=5)
         albums = results.get("albums", {}).get("items", [])
         if not albums:
-            return f"No album found for '{album_name}'" + (f" by {artist}" if artist else "")
+            return f"No album found for '{album_name}'" + (
+                f" by {artist}" if artist else ""
+            )
         album = albums[0]
         album_uri = album["uri"]
         self.start_playback(device_id=device_id, context_uri=album_uri)
@@ -339,7 +347,9 @@ class SpotifyHA:  # ────────────────────
         else:
             print(f"🎶 Queued: {self._fmt_track(track)}\n")
             for idx, (t, wait) in enumerate(queue_eta, 1):
-                print(f"{idx:2}. {t['name']} – {t['artists']}  ▶ in {self._ms_to_mmss(wait)}")
+                print(
+                    f"{idx:2}. {t['name']} – {t['artists']}  ▶ in {self._ms_to_mmss(wait)}"
+                )
 
 
 if __name__ == "__main__":

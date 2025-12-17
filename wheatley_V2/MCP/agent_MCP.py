@@ -1,4 +1,5 @@
 """Main MCP agent server for SpotifyAgent and GoogleCalendarAgent."""
+
 from __future__ import annotations
 
 import logging
@@ -40,8 +41,6 @@ def _require(cfg: Dict[str, Any], path: list[str]) -> Any:
     return cur
 
 
-
-
 def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
     """Load config/config.yaml and require all referenced values."""
     if not path.exists():
@@ -72,12 +71,11 @@ _openai = OpenAI()
 
 spotify_agent = _openai.create_agent(
     name="SpotifyAgent",
-    description="Answer questions about music and control playback by calling external Spotify tools (via MCP)."
+    description="Answer questions about music and control playback by calling external Spotify tools (via MCP).",
 )
 
 calendar_agent = _openai.create_agent(
-    name="GoogleCalendarAgent",
-    description="Manages calendar events and schedules."
+    name="GoogleCalendarAgent", description="Manages calendar events and schedules."
 )
 
 

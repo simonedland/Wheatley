@@ -125,7 +125,7 @@ class GreetingGenerator:
             voice_id=self.voice_id,
             voice_settings=self.voice_settings,
             model_id=self.model_id,
-            output_format=self.output_format
+            output_format=self.output_format,
         )
 
     def generate_greeting_files(self) -> None:

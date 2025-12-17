@@ -38,7 +38,9 @@ class TestLLMFunctionality(ColorfulTestCase):
             print(f"[TestLLMFunctionality] Exception occurred: {e}")
             self.fail(f"get_text() raised an exception: {e}")
         self.assertTrue(isinstance(result, str), "LLM get_text should return a string")
-        self.assertTrue(len(result.strip()) > 0, "LLM get_text should return non-empty text")
+        self.assertTrue(
+            len(result.strip()) > 0, "LLM get_text should return non-empty text"
+        )
         print("[TestLLMFunctionality] test_get_text completed successfully.")
 
 
@@ -60,9 +62,11 @@ class TestTTSFunctionality(ColorfulTestCase):
         if os.path.exists(base_dir):
             temp_files = os.listdir(base_dir)
             print(f"[TestTTSFunctionality] Temp files after TTS: {temp_files}")
-            self.assertEqual(len(temp_files), 0, "Temporary audio files were not cleaned up")
+            self.assertEqual(
+                len(temp_files), 0, "Temporary audio files were not cleaned up"
+            )
         print("[TestTTSFunctionality] test_generate_and_play completed successfully.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=2)

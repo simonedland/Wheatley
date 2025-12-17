@@ -37,9 +37,7 @@ def load_logs(path: str = "assistant.log"):
     """Load log events from a log file."""
     if not os.path.exists(path):
         return []
-    line_re = re.compile(
-        r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+([A-Z]+):\s+(.*)$"
-    )
+    line_re = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+([A-Z]+):\s+(.*)$")
     events = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
@@ -47,9 +45,11 @@ def load_logs(path: str = "assistant.log"):
             if m:
                 ts_str, lvl, msg = m.groups()
                 events.append(
-                    {"timestamp": dt.datetime.fromisoformat(ts_str),
-                     "level": lvl,
-                     "message": msg.strip()}
+                    {
+                        "timestamp": dt.datetime.fromisoformat(ts_str),
+                        "level": lvl,
+                        "message": msg.strip(),
+                    }
                 )
     return events
 
@@ -80,12 +80,15 @@ class TimelineGUI(tk.Tk):
         top = ttk.Frame(self)
         top.pack(side=tk.TOP, fill=tk.X, padx=8, pady=4)
 
-        ttk.Button(top, text="Reload Data",
-                   command=self._reload_everything).pack(side=tk.LEFT)
-        ttk.Button(top, text="Open Timing File",
-                   command=self._pick_timing).pack(side=tk.LEFT, padx=4)
-        ttk.Button(top, text="Open Log File",
-                   command=self._pick_log).pack(side=tk.LEFT, padx=4)
+        ttk.Button(top, text="Reload Data", command=self._reload_everything).pack(
+            side=tk.LEFT
+        )
+        ttk.Button(top, text="Open Timing File", command=self._pick_timing).pack(
+            side=tk.LEFT, padx=4
+        )
+        ttk.Button(top, text="Open Log File", command=self._pick_log).pack(
+            side=tk.LEFT, padx=4
+        )
 
         self.nb = ttk.Notebook(self)
         self.nb.pack(fill=tk.BOTH, expand=True)
@@ -114,8 +117,7 @@ class TimelineGUI(tk.Tk):
     def _pick_log(self):
         """Open a file dialog to select a log file."""
         path = filedialog.askopenfilename(
-            title="Select Log File",
-            filetypes=[("Log", "*.log"), ("All files", "*.*")]
+            title="Select Log File", filetypes=[("Log", "*.log"), ("All files", "*.*")]
         )
         if path:
             self.log_file = path
@@ -138,10 +140,13 @@ class TimelineGUI(tk.Tk):
 
         # pre-process timings
         rows = [
-            (dt.datetime.fromisoformat(t["startTime"]),
-             float(t["durationMs"]) / 1000.0,
-             t["functionality"])
-            for t in self.timings if float(t["durationMs"]) > 0
+            (
+                dt.datetime.fromisoformat(t["startTime"]),
+                float(t["durationMs"]) / 1000.0,
+                t["functionality"],
+            )
+            for t in self.timings
+            if float(t["durationMs"]) > 0
         ]
         if not rows:
             ttk.Label(self.tab_timeline, text="No non-zero duration entries.").pack()
@@ -155,19 +160,24 @@ class TimelineGUI(tk.Tk):
 
         # Assign a unique color to each functionality
         unique_labels = list(sorted(set(labels)))
-        color_map = plt.get_cmap('tab20')
+        color_map = plt.get_cmap("tab20")
         label_to_color = {lbl: color_map(i % 20) for i, lbl in enumerate(unique_labels)}
         bar_colors = [label_to_color[lbl] for lbl in labels]
 
         fig, ax = plt.subplots(figsize=(10, 5))
-        ax.barh(y_pos, widths, left=starts_num,
-                height=0.5, color=bar_colors, edgecolor="black")
+        ax.barh(
+            y_pos,
+            widths,
+            left=starts_num,
+            height=0.5,
+            color=bar_colors,
+            edgecolor="black",
+        )
 
         ax.set_yticks(list(y_pos))
         ax.set_yticklabels(labels)
         ax.set_xlabel("Time")
-        ax.set_title("Functionality Timeline\n"
-                     "(Wheel = X-zoom, Shift+Wheel = Y-zoom)")
+        ax.set_title("Functionality Timeline\n(Wheel = X-zoom, Shift+Wheel = Y-zoom)")
         ax.xaxis_date()
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M:%S"))
         ax.grid(axis="x", linestyle="--", alpha=0.6)
@@ -177,13 +187,31 @@ class TimelineGUI(tk.Tk):
         fig.autofmt_xdate()
 
         # Add a legend for color mapping
-        handles = [plt.Line2D([0], [0], color=label_to_color[lbl], lw=4) for lbl in unique_labels]
-        ax.legend(handles, unique_labels, title="Functionality", bbox_to_anchor=(1.05, 1), loc='upper left')
+        handles = [
+            plt.Line2D([0], [0], color=label_to_color[lbl], lw=4)
+            for lbl in unique_labels
+        ]
+        ax.legend(
+            handles,
+            unique_labels,
+            title="Functionality",
+            bbox_to_anchor=(1.05, 1),
+            loc="upper left",
+        )
 
         # Annotate each bar with its duration in seconds
         for i, (start, width, _label) in enumerate(zip(starts_num, widths, labels)):
             duration_sec = width * 86400
-            ax.text(start + width, i, f"{duration_sec:.2f}s", va='center', ha='left', fontsize=9, color='black', fontweight='bold')
+            ax.text(
+                start + width,
+                i,
+                f"{duration_sec:.2f}s",
+                va="center",
+                ha="left",
+                fontsize=9,
+                color="black",
+                fontweight="bold",
+            )
 
         # embed in Tk
         canvas = FigureCanvasTkAgg(fig, master=self.tab_timeline)
@@ -200,7 +228,7 @@ class TimelineGUI(tk.Tk):
                 return
 
             # choose which axis to zoom
-            vert_zoom = (event.key == "shift")
+            vert_zoom = event.key == "shift"
             cur_lim = ax.get_ylim() if vert_zoom else ax.get_xlim()
             center = event.ydata if vert_zoom else event.xdata
             if center is None:
@@ -254,8 +282,16 @@ class TimelineGUI(tk.Tk):
 
         # Annotate each bar with the average time
         for bar, avg in zip(bars, avgs):
-            ax.text(bar.get_width() + max(avgs) * 0.01, bar.get_y() + bar.get_height() / 2,
-                    f"{avg:.2f}s", va='center', ha='left', fontsize=10, color='black', fontweight='bold')
+            ax.text(
+                bar.get_width() + max(avgs) * 0.01,
+                bar.get_y() + bar.get_height() / 2,
+                f"{avg:.2f}s",
+                va="center",
+                ha="left",
+                fontsize=10,
+                color="black",
+                fontweight="bold",
+            )
 
         canvas = FigureCanvasTkAgg(fig, master=self.tab_summary)
         canvas.draw()
@@ -270,8 +306,7 @@ class TimelineGUI(tk.Tk):
             return
         for log in self.logs:
             self.log_txt.insert(
-                tk.END,
-                f"{log['timestamp']} [{log['level']}] {log['message']}\n"
+                tk.END, f"{log['timestamp']} [{log['level']}] {log['message']}\n"
             )
 
 

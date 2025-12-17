@@ -15,7 +15,9 @@ def install_requirements():
         sys.exit(1)
     # Read requirements, ignoring comments and empty lines
     with open(req_file, "r") as f:
-        requirements = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+        requirements = [
+            line.strip() for line in f if line.strip() and not line.startswith("#")
+        ]
 
     total = len(requirements)
     if total == 0:

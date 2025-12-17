@@ -1,4 +1,5 @@
 """Small helper to stream text chunks to ElevenLabs TTS and play audio."""
+
 import asyncio
 import io
 import re
@@ -19,7 +20,12 @@ class TTSHandler:
     Manages sentence splitting, concurrent audio generation, and sequential playback.
     """
 
-    def __init__(self, xi_api_key: str, voice_id: str = "4Jtuv4wBvd95o1hzNloV", model_id: str = "eleven_flash_v2_5"):
+    def __init__(
+        self,
+        xi_api_key: str,
+        voice_id: str = "4Jtuv4wBvd95o1hzNloV",
+        model_id: str = "eleven_flash_v2_5",
+    ):
         """Initialize handler with API credentials and defaults."""
         self.api_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
         self.headers = {"xi-api-key": xi_api_key, "Content-Type": "application/json"}
@@ -44,14 +50,20 @@ class TTSHandler:
 
     def _maybe_idle(self):
         """Check queues and counters then set the idle event when clear."""
-        if not (self.pending_sent or self.pending_audio or not self.text_queue.empty() or not self.audio_queue.empty() or self.buffered_item):
+        if not (
+            self.pending_sent
+            or self.pending_audio
+            or not self.text_queue.empty()
+            or not self.audio_queue.empty()
+            or self.buffered_item
+        ):
             self.idle_event.set()
 
     def start(self):
         """Start background worker tasks for TTS generation and playback."""
         self.tasks = [
             asyncio.create_task(self._proc_tts()),
-            asyncio.create_task(self._play_audio())
+            asyncio.create_task(self._play_audio()),
         ]
 
     async def flush_pending(self):
@@ -70,14 +82,12 @@ class TTSHandler:
             self.idle_event.clear()
 
     def process_text(self, chunk: str):
-        """
-        Accumulate text chunks, split into sentences, and enqueue for processing.
-        """
+        """Accumulate text chunks, split into sentences, and enqueue for processing."""
         self.text_buffer += chunk
-        while (match := SENTENCE_END_RE.search(self.text_buffer, self.scan_index)):
+        while match := SENTENCE_END_RE.search(self.text_buffer, self.scan_index):
             end = match.end()
             # Check for abbreviations or numbers to avoid false positives on sentence splitting
-            pre = self.text_buffer[:match.start()].split()
+            pre = self.text_buffer[: match.start()].split()
             if pre and (pre[-1].lower() in ABBREVIATIONS or pre[-1].isdigit()):
                 self.scan_index = end
                 continue
@@ -116,7 +126,9 @@ class TTSHandler:
         async def _fetch(idx, txt, prev, nxt):
             async with sem:
                 # Run blocking API call in executor
-                audio = await asyncio.get_running_loop().run_in_executor(None, self._api_call, txt, prev, nxt)
+                audio = await asyncio.get_running_loop().run_in_executor(
+                    None, self._api_call, txt, prev, nxt
+                )
                 if audio:
                     self.pending_audio += 1
                     self.idle_event.clear()
@@ -126,7 +138,7 @@ class TTSHandler:
             if self.pending_sent:
                 self.pending_sent -= 1
             tasks.append(asyncio.create_task(_fetch(*item)))
-        
+
         if tasks:
             await asyncio.gather(*tasks)
         await self.audio_queue.put((-1, b""))
@@ -157,7 +169,9 @@ class TTSHandler:
 
             while expect in buf:
                 if data := buf.pop(expect):
-                    await asyncio.get_running_loop().run_in_executor(None, self._play, data)
+                    await asyncio.get_running_loop().run_in_executor(
+                        None, self._play, data
+                    )
                 expect += 1
                 if self.pending_audio:
                     self.pending_audio -= 1
@@ -181,7 +195,7 @@ class TTSHandler:
                 headers=self.headers,
                 json=payload,
                 params={"output_format": "mp3_22050_32"},
-                timeout=60
+                timeout=60,
             )
             r.raise_for_status()
             return r.content

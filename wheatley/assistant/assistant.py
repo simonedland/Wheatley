@@ -12,7 +12,9 @@ class ConversationManager:
     def __init__(self, max_memory=5):
         """Create a conversation buffer with ``max_memory`` user/assistant turns."""
         # Load system message from config
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml"
+        )
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
         system_message = config.get("assistant", {}).get("system_message", "")
@@ -34,7 +36,9 @@ class ConversationManager:
     def add_text_to_conversation(self, role, text):
         """Append ``text`` from ``role`` to the conversation history."""
         # Refresh system message with current time and day
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml"
+        )
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
         system_message = config.get("assistant", {}).get("system_message", "")
@@ -62,13 +66,15 @@ class ConversationManager:
 
     def print_memory(self):
         """Pretty-print the conversation buffer for debugging."""
-        debug_color = "\033[94m"      # system
-        user_color = "\033[92m"       # user
+        debug_color = "\033[94m"  # system
+        user_color = "\033[92m"  # user
         assistant_color = "\033[93m"  # assistant
         reset_color = "\033[0m"
         max_width = 70
 
-        print(f"\n{debug_color}+------------------------ Conversation Memory ------------------------+{reset_color}")
+        print(
+            f"\n{debug_color}+------------------------ Conversation Memory ------------------------+{reset_color}"
+        )
         for idx, msg in enumerate(self.messages):
             role = msg["role"]
             content = msg["content"]
@@ -91,4 +97,6 @@ class ConversationManager:
                     print(f"{role_color}{' ' * len(prefix)}{line}{reset_color}")
             else:
                 print(f"{role_color}{prefix}{reset_color}")
-        print(f"{debug_color}+---------------------------------------------------------------------+{reset_color}\n")
+        print(
+            f"{debug_color}+---------------------------------------------------------------------+{reset_color}\n"
+        )

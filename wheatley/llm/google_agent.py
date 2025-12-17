@@ -59,13 +59,17 @@ class GoogleCalendarManager:
                 return False
 
         try:
-            if oauth_mode == "console" or (oauth_mode == "auto" and not browser_available()):
+            if oauth_mode == "console" or (
+                oauth_mode == "auto" and not browser_available()
+            ):
                 print("⚠️  Using console OAuth flow.")
                 print("Open the provided URL in any browser, paste the code back here.")
                 return flow.run_console()
 
             # Browser-based local server flow (opens a tab, then receives callback)
-            print("🌐 Launching browser for Google OAuth (set WHEATLEY_OAUTH_MODE=console to override)…")
+            print(
+                "🌐 Launching browser for Google OAuth (set WHEATLEY_OAUTH_MODE=console to override)…"
+            )
             return flow.run_local_server(port=0, prompt="consent")
         except KeyboardInterrupt as ki:  # user aborted
             raise GoogleCalendarManager.GoogleAuthCancelledError() from ki
@@ -125,7 +129,9 @@ class GoogleCalendarManager:
         except GoogleCalendarManager.GoogleAuthCancelledError:
             # Propagate for caller to optionally skip Google features
             raise
-        self.service = build("calendar", "v3", credentials=self.creds, cache_discovery=False)
+        self.service = build(
+            "calendar", "v3", credentials=self.creds, cache_discovery=False
+        )
 
         with CONFIG_FILE.open() as f:
             cfg = yaml.safe_load(f)
@@ -167,7 +173,8 @@ class GoogleCalendarManager:
                 if events:
                     out[cal["summary"]] = [
                         {
-                            "start": ev.get("start", {}).get("dateTime") or ev.get("start", {}).get("date"),
+                            "start": ev.get("start", {}).get("dateTime")
+                            or ev.get("start", {}).get("date"),
                             "summary": ev.get("summary", "(no title)"),
                         }
                         for ev in events

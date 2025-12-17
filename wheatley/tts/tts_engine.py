@@ -99,7 +99,7 @@ class TextToSpeechEngine:
             voice_id=self.voice_id,
             voice_settings=self.voice_settings,
             model_id=self.model_id,
-            output_format=self.output_format
+            output_format=self.output_format,
         )
 
     def generate_and_play_advanced(self, text: str):
@@ -140,8 +140,7 @@ class TextToSpeechEngine:
             if chunk_count % threshold == 0:
                 audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
                 pcm_data = (
-                    audio
-                    .set_frame_rate(self.SAMPLE_RATE)
+                    audio.set_frame_rate(self.SAMPLE_RATE)
                     .set_channels(self.CHANNELS)
                     .set_sample_width(2)
                     .raw_data
@@ -159,8 +158,7 @@ class TextToSpeechEngine:
         if mp3_buffer:
             audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
             pcm_data = (
-                audio
-                .set_frame_rate(self.SAMPLE_RATE)
+                audio.set_frame_rate(self.SAMPLE_RATE)
                 .set_channels(self.CHANNELS)
                 .set_sample_width(2)
                 .raw_data
@@ -181,8 +179,7 @@ class TextToSpeechEngine:
         try:
             audio = AudioSegment.from_file(io.BytesIO(data), format="mp3")
             pcm_data = (
-                audio
-                .set_frame_rate(self.SAMPLE_RATE)
+                audio.set_frame_rate(self.SAMPLE_RATE)
                 .set_channels(self.CHANNELS)
                 .set_sample_width(2)
                 .raw_data
