@@ -3,7 +3,7 @@
 import os
 import sys
 import wave
-import numpy as np  # type: ignore[import-untyped]
+import numpy as np  # type: ignore[import-not-found]
 import pyaudio  # type: ignore[import-untyped]
 import openai  # type: ignore[import-not-found]
 import yaml

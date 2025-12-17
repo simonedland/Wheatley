@@ -16,10 +16,10 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 from collections import defaultdict
 import re
-import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+import matplotlib  # type: ignore[import-not-found]
+import matplotlib.pyplot as plt  # type: ignore[import-not-found]
+import matplotlib.dates as mdates  # type: ignore[import-not-found]
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk  # type: ignore[import-not-found]
 
 matplotlib.use("TkAgg")  # Tk backend for embedding
 

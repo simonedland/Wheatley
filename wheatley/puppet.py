@@ -131,13 +131,14 @@ class PuppetGUI(Tk):
         super().__init__()
         self.backend = backend
         self.limits_ready = False
-        self.move_buttons, self.cfg_buttons = [], []
-        self.current_angles = []  # NEW – actual positions
+        self.move_buttons: list[Any] = []
+        self.cfg_buttons: list[Any] = []
+        self.current_angles: list[Any] = []  # NEW – actual positions
         self.title("Servo Puppet")
         self.geometry("1280x860")
         self.anim_file = "animations.json"
         self.animations = self._load_json()
-        self.row_vars = []  # (scale, vel, idle, intv, canvas)
+        self.row_vars: list[Any] = []  # (scale, vel, idle, intv, canvas)
         self.servo_min = list(DEFAULT_MIN)
         self.servo_max = list(DEFAULT_MAX)
         self._theme()
@@ -614,7 +615,7 @@ def auto_port():
     """Auto-detect and return the serial port."""
     if serial is None:
         return None
-    from serial.tools import list_ports
+    from serial.tools import list_ports  # type: ignore[import-untyped]
 
     for p in list_ports.comports():
         if "USB" in p.description or "CP210" in p.description:

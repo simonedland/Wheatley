@@ -14,14 +14,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import openai  # pip install --upgrade openai
+import openai  # type: ignore[import-not-found]
 import yaml
-from google.auth.exceptions import RefreshError
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError  # type: ignore[import-not-found]
+from google.auth.transport.requests import Request  # type: ignore[import-not-found]
+from google.oauth2.credentials import Credentials  # type: ignore[import-not-found]
+from google_auth_oauthlib.flow import InstalledAppFlow  # type: ignore[import-not-found]
+from googleapiclient.discovery import build  # type: ignore[import-not-found]
+from googleapiclient.errors import HttpError  # type: ignore[import-not-found]
 
 # ────────────────────────────────────────────────────────────────────────────
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]

@@ -32,16 +32,16 @@ import threading
 import re
 import requests
 import yaml
-from colorama import Fore, Style, init as colorama_init
+from colorama import Fore, Style, init as colorama_init  # type: ignore[import-untyped]
 
 # =================== Imports: Local Modules ===================
-from hardware.arduino_interface import ArduinoInterface
-from assistant.assistant import ConversationManager
-from llm.llm_client import GPTClient, Functions
-from tts.tts_engine import TextToSpeechEngine
-from stt.stt_engine import SpeechToTextEngine
-from utils.timing_logger import export_timings, clear_timings, record_timing
-from utils.main_helpers import feature_summary, authenticate_and_update_features
+from hardware.arduino_interface import ArduinoInterface  # type: ignore[import-not-found]
+from assistant.assistant import ConversationManager  # type: ignore[import-not-found]
+from llm.llm_client import GPTClient, Functions  # type: ignore[import-not-found]
+from tts.tts_engine import TextToSpeechEngine  # type: ignore[import-not-found]
+from stt.stt_engine import SpeechToTextEngine  # type: ignore[import-not-found]
+from utils.timing_logger import export_timings, clear_timings, record_timing  # type: ignore[import-not-found]
+from utils.main_helpers import feature_summary, authenticate_and_update_features  # type: ignore[import-not-found]
 
 # =================== Initialization ===================
 colorama_init(autoreset=True)
@@ -182,7 +182,7 @@ def _detect_serial_port() -> Tuple[Optional[str], bool]:
         port = "/dev/ttyACM0"
 
     elif sys.platform.startswith("win"):
-        from serial.tools import list_ports  # type: ignore
+        from serial.tools import list_ports  # type: ignore[import-untyped]
 
         ports = list(list_ports.comports())
         logger.info("Available ports:")

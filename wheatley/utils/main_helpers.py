@@ -17,7 +17,7 @@ def authenticate_and_update_features(
     stt_enabled: bool, tts_enabled: bool
 ) -> Tuple[bool, bool]:
     """Authenticate external services and update feature flags accordingly."""
-    from service_auth import authenticate_services
+    from service_auth import authenticate_services  # type: ignore[import-not-found]
 
     service_status = authenticate_services()
     if not service_status.get("openai"):

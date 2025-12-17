@@ -20,7 +20,7 @@ class ArduinoInterface:
                 f"[DRY RUN] Would connect to Arduino on port {self.port} at {self.baud_rate} baud."
             )
             return
-        import serial
+        import serial  # type: ignore[import-untyped]
 
         self.serial_connection = serial.Serial(self.port, self.baud_rate, timeout=2)
         # NEW: Try to fetch servo config from M5Stack after connecting

@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Iterable, List, Dict, Any
 
 import yaml
-from openai import OpenAI  # Official client
-from tqdm import tqdm
+from openai import OpenAI  # type: ignore[import-not-found]
+from tqdm import tqdm  # type: ignore[import-untyped]
 
 # ---------------------------------------------------------------------------
 # Configuration helpers

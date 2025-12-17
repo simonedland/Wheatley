@@ -6,8 +6,8 @@ import re
 from pathlib import Path
 
 import yaml
-from elevenlabs import VoiceSettings
-from elevenlabs.client import ElevenLabs
+from elevenlabs import VoiceSettings  # type: ignore[import-not-found]
+from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
 
 
 GREETINGS = [

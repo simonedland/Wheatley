@@ -8,7 +8,7 @@ import requests
 try:
     from ..service_auth import SERVICE_STATUS
 except ImportError:  # fallback when not running as package
-    from service_auth import SERVICE_STATUS
+    from service_auth import SERVICE_STATUS  # type: ignore[import-not-found, no-redef]
 
 # Weather code descriptions
 WEATHER_CODE_DESCRIPTIONS = {

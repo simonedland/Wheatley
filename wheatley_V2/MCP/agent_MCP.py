@@ -8,12 +8,12 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-import uvicorn
+import uvicorn  # type: ignore[import-not-found]
 import yaml
-from colorama import Fore, Style, init as colorama_init
-from fastmcp import FastMCP
-from agent_framework import MCPStreamableHTTPTool as Tool
-from agent_framework.openai import OpenAIResponsesClient as OpenAI
+from colorama import Fore, Style, init as colorama_init  # type: ignore[import-untyped]
+from fastmcp import FastMCP  # type: ignore[import-not-found]
+from agent_framework import MCPStreamableHTTPTool as Tool  # type: ignore[import-not-found]
+from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: ignore[import-not-found]
 
 
 APP_NAME = "Agents_MCP"

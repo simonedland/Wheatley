@@ -14,13 +14,13 @@ import time
 import io
 import yaml
 
-from utils.timing_logger import record_timing
-import pyaudio
-from pydub import AudioSegment
-from pydub.generators import Sine
+from utils.timing_logger import record_timing  # type: ignore[import-not-found]
+import pyaudio  # type: ignore[import-untyped]
+from pydub import AudioSegment  # type: ignore[import-not-found]
+from pydub.generators import Sine  # type: ignore[import-not-found]
 import threading
-from elevenlabs.client import ElevenLabs
-from elevenlabs import VoiceSettings
+from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
+from elevenlabs import VoiceSettings  # type: ignore[import-not-found]
 
 
 class TextToSpeechEngine:

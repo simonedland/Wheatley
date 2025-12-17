@@ -14,13 +14,13 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List  # Removed Optional (F401)
 
-import spotipy
+import spotipy  # type: ignore[import-not-found]
 import yaml
-from spotipy.oauth2 import SpotifyOAuth
+from spotipy.oauth2 import SpotifyOAuth  # type: ignore[import-not-found]
 
 try:
-    from rich.console import Console
-    from rich.table import Table
+    from rich.console import Console  # type: ignore[import-not-found]
+    from rich.table import Table  # type: ignore[import-not-found]
 
     _RICH_AVAILABLE = True
 except ModuleNotFoundError:
@@ -307,7 +307,7 @@ class SpotifyHA:  # ────────────────────
 
     # ── album playback ────────────────────────────────────────────────
     def play_album_by_name(
-        self, album_name: str, artist: str = None, device_id: str | None = None
+        self, album_name: str, artist: str | None = None, device_id: str | None = None
     ):
         """Search for an album by name (and optional artist) and start playback of that album."""
         query = album_name

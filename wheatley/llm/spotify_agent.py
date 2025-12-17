@@ -18,7 +18,7 @@ import json
 import os
 from datetime import datetime
 
-import openai
+import openai  # type: ignore[import-not-found]
 import yaml
 
 from typing import Any, Dict, Callable, List, Tuple
@@ -26,7 +26,7 @@ from typing import Any, Dict, Callable, List, Tuple
 try:
     from .spotify_ha_utils import SpotifyHA
 except ImportError:
-    from spotify_ha_utils import SpotifyHA
+    from spotify_ha_utils import SpotifyHA  # type: ignore[import-not-found, no-redef]
 
 
 # ── tools visible to the LLM ──────────────────────────────────────────
@@ -215,7 +215,7 @@ class SpotifyAgent:
         limit = int(args.get("limit", 10))
 
         try:
-            return _HANDLER_REGISTRY[name](self, args, limit)  # ← one call
+            return _HANDLER_REGISTRY[name](self, args, limit)  # type: ignore[arg-type]
         except KeyError as exc:
             raise NotImplementedError(f"No handler for tool {name}") from exc
 

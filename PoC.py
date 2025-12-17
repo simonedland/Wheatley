@@ -15,11 +15,11 @@ import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional
 
-import openai
+import openai  # type: ignore[import-not-found]
 import requests
 import yaml
-from pydub import AudioSegment
-from pydub.playback import play
+from pydub import AudioSegment  # type: ignore[import-not-found]
+from pydub.playback import play  # type: ignore[import-not-found]
 
 # ───────── USER SETTINGS ────────────────────────────────────────────────────
 VOICE_ID = "4Jtuv4wBvd95o1hzNloV"
@@ -36,10 +36,10 @@ ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 # ───────── OPTIONAL RICH UI ────────────────────────────────────────────────
 try:
-    from rich.live import Live
-    from rich.table import Table
-    from rich.console import Console
-    from rich.text import Text
+    from rich.live import Live  # type: ignore[import-not-found]
+    from rich.table import Table  # type: ignore[import-not-found]
+    from rich.console import Console  # type: ignore[import-not-found]
+    from rich.text import Text  # type: ignore[import-not-found]
 
     console, USE_RICH = Console(), True
 except ImportError:
@@ -270,8 +270,8 @@ async def sequencer(aq: asyncio.Queue):
 # ───────── ORCHESTRATOR ────────────────────────────────────────────────────
 async def chat(prompt: str):
     """Orchestrate the GPT-to-TTS pipeline: produce, dispatch, and play audio."""
-    q_sent = asyncio.Queue(QUEUE_MAXSIZE)
-    q_audio = asyncio.Queue(QUEUE_MAXSIZE)
+    q_sent: asyncio.Queue[tuple[float, str]] = asyncio.Queue(QUEUE_MAXSIZE)
+    q_audio: asyncio.Queue[tuple[float, bytes | None]] = asyncio.Queue(QUEUE_MAXSIZE)
     threading.Thread(
         target=gpt_thread,
         args=(prompt, q_sent, asyncio.get_running_loop()),

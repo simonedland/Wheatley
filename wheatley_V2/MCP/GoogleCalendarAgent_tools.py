@@ -6,9 +6,9 @@ import logging
 import sys
 from pathlib import Path
 
-import uvicorn
-from colorama import Fore, Style, init as colorama_init
-from fastmcp import FastMCP
+import uvicorn  # type: ignore[import-not-found]
+from colorama import Fore, Style, init as colorama_init  # type: ignore[import-untyped]
+from fastmcp import FastMCP  # type: ignore[import-not-found]
 
 
 APP_NAME = "GoogleCalendarAgent_tools"

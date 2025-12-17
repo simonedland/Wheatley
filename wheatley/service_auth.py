@@ -7,23 +7,23 @@ import os
 import yaml
 
 try:
-    import openai
+    import openai  # type: ignore[import-not-found]
 except Exception:  # openai may not be installed during documentation builds
     openai = None
 
 try:
-    from elevenlabs.client import ElevenLabs
+    from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
 except Exception:  # elevenlabs is optional
     ElevenLabs = None
 
-from colorama import Fore, Style
+from colorama import Fore, Style  # type: ignore[import-untyped]
 
 try:
     from .llm.google_agent import GoogleAgent
     from .llm.spotify_agent import SpotifyAgent
 except ImportError:  # fallback for running without package context
-    from llm.google_agent import GoogleAgent
-    from llm.spotify_agent import SpotifyAgent
+    from llm.google_agent import GoogleAgent  # type: ignore[import-not-found, no-redef]
+    from llm.spotify_agent import SpotifyAgent  # type: ignore[import-not-found, no-redef]
 
 SERVICE_STATUS: Dict[str, bool] = {}
 GOOGLE_AGENT: GoogleAgent | None = None
@@ -110,7 +110,7 @@ def authenticate_services() -> Dict[str, bool]:
         SPOTIFY_AGENT = None
 
     # OpenAI authentication
-    if _check_openai(config["secrets"].get("openai_api_key")):
+    if _check_openai(config["secrets"].get("openai_api_key", "")):
         print(Fore.GREEN + "✔ OpenAI" + Style.RESET_ALL)
         statuses["openai"] = True
     else:
@@ -118,7 +118,7 @@ def authenticate_services() -> Dict[str, bool]:
         statuses["openai"] = False
 
     # ElevenLabs authentication
-    if _check_elevenlabs(config["secrets"].get("elevenlabs_api_key")):
+    if _check_elevenlabs(config["secrets"].get("elevenlabs_api_key", "")):
         print(Fore.GREEN + "✔ ElevenLabs" + Style.RESET_ALL)
         statuses["elevenlabs"] = True
     else:
