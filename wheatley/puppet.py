@@ -132,14 +132,14 @@ class PuppetGUI(Tk):
         super().__init__()
         self.backend = backend
         self.limits_ready = False
-            self.move_buttons: list[Any] = []  # List of move buttons
-            self.cfg_buttons: list[Any] = []  # List of config buttons
-            self.current_angles: list[Any] = []  # List of actual positions
+        self.move_buttons: list[Any] = []  # List of move buttons
+        self.cfg_buttons: list[Any] = []  # List of config buttons
+        self.current_angles: list[Any] = []  # List of actual positions
         self.title("Servo Puppet")
         self.geometry("1280x860")
         self.anim_file = "animations.json"
         self.animations = self._load_json()
-            self.row_vars: list[Any] = []  # List of row variables (scale, vel, idle, intv, canvas)
+        self.row_vars: list[Any] = []  # List of row variables (scale, vel, idle, intv, canvas)
         self.servo_min = list(DEFAULT_MIN)
         self.servo_max = list(DEFAULT_MAX)
         self._theme()
