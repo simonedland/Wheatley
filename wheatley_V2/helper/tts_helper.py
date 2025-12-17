@@ -5,7 +5,7 @@ import io
 import re
 from typing import TYPE_CHECKING, Any, Optional
 
-import requests
+from elevenlabs.client import ElevenLabs
 
 if TYPE_CHECKING:
     # Minimal typing surface; runtime modules are loaded dynamically below.
@@ -39,8 +39,8 @@ class TTSHandler:
         model_id: str = "eleven_flash_v2_5",
     ):
         """Initialize handler with API credentials and defaults."""
-        self.api_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-        self.headers = {"xi-api-key": xi_api_key, "Content-Type": "application/json"}
+        self.client = ElevenLabs(api_key=xi_api_key)
+        self.voice_id = voice_id
         self.model_id = model_id
         # Queues for passing data between workers
         self.text_queue: asyncio.Queue[
@@ -196,27 +196,19 @@ class TTSHandler:
         self._maybe_idle()
 
     def _api_call(self, text, prev=None, nxt=None):
-        """Call ElevenLabs API and return audio bytes."""
-        payload = {"text": text, "model_id": self.model_id}
-        if prev:
-            payload["previous_text"] = prev
-        if nxt:
-            payload["next_text"] = nxt
-
+        """Call ElevenLabs SDK and return audio bytes."""
         try:
-            r = requests.post(
-                self.api_url,
-                headers=self.headers,
-                json=payload,
-                params={"output_format": "mp3_22050_32"},
-                timeout=60,
+            audio_generator = self.client.text_to_speech.convert(
+                voice_id=self.voice_id,
+                model_id=self.model_id,
+                text=text,
+                previous_text=prev,
+                next_text=nxt,
+                output_format="mp3_22050_32",
             )
-            r.raise_for_status()
-            return r.content
+            return b"".join(audio_generator)
         except Exception as e:
             print(f"[TTS Error] {e}")
-            if isinstance(e, requests.exceptions.HTTPError) and "r" in locals():
-                print(f"[TTS Error Details] {r.text}")
 
     def _play(self, data):
         """Play audio bytes using pydub."""

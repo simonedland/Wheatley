@@ -27,27 +27,26 @@ if "pydub.playback" not in sys.modules:
 
 
 async def test_api_call_success():
-    handler = tts_helper.TTSHandler("fake_key")
-    with patch("requests.post") as mock_post:
-        mock_response = MagicMock()
-        mock_response.content = b"audio_data"
-        mock_response.raise_for_status.return_value = None
-        mock_post.return_value = mock_response
+    with patch("wheatley_V2.helper.tts_helper.ElevenLabs") as MockElevenLabs:
+        mock_client = MockElevenLabs.return_value
+        mock_client.text_to_speech.convert.return_value = iter([b"audio", b"_data"])
 
+        handler = tts_helper.TTSHandler("fake_key")
         result = handler._api_call("Hello world")
         assert result == b"audio_data"
-        mock_post.assert_called_once()
+        mock_client.text_to_speech.convert.assert_called_once()
 
         # Check payload
-        args, kwargs = mock_post.call_args
-        assert kwargs["json"]["text"] == "Hello world"
+        args, kwargs = mock_client.text_to_speech.convert.call_args
+        assert kwargs["text"] == "Hello world"
 
 
 async def test_api_call_failure():
-    handler = tts_helper.TTSHandler("fake_key")
-    with patch("requests.post") as mock_post:
-        mock_post.side_effect = Exception("API Error")
+    with patch("wheatley_V2.helper.tts_helper.ElevenLabs") as MockElevenLabs:
+        mock_client = MockElevenLabs.return_value
+        mock_client.text_to_speech.convert.side_effect = Exception("API Error")
 
+        handler = tts_helper.TTSHandler("fake_key")
         # Should catch exception and print error, returning None implicitly
         result = handler._api_call("Hello world")
         assert result is None
