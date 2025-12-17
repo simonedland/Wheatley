@@ -8,8 +8,7 @@ MIN_PARTS_IN_LINE = 3
 MIN_PARTS_FOR_RESULT = 4
 FILEPATH_INDEX = 1
 FUNCTION_INDEX = 2
-PASSED_INDEX = 3
-FAILED_INDEX = 4
+RESULT_INDEX = 3
 
 
 def clean_cell(cell_content):
@@ -17,21 +16,14 @@ def clean_cell(cell_content):
     content = cell_content.replace("$$", "")
 
     # Try to extract text inside \tt{...}
-    # Handle nested braces if necessary, but simple regex works for now
-    # \textcolor{#...}{\tt{...}}
     match = re.search(r"\\tt\{(.*?)\}", content)
     if match:
         content = match.group(1)
 
     # Unescape underscores
-    # Handle both single and double escaped underscores just in case
-    content = content.replace(r"\\_", "_").replace(r"\_", "_")
+    content = content.replace(r"\_", "_")
 
     return content.strip()
-
-
-def _normalize_path(path: str) -> str:
-    return os.path.normpath(path).replace("\\", "/")
 
 
 def parse_report_lines(lines):
@@ -53,7 +45,7 @@ def parse_report_lines(lines):
             continue
 
         filepath_cell = parts[FILEPATH_INDEX]
-        filepath = _normalize_path(clean_cell(filepath_cell))
+        filepath = clean_cell(filepath_cell)
 
         if filepath not in files:
             files[filepath] = []
@@ -63,96 +55,22 @@ def parse_report_lines(lines):
     return files
 
 
-def parse_pytest_failures(report_path="pytest_report.txt"):
-    """Parse pytest text report to map file path -> failure detail blocks."""
-    if not os.path.exists(report_path):
-        return {}
-
-    failures = {}
-    current_file = None
-    buffer = []
-
-    path_re = re.compile(r"([\w./-]*wheatley[^\s:]*\.py)")
-    separator_re = re.compile(r"^=+")
-
-    def _flush():
-        nonlocal buffer, current_file
-        if current_file and buffer:
-            text = "".join(buffer).strip()
-            if text:
-                failures.setdefault(current_file, []).append(text)
-        buffer = []
-
-    with open(report_path, encoding="utf-8") as f:
-        for line in f:
-            m = path_re.search(line)
-            if m and ("ERROR" in line or "FAILED" in line or line.startswith("E   ")):
-                _flush()
-                current_file = _normalize_path(m.group(1))
-                buffer.append(line)
-                continue
-            if current_file:
-                if separator_re.match(line):
-                    _flush()
-                    current_file = None
-                    continue
-                buffer.append(line)
-        _flush()
-    return failures
-
-
 def write_formatted_report(output_file, files):
-    """Write the formatted report to the output file with error details."""
-    failure_map = parse_pytest_failures()
+    """Write the formatted report to the output file."""
     with open(output_file, "w", encoding="utf-8") as f:
         for filepath, rows in files.items():
-            if "TOTAL" in filepath:
-                continue
-
-            norm_path = _normalize_path(filepath)
             f.write(f"<details>\n<summary>{filepath}</summary>\n\n")
-            f.write("| Function | Result | Details |\n")
-            f.write("| :--- | :---: | :--- |\n")
+            f.write("| Function | Result |\n")
+            f.write("| :--- | :---: |\n")
 
             for line in rows:
-                parts = [clean_cell(p.strip()) for p in line.split("|")]
-                if len(parts) <= FAILED_INDEX:
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) < MIN_PARTS_FOR_RESULT:
                     continue
-
                 function_cell = parts[FUNCTION_INDEX]
-                passed_cell = parts[PASSED_INDEX]
-                failed_cell = parts[FAILED_INDEX]
+                result_cell = parts[RESULT_INDEX]
 
-                if failed_cell == "1":
-                    result_cell = "❌ Failed"
-                    # Look up details
-                    fail_blocks = failure_map.get(norm_path, [])
-                    # Try to find block matching function name
-                    details = "-"
-                    for block in fail_blocks:
-                        if function_cell in block:
-                            details = block.replace("\n", "<br>")
-                            break
-                    
-                    # If we didn't find a specific match, try to match by function name in the block
-                    if details == "-":
-                         for block in fail_blocks:
-                             if f" {function_cell} " in block or f"::{function_cell}" in block:
-                                 details = block.replace("\n", "<br>")
-                                 break
-                    
-                    # Fallback: if only 1 failure in file, use it
-                    if details == "-" and len(fail_blocks) == 1:
-                        details = fail_blocks[0].replace("\n", "<br>")
-
-                elif passed_cell == "1":
-                    result_cell = "✅ Passed"
-                    details = "-"
-                else:
-                    result_cell = "⚠️ Skipped"
-                    details = "-"
-
-                f.write(f"| {function_cell} | {result_cell} | {details} |\n")
+                f.write(f"| {function_cell} | {result_cell} |\n")
 
             f.write("\n</details>\n\n")
 
