@@ -55,8 +55,47 @@ def parse_report_lines(lines):
     return files
 
 
+def parse_pytest_failures(report_path="pytest_report.txt"):
+    """Parse pytest text report to map file path -> failure detail blocks."""
+    if not os.path.exists(report_path):
+        return {}
+
+    failures = {}
+    current_file = None
+    buffer = []
+
+    heading_re = re.compile(r"(ERROR|FAILED).*?(w[^\s:]*\.py)")
+
+    def _flush():
+        nonlocal buffer, current_file
+        if current_file and buffer:
+            text = "".join(buffer).strip()
+            if text:
+                failures.setdefault(current_file, []).append(text)
+        buffer = []
+
+    with open(report_path, encoding="utf-8") as f:
+        for line in f:
+            m = heading_re.search(line)
+            if m:
+                _flush()
+                current_file = m.group(2)
+                buffer.append(line)
+                continue
+            if current_file:
+                # Treat separator lines as block boundaries
+                if line.startswith("=\n") or line.startswith("-\n"):
+                    _flush()
+                    current_file = None
+                    continue
+                buffer.append(line)
+        _flush()
+    return failures
+
+
 def write_formatted_report(output_file, files):
     """Write the formatted report to the output file with error details."""
+    failure_map = parse_pytest_failures()
     with open(output_file, "w", encoding="utf-8") as f:
         for filepath, rows in files.items():
             f.write(f"<details>\n<summary>{filepath}</summary>\n\n")
@@ -70,7 +109,14 @@ def write_formatted_report(output_file, files):
                 function_cell = parts[FUNCTION_INDEX]
                 result_cell = parts[RESULT_INDEX]
                 detail_parts = parts[RESULT_INDEX + 1 :]
-                details = " | ".join([p for p in detail_parts if p]) or "-"
+                details = " | ".join([p for p in detail_parts if p])
+                if not details:
+                    fail_blocks = failure_map.get(filepath, [])
+                    if fail_blocks:
+                        snippet = fail_blocks[0]
+                        details = snippet.replace("\n", "<br>")
+                if not details:
+                    details = "-"
 
                 f.write(f"| {function_cell} | {result_cell} | {details} |\n")
 
