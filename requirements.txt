@@ -16,7 +16,7 @@ pytest
 #elevenlabs
 #pyaudio
 colorama
-#pydantic
+pydantic
 # RPi.GPIO is for Raspberry Pi hardware and will not work in standard containers
 # Commented out for Docker builds:
 # RPi.GPIO
