@@ -215,7 +215,7 @@ class TTSHandler:
             return r.content
         except Exception as e:
             print(f"[TTS Error] {e}")
-            if isinstance(e, requests.exceptions.HTTPError):
+            if isinstance(e, requests.exceptions.HTTPError) and "r" in locals():
                 print(f"[TTS Error Details] {r.text}")
 
     def _play(self, data):
