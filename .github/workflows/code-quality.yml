@@ -168,6 +168,11 @@ jobs:
           pip install pytest httpx pytest-cov pytest-md-report
           pip install -r requirements.txt
 
+      - name: Create Config File
+        run: |
+          cp wheatley_V2/config/config.example.yaml wheatley_V2/config/config.yaml
+          cp wheatley/config/config.example.yaml wheatley/config/config.yaml
+
       - name: Run Pytest
         id: pytest
         run: |
