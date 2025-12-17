@@ -3,6 +3,8 @@
 import asyncio
 import io
 import re
+from typing import Any, Optional
+
 import requests
 from pydub import AudioSegment
 from pydub.playback import play
@@ -31,19 +33,19 @@ class TTSHandler:
         self.headers = {"xi-api-key": xi_api_key, "Content-Type": "application/json"}
         self.model_id = model_id
         # Queues for passing data between workers
-        self.text_queue = asyncio.Queue()
-        self.audio_queue = asyncio.Queue()
+        self.text_queue: asyncio.Queue[tuple[int, str, Optional[str], Optional[str]]] = asyncio.Queue()
+        self.audio_queue: asyncio.Queue[tuple[int, Optional[bytes]]] = asyncio.Queue()
         # Buffer for accumulating text chunks until a full sentence is formed
         self.text_buffer = ""
         self.scan_index = 0
         self.sent_count = 0
         # Tracking for active tasks and pending work items
-        self.tasks = []
+        self.tasks: list[asyncio.Task[Any]] = []
         self.pending_sent = 0
         self.pending_audio = 0
         # Buffering for context-aware generation (previous/next text)
-        self.last_text = None
-        self.buffered_item = None
+        self.last_text: Optional[str] = None
+        self.buffered_item: Optional[tuple[int, str]] = None
         # Event to signal when all processing and playback is complete
         self.idle_event = asyncio.Event()
         self.idle_event.set()
