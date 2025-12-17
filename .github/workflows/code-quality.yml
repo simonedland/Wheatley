@@ -326,10 +326,8 @@ jobs:
         run: |
           python .github/scripts/manage_quality_issues.py
 
-      - name: Fail Pipeline (PR to main)
-        if: github.event_name == 'pull_request' &&
-            github.event.pull_request.base.ref == 'main' &&
-            steps.check_issues.outputs.has_issues == 'true'
+      - name: Fail Pipeline
+        if: steps.check_issues.outputs.has_issues == 'true'
         run: |
           echo "::error::Code quality checks failed. See report."
           exit 1
