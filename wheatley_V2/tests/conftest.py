@@ -179,6 +179,12 @@ def _stub_uvicorn():
 
 def _stub_yaml():
     """Provide a minimal yaml module using json for CI environments without PyYAML."""
+    try:
+        import yaml  # noqa: F401
+        return
+    except ImportError:
+        pass
+
     import json
 
     yaml_module = sys.modules.get("yaml", types.ModuleType("yaml"))

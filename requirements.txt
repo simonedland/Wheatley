@@ -11,7 +11,7 @@
 #pydub
 pytest
 #matplotlib
-#pyyaml
+pyyaml
 #pyttsx3
 #elevenlabs
 #pyaudio
