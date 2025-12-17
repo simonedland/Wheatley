@@ -6,8 +6,8 @@ import re
 from pathlib import Path
 
 import yaml
-from elevenlabs import VoiceSettings
-from elevenlabs.client import ElevenLabs
+from elevenlabs import VoiceSettings  # type: ignore[import-not-found]
+from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
 
 
 GREETINGS = [
@@ -109,13 +109,13 @@ class GreetingGenerator:
         self.api_key = config["secrets"]["elevenlabs_api_key"]
         self.voice_id = tts_config.get("voice_id", "4Jtuv4wBvd95o1hzNloV")
         self.voice_settings = VoiceSettings(
-            stability=tts_config.get("stability", 0.3),
+            stability=tts_config.get("stability", 0.5),
             similarity_boost=tts_config.get("similarity_boost", 0.1),
             style=tts_config.get("style", 0.0),
             use_speaker_boost=tts_config.get("use_speaker_boost", True),
             speed=tts_config.get("speed", 0.7),
         )
-        self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
+        self.model_id = tts_config.get("model_id", "eleven_v3")
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
 
     def elevenlabs_generate_audio_stream(self, text: str):
@@ -125,7 +125,7 @@ class GreetingGenerator:
             voice_id=self.voice_id,
             voice_settings=self.voice_settings,
             model_id=self.model_id,
-            output_format=self.output_format
+            output_format=self.output_format,
         )
 
     def generate_greeting_files(self) -> None:

@@ -14,13 +14,13 @@ import time
 import io
 import yaml
 
-from utils.timing_logger import record_timing
-import pyaudio
-from pydub import AudioSegment
-from pydub.generators import Sine
+from utils.timing_logger import record_timing  # type: ignore[import-not-found]
+import pyaudio  # type: ignore[import-untyped]
+from pydub import AudioSegment  # type: ignore[import-not-found]
+from pydub.generators import Sine  # type: ignore[import-not-found]
 import threading
-from elevenlabs.client import ElevenLabs
-from elevenlabs import VoiceSettings
+from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
+from elevenlabs import VoiceSettings  # type: ignore[import-not-found]
 
 
 class TextToSpeechEngine:
@@ -75,13 +75,13 @@ class TextToSpeechEngine:
         self.api_key = config["secrets"]["elevenlabs_api_key"]
         self.voice_id = tts_config.get("voice_id", "4Jtuv4wBvd95o1hzNloV")
         self.voice_settings = VoiceSettings(
-            stability=tts_config.get("stability", 0.3),
+            stability=tts_config.get("stability", 0.5),
             similarity_boost=tts_config.get("similarity_boost", 0.1),
             style=tts_config.get("style", 0.0),
             use_speaker_boost=tts_config.get("use_speaker_boost", True),
             speed=tts_config.get("speed", 0.8),
         )
-        self.model_id = tts_config.get("model_id", "eleven_flash_v2_5")
+        self.model_id = tts_config.get("model_id", "eleven_v3")
         self.output_format = tts_config.get("output_format", "mp3_22050_32")
 
     def reload_config(self) -> None:
@@ -99,7 +99,7 @@ class TextToSpeechEngine:
             voice_id=self.voice_id,
             voice_settings=self.voice_settings,
             model_id=self.model_id,
-            output_format=self.output_format
+            output_format=self.output_format,
         )
 
     def generate_and_play_advanced(self, text: str):
@@ -140,8 +140,7 @@ class TextToSpeechEngine:
             if chunk_count % threshold == 0:
                 audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
                 pcm_data = (
-                    audio
-                    .set_frame_rate(self.SAMPLE_RATE)
+                    audio.set_frame_rate(self.SAMPLE_RATE)
                     .set_channels(self.CHANNELS)
                     .set_sample_width(2)
                     .raw_data
@@ -159,8 +158,7 @@ class TextToSpeechEngine:
         if mp3_buffer:
             audio = AudioSegment.from_file(io.BytesIO(mp3_buffer), format="mp3")
             pcm_data = (
-                audio
-                .set_frame_rate(self.SAMPLE_RATE)
+                audio.set_frame_rate(self.SAMPLE_RATE)
                 .set_channels(self.CHANNELS)
                 .set_sample_width(2)
                 .raw_data
@@ -181,8 +179,7 @@ class TextToSpeechEngine:
         try:
             audio = AudioSegment.from_file(io.BytesIO(data), format="mp3")
             pcm_data = (
-                audio
-                .set_frame_rate(self.SAMPLE_RATE)
+                audio.set_frame_rate(self.SAMPLE_RATE)
                 .set_channels(self.CHANNELS)
                 .set_sample_width(2)
                 .raw_data

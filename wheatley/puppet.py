@@ -19,17 +19,32 @@ import threading
 import time
 import tkinter as tk
 from functools import partial
+from typing import Any
 from tkinter import (
-    BOTH, END, HORIZONTAL, Y,
-    Tk, PanedWindow, colorchooser, simpledialog, TclError
+    BOTH,
+    END,
+    HORIZONTAL,
+    Y,
+    Tk,
+    PanedWindow,
+    colorchooser,
+    simpledialog,
+    TclError,
 )
 from tkinter import ttk
 
 # ── constants ──────────────────────────────────────────────────────────
 SERVO_NAMES = (
-    "lens", "eyelid1", "eyelid2",
-    "eyeX", "eyeY", "handle1", "handle2",
-    "eyeX2", "eyeY2", "eyeZ"
+    "lens",
+    "eyelid1",
+    "eyelid2",
+    "eyeX",
+    "eyeY",
+    "handle1",
+    "handle2",
+    "eyeX2",
+    "eyeY2",
+    "eyeZ",
 )
 DEFAULT_MIN = [0, 180, 140, 130, 140, -60, -60, 150, 130, 140]
 DEFAULT_MAX = [0, 220, 180, 220, 210, 60, 60, 180, 200, 220]
@@ -39,12 +54,22 @@ DOT_COLOR = "#ff4040"
 PX = 6
 BAR_HEIGHT = 28
 
-COL_NAME, COL_SCALE, COL_VEL, COL_VEL_LBL, COL_IDLE, \
-    COL_IDLE_LBL, COL_INTV, COL_INTV_LBL, COL_MOVE, COL_CFG = range(10)
+(
+    COL_NAME,
+    COL_SCALE,
+    COL_VEL,
+    COL_VEL_LBL,
+    COL_IDLE,
+    COL_IDLE_LBL,
+    COL_INTV,
+    COL_INTV_LBL,
+    COL_MOVE,
+    COL_CFG,
+) = range(10)
 
 # ── optional serial ----------------------------------------------------
 try:
-    import serial
+    import serial  # type: ignore[import-untyped]
 except ImportError:
     serial = None
 
@@ -107,13 +132,16 @@ class PuppetGUI(Tk):
         super().__init__()
         self.backend = backend
         self.limits_ready = False
-        self.move_buttons, self.cfg_buttons = [], []
-        self.current_angles = []  # NEW – actual positions
+        self.move_buttons: list[Any] = []  # List of move buttons
+        self.cfg_buttons: list[Any] = []  # List of config buttons
+        self.current_angles: list[Any] = []  # List of actual positions
         self.title("Servo Puppet")
         self.geometry("1280x860")
         self.anim_file = "animations.json"
         self.animations = self._load_json()
-        self.row_vars = []  # (scale, vel, idle, intv, canvas)
+        self.row_vars: list[
+            Any
+        ] = []  # List of row variables (scale, vel, idle, intv, canvas)
         self.servo_min = list(DEFAULT_MIN)
         self.servo_max = list(DEFAULT_MAX)
         self._theme()
@@ -129,15 +157,21 @@ class PuppetGUI(Tk):
         except TclError:
             pass
         base = "#1e1e1e"
-        s.configure(".", background=base, foreground="#e8e8e8",
-                    font=("Segoe UI", 10))
-        s.configure("TEntry", fieldbackground="#2d2d2d",
-                    foreground="#e8e8e8", borderwidth=0)
-        s.configure("Horizontal.TScale", troughcolor="#2d2d2d",
-                    sliderthickness=18, background=ACCENT)
-        s.map("TButton",
-              foreground=[("!disabled", "#ffffff")],
-              background=[("active", ACCENT), ("pressed", "#0094c2")])
+        s.configure(".", background=base, foreground="#e8e8e8", font=("Segoe UI", 10))
+        s.configure(
+            "TEntry", fieldbackground="#2d2d2d", foreground="#e8e8e8", borderwidth=0
+        )
+        s.configure(
+            "Horizontal.TScale",
+            troughcolor="#2d2d2d",
+            sliderthickness=18,
+            background=ACCENT,
+        )
+        s.map(
+            "TButton",
+            foreground=[("!disabled", "#ffffff")],
+            background=[("active", ACCENT), ("pressed", "#0094c2")],
+        )
         self.configure(background=base)
 
     def _load_json(self):
@@ -151,30 +185,33 @@ class PuppetGUI(Tk):
     def _save_json(self):
         """Save animations to JSON file."""
         with open(self.anim_file, "w", encoding="utf-8") as f:
-            f.write('{' + '\n')
+            f.write("{" + "\n")
             items = list(self.animations.items())
             for idx, (k, v) in enumerate(items):
                 f.write(f'  "{k}": ')
-                json_str = json.dumps(v, separators=(',', ': '))
+                json_str = json.dumps(v, separators=(",", ": "))
                 f.write(json_str)
                 if idx < len(items) - 1:
-                    f.write(',\n')
+                    f.write(",\n")
                 else:
-                    f.write('\n')
-            f.write('}')
+                    f.write("\n")
+            f.write("}")
 
     def _layout(self):
         """Layout the main GUI components."""
-        main = PanedWindow(self, orient="horizontal",
-                           sashrelief="raised", bg="#1e1e1e")
+        main = PanedWindow(self, orient="horizontal", sashrelief="raised", bg="#1e1e1e")
         main.pack(fill=BOTH, expand=True, padx=10, pady=10)
         left = ttk.Frame(main)
         main.add(left, minsize=720)
         grid = ttk.Frame(left)
         grid.pack(fill="x", expand=False)
         for col, minsize in {
-            COL_NAME: 70, COL_VEL: 50, COL_IDLE: 50,
-            COL_INTV: 70, COL_MOVE: 60, COL_CFG: 60
+            COL_NAME: 70,
+            COL_VEL: 50,
+            COL_IDLE: 50,
+            COL_INTV: 70,
+            COL_MOVE: 60,
+            COL_CFG: 60,
         }.items():
             grid.grid_columnconfigure(col, minsize=minsize)
         grid.grid_columnconfigure(COL_SCALE, weight=1)
@@ -185,9 +222,9 @@ class PuppetGUI(Tk):
         ctrl.columnconfigure(0, weight=1)
         self._led_row(ctrl)
         self._preset_bar(ctrl)
-        self.send_all_btn = ttk.Button(ctrl, text="Send ALL Config",
-                                       style="Accent.TButton",
-                                       command=self._send_all)
+        self.send_all_btn = ttk.Button(
+            ctrl, text="Send ALL Config", style="Accent.TButton", command=self._send_all
+        )
         self.send_all_btn.pack(pady=(4, 0))
         right = ttk.Frame(main)
         main.add(right, minsize=520)
@@ -199,15 +236,17 @@ class PuppetGUI(Tk):
         mn, mx = self.servo_min[sid], self.servo_max[sid]
         self.current_angles.append(mn)
         ttk.Label(parent, text=f"{sid}:{name}").grid(
-            row=sid, column=COL_NAME, sticky="e", padx=(0, PX))
+            row=sid, column=COL_NAME, sticky="e", padx=(0, PX)
+        )
         holder = ttk.Frame(parent)
         holder.grid(row=sid, column=COL_SCALE, sticky="ew", padx=PX)
         holder.grid_columnconfigure(0, weight=1)
         scale = ttk.Scale(holder, from_=mn, to=mx, orient=HORIZONTAL)
         scale.set(mn)
         scale.grid(row=0, column=0, sticky="ew")
-        canvas = tk.Canvas(holder, height=BAR_HEIGHT, background="#2d2d2d",
-                           highlightthickness=0)
+        canvas = tk.Canvas(
+            holder, height=BAR_HEIGHT, background="#2d2d2d", highlightthickness=0
+        )
         canvas.grid(row=1, column=0, sticky="ew")
 
         def _entry(default, width, col):
@@ -215,23 +254,27 @@ class PuppetGUI(Tk):
             e.insert(0, default)
             e.grid(row=sid, column=col, padx=(0, 2))
             return e
+
         vel = _entry("5", 5, COL_VEL)
         idle = _entry("10", 5, COL_IDLE)
         intv = _entry("2000", 7, COL_INTV)
         ttk.Label(parent, text="vel").grid(row=sid, column=COL_VEL_LBL, sticky="w")
         ttk.Label(parent, text="idle").grid(row=sid, column=COL_IDLE_LBL, sticky="w")
         ttk.Label(parent, text="ms").grid(row=sid, column=COL_INTV_LBL, sticky="w")
-        move_btn = ttk.Button(parent, text="Move",
-                              command=partial(self._send_move, sid, scale, vel))
+        move_btn = ttk.Button(
+            parent, text="Move", command=partial(self._send_move, sid, scale, vel)
+        )
         move_btn.grid(row=sid, column=COL_MOVE, padx=4)
-        cfg_btn = ttk.Button(parent, text="Cfg",
-                             command=partial(self._send_cfg_one, sid, scale,
-                                             vel, idle, intv))
+        cfg_btn = ttk.Button(
+            parent,
+            text="Cfg",
+            command=partial(self._send_cfg_one, sid, scale, vel, idle, intv),
+        )
         cfg_btn.grid(row=sid, column=COL_CFG)
         self.move_buttons.append(move_btn)
         self.cfg_buttons.append(cfg_btn)
         idx = len(self.row_vars)
-        self.row_vars.append((scale, vel, idle, intv, canvas))
+        self.row_vars.append((scale, vel, idle, intv, canvas))  # Append row variables
         idle.bind("<FocusOut>", lambda _e, row=idx: self._draw_band(row))
         scale.configure(command=lambda _v, row=idx: self._draw_band(row))
         canvas.bind("<Configure>", lambda _e, row=idx: self._draw_band(row))
@@ -252,27 +295,31 @@ class PuppetGUI(Tk):
         cv.delete("all")
         if w < 4 or span == 0:
             return
-        for frac in (0, .25, .5, .75, 1):
+        for frac in (0, 0.25, 0.5, 0.75, 1):
             x = int(frac * w)
             h = 14 if frac in (0, 1) else 8
             cv.create_line(x, 0, x, h, fill="#606060", width=1)
         lbl_y = 15
-        cv.create_text(2, lbl_y, anchor="nw", text=str(mn),
-                       fill="#909090", font=("Segoe UI", 7))
-        cv.create_text(w - 2, lbl_y, anchor="ne", text=str(mx),
-                       fill="#909090", font=("Segoe UI", 7))
+        cv.create_text(
+            2, lbl_y, anchor="nw", text=str(mn), fill="#909090", font=("Segoe UI", 7)
+        )
+        cv.create_text(
+            w - 2,
+            lbl_y,
+            anchor="ne",
+            text=str(mx),
+            fill="#909090",
+            font=("Segoe UI", 7),
+        )
         lo = max(mn, tgt - ir)
         hi = min(mx, tgt + ir)
         x0 = int((lo - mn) / span * w)
         x1 = int((hi - mn) / span * w)
-        cv.create_rectangle(x0, 20, x1, BAR_HEIGHT,
-                            fill=BAR_COLOR, width=0)
+        cv.create_rectangle(x0, 20, x1, BAR_HEIGHT, fill=BAR_COLOR, width=0)
         x_tgt = int((tgt - mn) / span * w)
-        cv.create_line(x_tgt, 0, x_tgt, BAR_HEIGHT,
-                       fill="#ffffff", width=1)
+        cv.create_line(x_tgt, 0, x_tgt, BAR_HEIGHT, fill="#ffffff", width=1)
         x_act = int((act - mn) / span * w)
-        cv.create_oval(x_act - 4, 4, x_act + 4, 12,
-                       fill=DOT_COLOR, outline="")
+        cv.create_oval(x_act - 4, 4, x_act + 4, 12, fill=DOT_COLOR, outline="")
 
     def _led_row(self, parent):
         """Create the LED control row."""
@@ -282,9 +329,13 @@ class PuppetGUI(Tk):
         self.r = self._rgb(fr, "255")
         self.g = self._rgb(fr, "255")
         self.b = self._rgb(fr, "255")
-        ttk.Button(fr, text="Pick", command=self._pick_color).pack(side="left", padx=(10, 6))
+        ttk.Button(fr, text="Pick", command=self._pick_color).pack(
+            side="left", padx=(10, 6)
+        )
         ttk.Button(fr, text="Send LED", command=self._send_led).pack(side="left")
-        ttk.Button(fr, text="Send Mic LED", command=self._send_mic_led).pack(side="left", padx=(6, 0))
+        ttk.Button(fr, text="Send Mic LED", command=self._send_mic_led).pack(
+            side="left", padx=(6, 0)
+        )
 
     def _rgb(self, parent, default):
         """Create an RGB entry box."""
@@ -298,21 +349,27 @@ class PuppetGUI(Tk):
         fr = ttk.Frame(parent)
         fr.pack(fill="x", pady=(6, 0))
         ttk.Label(fr, text="Preset").pack(side="left", padx=(0, 8))
-        self.cb = ttk.Combobox(fr, state="readonly", width=22,
-                               values=list(self.animations.keys()))
+        self.cb = ttk.Combobox(
+            fr, state="readonly", width=22, values=list(self.animations.keys())
+        )
         self.cb.pack(side="left")
-        self.apply_btn = ttk.Button(fr, text="Apply",
-                                    command=self._apply_preset)
+        self.apply_btn = ttk.Button(fr, text="Apply", command=self._apply_preset)
         self.apply_btn.pack(side="left", padx=6)
-        ttk.Button(fr, text="Save…", style="Accent.TButton",
-                   command=self._save_preset).pack(side="left")
+        ttk.Button(
+            fr, text="Save…", style="Accent.TButton", command=self._save_preset
+        ).pack(side="left")
 
     def _log_area(self, parent):
         """Create the log area."""
         container = ttk.Frame(parent)
-        self.log = tk.Text(container, wrap="word", background="#121212",
-                           foreground="#dcdcdc", borderwidth=0,
-                           font=("Consolas", 10))
+        self.log = tk.Text(
+            container,
+            wrap="word",
+            background="#121212",
+            foreground="#dcdcdc",
+            borderwidth=0,
+            font=("Consolas", 10),
+        )
         sb = ttk.Scrollbar(container, command=self.log.yview, orient="vertical")
         self.log.configure(yscrollcommand=sb.set)
         self.log.pack(side="left", fill=BOTH, expand=True)
@@ -321,8 +378,7 @@ class PuppetGUI(Tk):
 
     def _save_preset(self):
         """Save the current settings as a preset."""
-        name = simpledialog.askstring("Save animation", "Preset name:",
-                                      parent=self)
+        name = simpledialog.askstring("Save animation", "Preset name:", parent=self)
         if not name:
             return
         velocities, factors, idle_ranges, intervals = [], [], [], []
@@ -373,8 +429,10 @@ class PuppetGUI(Tk):
             angle = mn + factor * (mx - mn)
             sc.set(angle)
             self._draw_band(sid)
-            self._msg(f"[DEBUG] Apply preset SID={sid} factor={factor:.3f} "
-                      f"angle={angle} range=({mn},{mx})")
+            self._msg(
+                f"[DEBUG] Apply preset SID={sid} factor={factor:.3f} "
+                f"angle={angle} range=({mn},{mx})"
+            )
         for e, val in zip((self.r, self.g, self.b), d["color"]):
             e.delete(0, END)
             e.insert(0, val)
@@ -390,9 +448,12 @@ class PuppetGUI(Tk):
     def _disable_tx_buttons(self, state: bool):
         """Enable or disable all TX buttons."""
         tgt = "disabled" if state else "normal"
-        for b in (*self.move_buttons, *self.cfg_buttons,
-                  getattr(self, "send_all_btn", None),
-                  getattr(self, "apply_btn", None)):
+        for b in (
+            *self.move_buttons,
+            *self.cfg_buttons,
+            getattr(self, "send_all_btn", None),
+            getattr(self, "apply_btn", None),
+        ):
             if b is not None:
                 b.configure(state=tgt)
 
@@ -404,10 +465,13 @@ class PuppetGUI(Tk):
             gui_angle = float(sc.get())
             hw_angle = self.gui_to_hw_angle(sid, gui_angle)
             velocity = int(float(vel_e.get()))
-            self._msg(f"[DEBUG] MOVE SID={sid} gui_angle={gui_angle} "
-                      f"hw_angle={hw_angle} velocity={velocity}")
+            self._msg(
+                f"[DEBUG] MOVE SID={sid} gui_angle={gui_angle} "
+                f"hw_angle={hw_angle} velocity={velocity}"
+            )
             self.backend.send(
-                f"MOVE_SERVO;ID={sid};TARGET={hw_angle};VELOCITY={velocity};")
+                f"MOVE_SERVO;ID={sid};TARGET={hw_angle};VELOCITY={velocity};"
+            )
         except ValueError:
             self._msg("bad move")
 
@@ -421,12 +485,14 @@ class PuppetGUI(Tk):
             velocity = int(float(vel.get()))
             idle_val = int(idle.get())
             intv_val = int(intv.get())
-            self._msg(f"[DEBUG] CFG SID={sid} gui_angle={gui_angle} "
-                      f"hw_angle={hw_angle} velocity={velocity} "
-                      f"idle={idle_val} intv={intv_val}")
+            self._msg(
+                f"[DEBUG] CFG SID={sid} gui_angle={gui_angle} "
+                f"hw_angle={hw_angle} velocity={velocity} "
+                f"idle={idle_val} intv={intv_val}"
+            )
             self.backend.send(
-                f"SET_SERVO_CONFIG:{sid},{hw_angle},{velocity},"
-                f"{idle_val},{intv_val}")
+                f"SET_SERVO_CONFIG:{sid},{hw_angle},{velocity},{idle_val},{intv_val}"
+            )
         except ValueError:
             self._msg("bad cfg")
 
@@ -445,9 +511,11 @@ class PuppetGUI(Tk):
             except ValueError:
                 return self._msg("bad bulk")
             chunks.append(f"{sid},{hw_angle},{velocity},{idle_val},{intv_val}")
-            debug.append(f"[DEBUG] SEND SID={sid} gui_angle={gui_angle} "
-                         f"hw_angle={hw_angle} velocity={velocity} "
-                         f"idle={idle_val} intv={intv_val}")
+            debug.append(
+                f"[DEBUG] SEND SID={sid} gui_angle={gui_angle} "
+                f"hw_angle={hw_angle} velocity={velocity} "
+                f"idle={idle_val} intv={intv_val}"
+            )
         for line in debug:
             self._msg(line)
         self.backend.send("SET_SERVO_CONFIG:" + ";".join(chunks))
@@ -464,7 +532,8 @@ class PuppetGUI(Tk):
             return self._msg("bad LED")
         self.backend.send(
             f"SET_LED;R={max(0, min(255, r))};G={max(0, min(255, g))};"
-            f"B={max(0, min(255, b))};")
+            f"B={max(0, min(255, b))};"
+        )
 
     def _send_mic_led(self):
         """Send microphone LED color command."""
@@ -478,7 +547,8 @@ class PuppetGUI(Tk):
         self.backend.send(
             f"SET_MIC_LED;"
             f"R={max(0, min(255, r))};G={max(0, min(255, g))};"
-            f"B={max(0, min(255, b))};")
+            f"B={max(0, min(255, b))};"
+        )
 
     def _pick_color(self):
         """Open a color picker dialog."""
@@ -548,7 +618,8 @@ def auto_port():
     """Auto-detect and return the serial port."""
     if serial is None:
         return None
-    from serial.tools import list_ports
+    from serial.tools import list_ports  # type: ignore[import-untyped]
+
     for p in list_ports.comports():
         if "USB" in p.description or "CP210" in p.description:
             return p.device

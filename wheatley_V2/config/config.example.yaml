@@ -1,0 +1,11 @@
+secrets:
+  openai_api_key: <your_openai_api_key_here>
+  elevenlabs_api_key: <your_elevenlabs_api_key_here>
+
+llm:
+  model: gpt-4.1-mini-2025-04-14
+
+tts:
+  enabled: true
+  voice_id: <your_voice_id_here>
+  model_id: eleven_v3

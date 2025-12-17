@@ -14,14 +14,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import openai  # pip install --upgrade openai
+import openai  # type: ignore[import-not-found]
 import yaml
-from google.auth.exceptions import RefreshError
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from google.auth.exceptions import RefreshError  # type: ignore[import-not-found]
+from google.auth.transport.requests import Request  # type: ignore[import-not-found]
+from google.oauth2.credentials import Credentials  # type: ignore[import-not-found]
+from google_auth_oauthlib.flow import InstalledAppFlow  # type: ignore[import-not-found]
+from googleapiclient.discovery import build  # type: ignore[import-not-found]
+from googleapiclient.errors import HttpError  # type: ignore[import-not-found]
 
 # ────────────────────────────────────────────────────────────────────────────
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
@@ -59,13 +59,17 @@ class GoogleCalendarManager:
                 return False
 
         try:
-            if oauth_mode == "console" or (oauth_mode == "auto" and not browser_available()):
+            if oauth_mode == "console" or (
+                oauth_mode == "auto" and not browser_available()
+            ):
                 print("⚠️  Using console OAuth flow.")
                 print("Open the provided URL in any browser, paste the code back here.")
                 return flow.run_console()
 
             # Browser-based local server flow (opens a tab, then receives callback)
-            print("🌐 Launching browser for Google OAuth (set WHEATLEY_OAUTH_MODE=console to override)…")
+            print(
+                "🌐 Launching browser for Google OAuth (set WHEATLEY_OAUTH_MODE=console to override)…"
+            )
             return flow.run_local_server(port=0, prompt="consent")
         except KeyboardInterrupt as ki:  # user aborted
             raise GoogleCalendarManager.GoogleAuthCancelledError() from ki
@@ -125,7 +129,9 @@ class GoogleCalendarManager:
         except GoogleCalendarManager.GoogleAuthCancelledError:
             # Propagate for caller to optionally skip Google features
             raise
-        self.service = build("calendar", "v3", credentials=self.creds, cache_discovery=False)
+        self.service = build(
+            "calendar", "v3", credentials=self.creds, cache_discovery=False
+        )
 
         with CONFIG_FILE.open() as f:
             cfg = yaml.safe_load(f)
@@ -167,7 +173,8 @@ class GoogleCalendarManager:
                 if events:
                     out[cal["summary"]] = [
                         {
-                            "start": ev.get("start", {}).get("dateTime") or ev.get("start", {}).get("date"),
+                            "start": ev.get("start", {}).get("dateTime")
+                            or ev.get("start", {}).get("date"),
                             "summary": ev.get("summary", "(no title)"),
                         }
                         for ev in events

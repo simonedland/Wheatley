@@ -5,6 +5,7 @@ Generates AI summaries for **Python (.py)** and **Arduino (.ino)** source files
 while skipping virtual‑env directories. It uses the OpenAI v1.x *Responses* API
 via the official `openai.OpenAI` client.
 """
+
 from __future__ import annotations
 
 import os
@@ -14,8 +15,8 @@ from pathlib import Path
 from typing import Iterable, List, Dict, Any
 
 import yaml
-from openai import OpenAI  # Official client
-from tqdm import tqdm
+from openai import OpenAI  # type: ignore[import-not-found]
+from tqdm import tqdm  # type: ignore[import-untyped]
 
 # ---------------------------------------------------------------------------
 # Configuration helpers
@@ -160,9 +161,7 @@ class DirectoryCrawler:
         return [
             p
             for p in self.root.rglob("*")
-            if (
-                p.is_file() and p.suffix in self.extensions and ".venv" not in p.parts
-            )
+            if (p.is_file() and p.suffix in self.extensions and ".venv" not in p.parts)
         ]
 
 
@@ -185,7 +184,9 @@ class Summariser:
         self.verbose = verbose
         self.cfg = cfg
         if self.verbose:
-            print(f"[INFO] Summariser initialized with dry_run={self.dry_run}, verbose={self.verbose}")
+            print(
+                f"[INFO] Summariser initialized with dry_run={self.dry_run}, verbose={self.verbose}"
+            )
 
     def run(self, target: str | Path):
         """Run the summarization process on the target directory.
@@ -235,7 +236,9 @@ class Summariser:
         """
         for folder, snippets in groups.items():
             print(f"[INFO] Writing README_AI.md for folder: {folder}")
-            (folder / "README_AI.md").write_text("# AI Summary\n\n" + "\n".join(snippets), encoding="utf-8")
+            (folder / "README_AI.md").write_text(
+                "# AI Summary\n\n" + "\n".join(snippets), encoding="utf-8"
+            )
 
     def _write_root_md(self, root: Path, groups: Dict[Path, List[str]]):
         """Generate and write the root-level summary.
@@ -250,7 +253,9 @@ class Summariser:
         print(f"[INFO] Generating root-level summary at: {root / 'README_AI.md'}")
         combined = "\n".join(item for group in groups.values() for item in group)
         overview = self.llm.summarise(combined, "global_summary", dry_run=self.dry_run)
-        (root / "README_AI.md").write_text("# AI Codebase Overview\n\n" + overview, encoding="utf-8")
+        (root / "README_AI.md").write_text(
+            "# AI Codebase Overview\n\n" + overview, encoding="utf-8"
+        )
         print("[INFO] Root-level summary written.")
         return overview
 
@@ -262,16 +267,18 @@ class Summariser:
         """
         for folder in by_dir:
             print(f"[INFO] Generating Mermaid diagram for directory: {folder}")
-            files = [f for f in folder.iterdir() if f.is_file() and f.suffix in self.cfg.file_types]
+            files = [
+                f
+                for f in folder.iterdir()
+                if f.is_file() and f.suffix in self.cfg.file_types
+            ]
             file_contexts = []
             for file in files:
                 try:
                     content = file.read_text(encoding="utf-8", errors="ignore")
                 except Exception:
                     content = ""
-                file_contexts.append(
-                    f"File: {file.name}\nContent:\n{content}\n---"
-                )
+                file_contexts.append(f"File: {file.name}\nContent:\n{content}\n---")
             context_str = "\n".join(file_contexts)
 
             prompt = (
@@ -283,8 +290,13 @@ class Summariser:
                 f"{context_str}"
             )
 
-            mermaid_diagram = self.llm.summarise(prompt, "AI_Graph.md", dry_run=self.dry_run)
-            (folder / "AI_Graph.md").write_text(f"# AI Directory Structure\n\n{mermaid_diagram.strip()}\n", encoding="utf-8")
+            mermaid_diagram = self.llm.summarise(
+                prompt, "AI_Graph.md", dry_run=self.dry_run
+            )
+            (folder / "AI_Graph.md").write_text(
+                f"# AI Directory Structure\n\n{mermaid_diagram.strip()}\n",
+                encoding="utf-8",
+            )
             print(f"[INFO] Mermaid diagram written to: {folder / 'AI_Graph.md'}")
 
     def _write_root_mermaid_overview(self, root: Path, files: list[Path]):
@@ -295,16 +307,16 @@ class Summariser:
             files (list[Path]): List of all files to include in the diagram.
         """
         if self.verbose:
-            print(f"[INFO] Generating root-level Mermaid overview at: {root / 'AI_Graph.md'}")
+            print(
+                f"[INFO] Generating root-level Mermaid overview at: {root / 'AI_Graph.md'}"
+            )
         file_contexts = []
         for file in files:
             try:
                 content = file.read_text(encoding="utf-8", errors="ignore")
             except Exception:
                 content = ""
-            file_contexts.append(
-                f"File: {file.name}\nContent:\n{content}\n---"
-            )
+            file_contexts.append(f"File: {file.name}\nContent:\n{content}\n---")
         context_str = "\n".join(file_contexts)
 
         prompt = (
@@ -340,21 +352,30 @@ class Summariser:
             f"{context_str}"
         )
 
-        mermaid_diagram = self.llm.summarise(prompt, "AI_Graph.md", dry_run=self.dry_run)
-        (root / "AI_Graph.md").write_text(f"{mermaid_diagram.strip()}\n", encoding="utf-8")
+        mermaid_diagram = self.llm.summarise(
+            prompt, "AI_Graph.md", dry_run=self.dry_run
+        )
+        (root / "AI_Graph.md").write_text(
+            f"{mermaid_diagram.strip()}\n", encoding="utf-8"
+        )
         if self.verbose:
-            print(f"[INFO] Root-level Mermaid overview written to: {root / 'AI_Graph.md'}")
+            print(
+                f"[INFO] Root-level Mermaid overview written to: {root / 'AI_Graph.md'}"
+            )
 
 
 # ---------------------------------------------------------------------------
 # CLI entry‑point
 # ---------------------------------------------------------------------------
 
+
 def _parse_args():
     """Parse command-line arguments."""
     p = argparse.ArgumentParser(description="Generate LLM‑based code summaries.")
     p.add_argument("--path", "-p", default=".", help="Directory to analyse.")
-    p.add_argument("--dry-run", action="store_true", help="Run without calling the API.")
+    p.add_argument(
+        "--dry-run", action="store_true", help="Run without calling the API."
+    )
     return p.parse_args()
 
 

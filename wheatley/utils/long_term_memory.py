@@ -7,7 +7,9 @@ import os
 from typing import Any, Dict, List
 
 # Default location for the memory file
-MEMORY_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json")
+MEMORY_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "long_term_memory.json"
+)
 
 
 def read_memory(path: str = MEMORY_FILE) -> List[Dict[str, Any]]:
@@ -49,7 +51,9 @@ def _compress_entry(entry: Dict[str, Any], max_len: int = 200) -> Dict[str, Any]
     return result
 
 
-def _optimize_memory(data: List[Dict[str, Any]], max_entries: int = 100) -> List[Dict[str, Any]]:
+def _optimize_memory(
+    data: List[Dict[str, Any]], max_entries: int = 100
+) -> List[Dict[str, Any]]:
     """Return ``data`` trimmed to ``max_entries`` most recent items."""
     if len(data) > max_entries:
         data = data[-max_entries:]

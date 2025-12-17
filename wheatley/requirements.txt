@@ -17,6 +17,7 @@ elevenlabs
 playsound==1.3.0
 pyaudio
 colorama
+pydantic
 # RPi.GPIO is for Raspberry Pi hardware and will not work in standard containers
 # Commented out for Docker builds:
 # RPi.GPIO
@@ -27,3 +28,8 @@ spotipy
 pvporcupine
 websockets>=10.0
 agent_framework
+azure-identity
+azure-ai-projects
+azure-monitor-opentelemetry
+opentelemetry-sdk
+opentelemetry-instrumentation-openai-v2

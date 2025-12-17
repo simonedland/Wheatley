@@ -1,4 +1,5 @@
 """Shared utilities and tool definitions for the LLM client."""
+
 import os
 import yaml
 from datetime import datetime
@@ -7,7 +8,7 @@ import requests
 try:
     from ..service_auth import SERVICE_STATUS
 except ImportError:  # fallback when not running as package
-    from service_auth import SERVICE_STATUS
+    from service_auth import SERVICE_STATUS  # type: ignore[import-not-found, no-redef]
 
 # Weather code descriptions
 WEATHER_CODE_DESCRIPTIONS = {
@@ -38,7 +39,7 @@ WEATHER_CODE_DESCRIPTIONS = {
     86: "Snow showers: Heavy intensity",
     95: "Thunderstorm: Slight or moderate",
     96: "Thunderstorm with slight hail (Central Europe only)",
-    99: "Thunderstorm with heavy hail (Central Europe only)"
+    99: "Thunderstorm with heavy hail (Central Europe only)",
 }
 
 
@@ -97,12 +98,33 @@ set_animation_tool = [
             "properties": {
                 "animation": {
                     "type": "string",
-                    "enum": ["happy", "angry", "sad", "neutral", "excited", "confused", "surprised", "curious", "bored", "fearful", "hopeful", "embarrassed", "frustrated", "proud", "nostalgic", "relieved", "grateful", "shy", "disappointed", "jealous"]  # allowed animations
+                    "enum": [
+                        "happy",
+                        "angry",
+                        "sad",
+                        "neutral",
+                        "excited",
+                        "confused",
+                        "surprised",
+                        "curious",
+                        "bored",
+                        "fearful",
+                        "hopeful",
+                        "embarrassed",
+                        "frustrated",
+                        "proud",
+                        "nostalgic",
+                        "relieved",
+                        "grateful",
+                        "shy",
+                        "disappointed",
+                        "jealous",
+                    ],  # allowed animations
                 }
             },
             "required": ["animation"],
-            "additionalProperties": False
-        }
+            "additionalProperties": False,
+        },
     }
 ]
 
@@ -115,7 +137,9 @@ def build_tools():
     if "user_location" in web_search_config:
         web_search_tool["user_location"] = web_search_config["user_location"]
     if "search_context_size" in web_search_config:
-        web_search_tool["search_context_size"] = web_search_config["search_context_size"]
+        web_search_tool["search_context_size"] = web_search_config[
+            "search_context_size"
+        ]
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     current_day = datetime.now().strftime("%A")
     tools = [
@@ -130,17 +154,26 @@ def build_tools():
                     "latitude": {"type": "number"},
                     "longitude": {"type": "number"},
                     "include_forecast": {"type": "boolean"},
-                    "forecast_days": {"type": "integer", "minimum": 1, "maximum": 14, "default": 7, "description": "Number of days from the current day to include in the forecast (1-7)."},
-                    "extra_hourly": {
-                        "type": "array",
-                        "items": {"type": "string"}
+                    "forecast_days": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 14,
+                        "default": 7,
+                        "description": "Number of days from the current day to include in the forecast (1-7).",
                     },
-                    "temperature_unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
-                    "wind_speed_unit": {"type": "string", "enum": ["kmh", "ms", "mph", "kn"]}
+                    "extra_hourly": {"type": "array", "items": {"type": "string"}},
+                    "temperature_unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                    },
+                    "wind_speed_unit": {
+                        "type": "string",
+                        "enum": ["kmh", "ms", "mph", "kn"],
+                    },
                 },
                 "required": ["latitude", "longitude"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -148,12 +181,10 @@ def build_tools():
             "description": "Test function to check if the function calling works.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "test": {"type": "string"}
-                },
+                "properties": {"test": {"type": "string"}},
                 "required": ["test"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -163,8 +194,8 @@ def build_tools():
                 "type": "object",
                 "properties": {},
                 "required": [],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -174,8 +205,8 @@ def build_tools():
                 "type": "object",
                 "properties": {},
                 "required": [],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -183,12 +214,10 @@ def build_tools():
             "description": "Get accurate coordinates for a given city.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "city": {"type": "string"}
-                },
+                "properties": {"city": {"type": "string"}},
                 "required": ["city"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -198,8 +227,8 @@ def build_tools():
                 "type": "object",
                 "properties": {},
                 "required": [],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -208,11 +237,14 @@ def build_tools():
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_request": {"type": "string", "description": "The user's request or question related to Google services."}
+                    "user_request": {
+                        "type": "string",
+                        "description": "The user's request or question related to Google services.",
+                    }
                 },
                 "required": ["user_request"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -222,7 +254,7 @@ def build_tools():
                 "type": "object",
                 "properties": {
                     "user_request": {"type": "string"},
-                    "device_id": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+                    "device_id": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
                 },
                 "required": ["user_request"],
             },
@@ -234,12 +266,18 @@ def build_tools():
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "duration": {"type": "number", "description": "The duration of the timer in seconds."},
-                    "reason": {"type": "string", "description": "The reason or label for the timer (optional)."}
+                    "duration": {
+                        "type": "number",
+                        "description": "The duration of the timer in seconds.",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "The reason or label for the timer (optional).",
+                    },
                 },
                 "required": ["duration"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -248,12 +286,18 @@ def build_tools():
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "time": {"type": "string", "description": "The target time for the reminder, e.g., '07:00', '19:30', or '7am'."},
-                    "reason": {"type": "string", "description": "The reason or label for the reminder (optional)."}
+                    "time": {
+                        "type": "string",
+                        "description": "The target time for the reminder, e.g., '07:00', '19:30', or '7am'.",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "The reason or label for the reminder (optional).",
+                    },
                 },
                 "required": ["time"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -263,8 +307,8 @@ def build_tools():
                 "type": "object",
                 "properties": {},
                 "required": [],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -276,12 +320,12 @@ def build_tools():
                     "mode": {
                         "type": "string",
                         "enum": ["normal", "western", "skitsofrenic"],
-                        "description": "Desired personality mode"
+                        "description": "Desired personality mode",
                     }
                 },
                 "required": ["mode"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -289,12 +333,10 @@ def build_tools():
             "description": "Persist JSON data to Wheatley's long term memory store.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "data": {"type": "object"}
-                },
+                "properties": {"data": {"type": "object"}},
                 "required": ["data"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         {
             "type": "function",
@@ -304,11 +346,11 @@ def build_tools():
                 "type": "object",
                 "properties": {
                     "index": {"type": "integer"},
-                    "data": {"type": "object"}
+                    "data": {"type": "object"},
                 },
                 "required": ["index", "data"],
-                "additionalProperties": False
-            }
+                "additionalProperties": False,
+            },
         },
         # Tool for persisting long term memory. Memory retrieval happens automatically.
     ]

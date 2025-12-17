@@ -18,7 +18,7 @@ import json
 import os
 from datetime import datetime
 
-import openai
+import openai  # type: ignore[import-not-found]
 import yaml
 
 from typing import Any, Dict, Callable, List, Tuple
@@ -26,7 +26,8 @@ from typing import Any, Dict, Callable, List, Tuple
 try:
     from .spotify_ha_utils import SpotifyHA
 except ImportError:
-    from spotify_ha_utils import SpotifyHA
+    from spotify_ha_utils import SpotifyHA  # type: ignore[import-not-found, no-redef]
+
 
 # ── tools visible to the LLM ──────────────────────────────────────────
 SPOTIFY_TOOLS = [
@@ -172,10 +173,12 @@ def handles(name: str) -> Callable:
     function in the handler registry under the provided name. Use it to quickly bind a
     handler to a specific tool identifier.
     """
+
     def decorator(func: Callable[["SpotifyHA", Dict[str, Any], int], str]):
         """Register a function as a handler for a specific tool name."""
         _HANDLER_REGISTRY[name] = func
         return func
+
     return decorator
 
 
@@ -186,7 +189,9 @@ class SpotifyAgent:
     @staticmethod
     def _load_config():
         base_dir = os.path.dirname(os.path.dirname(__file__))
-        with open(os.path.join(base_dir, "config", "config.yaml"), encoding="utf-8") as fh:
+        with open(
+            os.path.join(base_dir, "config", "config.yaml"), encoding="utf-8"
+        ) as fh:
             return yaml.safe_load(fh)
 
     def __init__(self):
@@ -195,7 +200,9 @@ class SpotifyAgent:
             cfg = self._load_config()
             self.spotify = SpotifyHA.get_default()
         except Exception:
-            print("❌ ERROR: Authentication failed for Spotify! Please check your credentials or login again.")
+            print(
+                "❌ ERROR: Authentication failed for Spotify! Please check your credentials or login again."
+            )
             raise
         openai.api_key = cfg["secrets"]["openai_api_key"]
         self.model = cfg["llm"]["model"]
@@ -208,7 +215,7 @@ class SpotifyAgent:
         limit = int(args.get("limit", 10))
 
         try:
-            return _HANDLER_REGISTRY[name](self, args, limit)   # ← one call
+            return _HANDLER_REGISTRY[name](self, args, limit)  # type: ignore[arg-type]
         except KeyError as exc:
             raise NotImplementedError(f"No handler for tool {name}") from exc
 
@@ -325,7 +332,9 @@ class SpotifyAgent:
         )
 
     # ── main interface ────────────────────────────────────────────────
-    def llm_decide_and_dispatch(self, user_request: str, arguments: Dict[str, Any] | None = None):
+    def llm_decide_and_dispatch(
+        self, user_request: str, arguments: Dict[str, Any] | None = None
+    ):
         """Given a user request, select and dispatch the appropriate tool using the LLM."""
         now = datetime.now()
         tool_list = "\n".join(f"- {t['name']}: {t['description']}" for t in self.tools)

@@ -3,12 +3,12 @@
 import os
 import sys
 import wave
-import numpy as np
-import pyaudio
-import openai
+import numpy as np  # type: ignore[import-not-found]
+import pyaudio  # type: ignore[import-untyped]
+import openai  # type: ignore[import-not-found]
 import yaml
 import struct
-import pvporcupine
+import pvporcupine  # type: ignore[import-not-found]
 import time
 import asyncio
 import random
@@ -21,7 +21,7 @@ except ImportError:
     _MODULE_ROOT = Path(__file__).resolve().parents[1]
     if str(_MODULE_ROOT) not in sys.path:
         sys.path.append(str(_MODULE_ROOT))
-    from utils.timing_logger import record_timing
+    from utils.timing_logger import record_timing  # type: ignore[import-not-found, no-redef]
 # ---------------------------------------------------------------------------
 # LED colour constants used to signal microphone state on the hardware.  The
 # values represent ``(R, G, B)`` tuples that are forwarded to the Arduino via
@@ -31,10 +31,10 @@ except ImportError:
 # ``PROCESSING_COLOR`` - after recording has stopped (orange)
 # ``PAUSED_COLOR``    - microphone paused (red)
 # ---------------------------------------------------------------------------
-HOTWORD_COLOR = (0, 0, 255)         # blue
-RECORDING_COLOR = (0, 255, 0)       # green
-PROCESSING_COLOR = (255, 165, 0)    # orange
-PAUSED_COLOR = (255, 0, 0)          # red
+HOTWORD_COLOR = (0, 0, 255)  # blue
+RECORDING_COLOR = (0, 255, 0)  # green
+PROCESSING_COLOR = (255, 165, 0)  # orange
+PAUSED_COLOR = (255, 0, 0)  # red
 
 # Directory containing pre-recorded greetings played after hotword detection
 HOTWORD_GREETINGS_DIR = os.path.join(
@@ -48,7 +48,9 @@ class SpeechToTextEngine:
     def __init__(self, arduino_interface=None):
         """Initialize the engine and calibrate microphone thresholds."""
         # Load STT settings from the config file
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml"
+        )
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
         stt_config = config.get("stt", {})
@@ -99,7 +101,9 @@ class SpeechToTextEngine:
             r, g, b = color
             self.arduino_interface.set_mic_led_color(r, g, b)
 
-    def calibrate_threshold(self, ambient_time: float = 5.0, speech_time: float = 5.0) -> None:
+    def calibrate_threshold(
+        self, ambient_time: float = 5.0, speech_time: float = 5.0
+    ) -> None:
         """Calibrate ``THRESHOLD`` using ambient and spoken audio samples.
 
         The microphone LED blinks blue during ``ambient_time`` while background
@@ -153,7 +157,9 @@ class SpeechToTextEngine:
 
         if speech_max > ambient_max:
             self.THRESHOLD = int((ambient_max + speech_max) / 2)
-        print(f"[STT] Calibration ambient_max={ambient_max} speech_max={speech_max} threshold={self.THRESHOLD}")
+        print(
+            f"[STT] Calibration ambient_max={ambient_max} speech_max={speech_max} threshold={self.THRESHOLD}"
+        )
 
     # ------------------------------------------------------------------
     # Listening control helpers
@@ -182,18 +188,42 @@ class SpeechToTextEngine:
     def connect_stream(self):
         """Connect to the audio input stream, trying different devices if necessary."""
         try:
-            self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=2)
+            self._stream = self._audio.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.RATE,
+                input=True,
+                frames_per_buffer=self.CHUNK,
+                input_device_index=2,
+            )
         except Exception:
             try:
-                self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK, input_device_index=1)
+                self._stream = self._audio.open(
+                    format=self.FORMAT,
+                    channels=self.CHANNELS,
+                    rate=self.RATE,
+                    input=True,
+                    frames_per_buffer=self.CHUNK,
+                    input_device_index=1,
+                )
             except Exception:
-                self._stream = self._audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
+                self._stream = self._audio.open(
+                    format=self.FORMAT,
+                    channels=self.CHANNELS,
+                    rate=self.RATE,
+                    input=True,
+                    frames_per_buffer=self.CHUNK,
+                )
 
     # ----------------------------
     # Recording helper methods
     # ----------------------------
     def _tts_playing(self, tts_engine) -> bool:
-        return tts_engine is not None and hasattr(tts_engine, "is_playing") and tts_engine.is_playing()
+        return (
+            tts_engine is not None
+            and hasattr(tts_engine, "is_playing")
+            and tts_engine.is_playing()
+        )
 
     def _wait_for_tts(self, tts_engine) -> None:
         while self._tts_playing(tts_engine):
@@ -241,7 +271,10 @@ class SpeechToTextEngine:
         while True:
             if self._should_abort(tts_engine):
                 return [], min_amplitude, max_amplitude
-            if max_wait_seconds is not None and time.time() - start_time > max_wait_seconds:
+            if (
+                max_wait_seconds is not None
+                and time.time() - start_time > max_wait_seconds
+            ):
                 print("No sound detected, aborting...")
                 return [], min_amplitude, max_amplitude
             data = stream.read(self.CHUNK, exception_on_overflow=False)
@@ -254,7 +287,9 @@ class SpeechToTextEngine:
                 self._update_mic_led(RECORDING_COLOR)
                 return frames, min_amplitude, max_amplitude
 
-    def _continue_until_silence(self, stream, frames, tts_engine, min_amplitude, max_amplitude):
+    def _continue_until_silence(
+        self, stream, frames, tts_engine, min_amplitude, max_amplitude
+    ):
         silent_frames = 0
         while frames:
             if self._should_abort(tts_engine):
@@ -314,7 +349,7 @@ class SpeechToTextEngine:
             self._update_mic_led(PROCESSING_COLOR)
 
             wav_filename = "temp_recording.wav"
-            wf = wave.open(wav_filename, 'wb')
+            wf = wave.open(wav_filename, "wb")
             wf.setnchannels(self.CHANNELS)
             wf.setsampwidth(audio.get_sample_size(self.FORMAT))
             wf.setframerate(self.RATE)
@@ -330,8 +365,7 @@ class SpeechToTextEngine:
         start_time = time.time()
         with open(filename, "rb") as audio_file:
             transcription_result = openai.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file
+                model="whisper-1", file=audio_file
             )
         record_timing("stt_transcribe", start_time)
         return transcription_result.text
@@ -358,14 +392,14 @@ class SpeechToTextEngine:
             self._porcupine = pvporcupine.create(
                 access_key=self.porcupine_api_key,
                 keyword_paths=["stt/wheatley.ppn"],
-                sensitivities=sensitivities
+                sensitivities=sensitivities,
             )
             print("[Hotword] Using custom keyword file 'wheatley.ppn'")
         except Exception:
             self._porcupine = pvporcupine.create(
                 access_key=self.porcupine_api_key,
                 keywords=keywords,
-                sensitivities=sensitivities
+                sensitivities=sensitivities,
             )
             print("[Hotword] Using default keywords")
 
@@ -391,7 +425,9 @@ class SpeechToTextEngine:
             keywords = ["computer", "jarvis"]
         if access_key is None:
             # Try to load from config
-            config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml")
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "config", "config.yaml"
+            )
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
             access_key = config.get("stt", {}).get("porcupine_api_key")
@@ -419,8 +455,12 @@ class SpeechToTextEngine:
             while True:
                 if self._pause_event.is_set():
                     break
-                pcm = stream.read(self._porcupine.frame_length, exception_on_overflow=False)
-                pcm_unpacked = struct.unpack_from("h" * self._porcupine.frame_length, pcm)
+                pcm = stream.read(
+                    self._porcupine.frame_length, exception_on_overflow=False
+                )
+                pcm_unpacked = struct.unpack_from(
+                    "h" * self._porcupine.frame_length, pcm
+                )
                 keyword_index = self._porcupine.process(pcm_unpacked)
                 if keyword_index >= 0:
                     print(f"[Hotword] Detected: {keywords[keyword_index]}")
@@ -450,7 +490,7 @@ class SpeechToTextEngine:
         """Wait for hotword, then record and transcribe speech. Return transcribed text or empty string if nothing detected."""
         # Block if TTS is playing
         if tts_engine is not None:
-            while hasattr(tts_engine, 'is_playing') and tts_engine.is_playing():
+            while hasattr(tts_engine, "is_playing") and tts_engine.is_playing():
                 print("[STT] Waiting for TTS to finish before listening...")
                 time.sleep(0.1)
         idx = self.listen_for_hotword(keywords=["Wheatley"])
@@ -475,10 +515,16 @@ class SpeechToTextEngine:
         loop = asyncio.get_event_loop()
         try:
             while True:
-                if self.is_paused() or (tts_engine is not None and hasattr(tts_engine, 'is_playing') and tts_engine.is_playing()):
+                if self.is_paused() or (
+                    tts_engine is not None
+                    and hasattr(tts_engine, "is_playing")
+                    and tts_engine.is_playing()
+                ):
                     await asyncio.sleep(0.1)
                     continue
-                text = await loop.run_in_executor(None, self.get_voice_input, tts_engine)
+                text = await loop.run_in_executor(
+                    None, self.get_voice_input, tts_engine
+                )
                 if text and text.strip():
                     await queue.put({"type": "voice", "text": text.strip()})
         except asyncio.CancelledError:

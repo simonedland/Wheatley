@@ -15,15 +15,15 @@ import textwrap
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional
 
-import openai
+import openai  # type: ignore[import-not-found]
 import requests
 import yaml
-from pydub import AudioSegment
-from pydub.playback import play
+from pydub import AudioSegment  # type: ignore[import-not-found]
+from pydub.playback import play  # type: ignore[import-not-found]
 
 # ───────── USER SETTINGS ────────────────────────────────────────────────────
 VOICE_ID = "4Jtuv4wBvd95o1hzNloV"
-MODEL_ID = "eleven_flash_v2_5"
+MODEL_ID = "eleven_v3"
 OUTPUT_FORMAT = "mp3_22050_32"
 
 MAX_TTS_WORKERS = 2
@@ -31,15 +31,16 @@ QUEUE_MAXSIZE = 100
 TOKEN_FLUSH_MS = 200
 MAX_ATTEMPTS = 6
 
-PUNCT_RE = re.compile(r'[.!?]\s+')
+PUNCT_RE = re.compile(r"[.!?]\s+")
 ABBREVS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
 # ───────── OPTIONAL RICH UI ────────────────────────────────────────────────
 try:
-    from rich.live import Live
-    from rich.table import Table
-    from rich.console import Console
-    from rich.text import Text
+    from rich.live import Live  # type: ignore[import-not-found]
+    from rich.table import Table  # type: ignore[import-not-found]
+    from rich.console import Console  # type: ignore[import-not-found]
+    from rich.text import Text  # type: ignore[import-not-found]
+
     console, USE_RICH = Console(), True
 except ImportError:
     USE_RICH = False
@@ -53,7 +54,7 @@ COL = dict(
     ready="green",
     play="bright_blue",
     end="magenta",
-    err="bright_red"
+    err="bright_red",
 )
 
 
@@ -66,11 +67,7 @@ def render(rows: List[Dict]):
     tbl.add_column("Sentence", overflow="fold")
     tbl.add_column("Status", width=18)
     for r in rows:
-        tbl.add_row(
-            str(r["idx"]),
-            r["text"],
-            Text(r["status"], style=COL[r["phase"]])
-        )
+        tbl.add_row(str(r["idx"]), r["text"], Text(r["status"], style=COL[r["phase"]]))
     live.update(tbl, refresh=True)
 
 
@@ -96,44 +93,44 @@ def add_row(idx: float, txt=""):
     render(rows)
 
 
-def set_phase(idx: float, phase: str, txt: Optional[str] = None,
-              status: Optional[str] = None):
+def set_phase(
+    idx: float, phase: str, txt: Optional[str] = None, status: Optional[str] = None
+):
     """Update the phase and status of a row in the live table and render it."""
     r = next(r for r in rows if r["idx"] == idx)
     if txt is not None:
         r["text"] = txt
     r["phase"] = phase
-    r["status"] = status or dict(
-        build="building",
-        tts="→ TTS",
-        retry="RETRY",
-        done="complete",
-        ready="ready",
-        play="playing",
-        end="played",
-        err="ERROR"
-    )[phase]
+    r["status"] = (
+        status
+        or dict(
+            build="building",
+            tts="→ TTS",
+            retry="RETRY",
+            done="complete",
+            ready="ready",
+            play="playing",
+            end="played",
+            err="ERROR",
+        )[phase]
+    )
     render(rows)
 
 
 # ───────── BLOCKING HELPERS ────────────────────────────────────────────────
-def http_tts(text, previous_text, next_text, idx):
-    """Perform Elevenlabs POST with previous/next text and retry/back-off.
+def http_tts(text, idx):
+    """Perform Elevenlabs POST with retry/back-off.
 
     TODO: Refactor to reduce cognitive complexity.
     """
+
     def _post() -> requests.Response:
         return requests.post(
             API_URL,
             headers=HEADERS,
             params={"output_format": OUTPUT_FORMAT},
-            json={
-                "text": text,
-                "model_id": MODEL_ID,
-                "previous_text": previous_text or None,
-                "next_text": next_text or None
-            },
-            timeout=60
+            json={"text": text, "model_id": MODEL_ID},
+            timeout=60,
         )
 
     attempt = 1
@@ -143,7 +140,7 @@ def http_tts(text, previous_text, next_text, idx):
         set_phase(
             idx,
             phase,
-            status=f"{'RETRY' if attempt > 1 else '→ TTS'} ({attempt}/{MAX_ATTEMPTS})"
+            status=f"{'RETRY' if attempt > 1 else '→ TTS'} ({attempt}/{MAX_ATTEMPTS})",
         )
         try:
             resp = _post()
@@ -156,16 +153,16 @@ def http_tts(text, previous_text, next_text, idx):
                 body = getattr(e.response, "text", "")[:160]
             else:
                 body = str(e)
-            print(textwrap.fill(
-                f"[TTS ERROR] idx {idx} | attempt {attempt}/{MAX_ATTEMPTS} "
-                f"| {'HTTP ' + str(code) if code else e.__class__.__name__}\n→ {body}",
-                100
-            ))
+            print(
+                textwrap.fill(
+                    f"[TTS ERROR] idx {idx} | attempt {attempt}/{MAX_ATTEMPTS} "
+                    f"| {'HTTP ' + str(code) if code else e.__class__.__name__}\n→ {body}",
+                    100,
+                )
+            )
             if attempt == MAX_ATTEMPTS:
                 set_phase(
-                    idx,
-                    "err",
-                    status=f"ERR {code or ''} ({MAX_ATTEMPTS}×)".strip()
+                    idx, "err", status=f"ERR {code or ''} ({MAX_ATTEMPTS}×)".strip()
                 )
                 return None
             time.sleep(backoff + random.uniform(0, 0.5))
@@ -192,8 +189,7 @@ def gpt_thread(prompt: str, q: asyncio.Queue, loop):
     idx = 0.0
     scan = 0
     stream = openai.chat.completions.create(
-        model="gpt-4o", stream=True,
-        messages=[{"role": "user", "content": prompt}]
+        model="gpt-4o", stream=True, messages=[{"role": "user", "content": prompt}]
     )
     for ch in stream:
         tok = getattr(ch.choices[0].delta, "content", "") or ""
@@ -209,12 +205,12 @@ def gpt_thread(prompt: str, q: asyncio.Queue, loop):
             m = PUNCT_RE.search(buf, scan)
             if not m:
                 break
-            word = re.findall(r'\b\w+\b', buf[:m.start() + 1])[-1].lower()
-            if word in ABBREVS or re.fullmatch(r'\d+', word):
+            word = re.findall(r"\b\w+\b", buf[: m.start() + 1])[-1].lower()
+            if word in ABBREVS or re.fullmatch(r"\d+", word):
                 scan = m.end()
                 continue
-            sent = buf[:m.end()].strip()
-            buf = buf[m.end():].lstrip()
+            sent = buf[: m.end()].strip()
+            buf = buf[m.end() :].lstrip()
             scan = 0
             add_row(idx, sent)
             asyncio.run_coroutine_threadsafe(q.put((idx, sent)), loop)
@@ -235,24 +231,21 @@ async def tts_dispatch(sq: asyncio.Queue, aq: asyncio.Queue, pool):
     """
     loop = asyncio.get_running_loop()
     sem = asyncio.Semaphore(MAX_TTS_WORKERS)
-    prev_text = ""
     pending: List[asyncio.Task] = []
 
-    async def handle(idx: float, cur: str, nxt: str, prev: str):
+    async def handle(idx: float, cur: str):
         async with sem:
             data = await asyncio.wrap_future(
-                loop.run_in_executor(pool, http_tts, cur, prev, nxt, idx)
+                loop.run_in_executor(pool, http_tts, cur, idx)
             )
             await aq.put((idx, data))
 
-    item = await sq.get()  # first sentence tuple
-    while item:
+    while True:
+        item = await sq.get()
+        if item is None:
+            break
         idx, cur = item
-        nxt_item = await sq.get()
-        nxt_txt = "" if nxt_item is None else nxt_item[1]
-        pending.append(asyncio.create_task(handle(idx, cur, nxt_txt, prev_text)))
-        prev_text = cur
-        item = nxt_item
+        pending.append(asyncio.create_task(handle(idx, cur)))
 
     await asyncio.gather(*pending)  # wait all workers
     await aq.put((-1, b""))
@@ -277,18 +270,15 @@ async def sequencer(aq: asyncio.Queue):
 # ───────── ORCHESTRATOR ────────────────────────────────────────────────────
 async def chat(prompt: str):
     """Orchestrate the GPT-to-TTS pipeline: produce, dispatch, and play audio."""
-    q_sent = asyncio.Queue(QUEUE_MAXSIZE)
-    q_audio = asyncio.Queue(QUEUE_MAXSIZE)
+    q_sent: asyncio.Queue[tuple[float, str]] = asyncio.Queue(QUEUE_MAXSIZE)
+    q_audio: asyncio.Queue[tuple[float, bytes | None]] = asyncio.Queue(QUEUE_MAXSIZE)
     threading.Thread(
         target=gpt_thread,
         args=(prompt, q_sent, asyncio.get_running_loop()),
-        daemon=True
+        daemon=True,
     ).start()
     with ThreadPoolExecutor(MAX_TTS_WORKERS) as pool:
-        await asyncio.gather(
-            tts_dispatch(q_sent, q_audio, pool),
-            sequencer(q_audio)
-        )
+        await asyncio.gather(tts_dispatch(q_sent, q_audio, pool), sequencer(q_audio))
 
 
 # ───────── CLI ENTRY ───────────────────────────────────────────────────────
@@ -298,9 +288,7 @@ if __name__ == "__main__":
             prompt = console.input("[bold green]Prompt » [/bold green]")
             console.print(f"[bold]You:[/bold] {prompt}\n")
             live = Live(
-                console=console,
-                refresh_per_second=10,
-                vertical_overflow="visible"
+                console=console, refresh_per_second=10, vertical_overflow="visible"
             )
             with live:
                 asyncio.run(chat(prompt))

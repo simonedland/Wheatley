@@ -1,4 +1,4 @@
-name: Python Code Quality Check
+name: Python Code Quality
 
 on:
   push:
@@ -10,151 +10,319 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  checks: write
+
+concurrency:
+  group: python-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
 
 jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # LINTING & FORMATTING
+  # ────────────────────────────────────────────────────────────────────────────
   lint:
+    name: Lint & Format
     runs-on: ubuntu-latest
-
     steps:
-      # ─────────────────────────── 1. Checkout code ───────────────────────────
       - uses: actions/checkout@v4
-
-      # ─────────────────────────── 2. Python setup ────────────────────────────
+      
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          
+      - name: Install Ruff
+        run: pip install ruff
 
-      # ─────────────────────── 3. Install flake8 & deps ───────────────────────
-      - name: Install Flake8 & plugins
+      - name: Run Ruff Check
+        id: ruff
         run: |
-          python -m pip install -U pip
-          pip install "flake8<7" flake8-bugbear flake8-docstrings \
-                      pep8-naming flake8-cognitive-complexity
-          if [ -f requirements.txt ]; then
-            if ! pip install -r requirements.txt; then
-              echo "::warning::requirements.txt install failed; continuing lint."
+          # Create a concise report for artifacts
+          ruff check . --output-format=concise --quiet > lint_report.txt || true
+          
+          # Output for GitHub Annotations
+          ruff check . --output-format=github || true
+          
+          # Check exit code for summary
+          if [ -s lint_report.txt ]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "count=$(wc -l < lint_report.txt)" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Ruff Format
+        id: format
+        run: |
+          ruff format --check --quiet . >> lint_report.txt 2>&1 || true
+          if [ $? -ne 0 ]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Job Summary
+        if: always()
+        run: |
+          echo "## Linting & Formatting Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status | Issues |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :---: | :---: |" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.ruff.outputs.status }}" == "success" ]; then
+            echo "| **Ruff Lint** | Pass | 0 |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| **Ruff Lint** | Fail | ${{ steps.ruff.outputs.count }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ steps.format.outputs.status }}" == "success" ]; then
+            echo "| **Formatting** | Pass | 0 |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| **Formatting** | Needs Format | - |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-report
+          path: lint_report.txt
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # TYPE CHECKING
+  # ────────────────────────────────────────────────────────────────────────────
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          
+      - name: Install Dependencies
+        run: |
+          pip install mypy requests types-requests types-PyYAML
+          pip install -r requirements.txt
+
+      - name: Run Mypy
+        id: mypy
+        run: |
+          # Run mypy and filter out success message
+          mypy . | grep -v "Success: no issues found" > mypy_report.txt || true
+          
+          if [ -s mypy_report.txt ]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "count=$(wc -l < mypy_report.txt)" >> $GITHUB_OUTPUT
+            # Print to console for logs
+            cat mypy_report.txt
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Job Summary
+        if: always()
+        run: |
+          echo "## Type Checking Results" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.mypy.outputs.status }}" == "success" ]; then
+            echo "### Mypy Passed" >> $GITHUB_STEP_SUMMARY
+            echo "No type errors found." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Mypy Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Found **${{ steps.mypy.outputs.count }}** type errors." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            head -n 10 mypy_report.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            if [ ${{ steps.mypy.outputs.count }} -gt 10 ]; then
+              echo "... and more (see logs)" >> $GITHUB_STEP_SUMMARY
             fi
           fi
 
-      # ─────────────── 4. Run flake8 & store a plain-text report ──────────────
-      - name: Run Flake8 (raw report)
-        id: flake8
-        env:
-          REPORT: flake8-report.txt
-        run: |
-          flake8 . \
-            --ignore=E501,CCR001 \
-            --max-complexity=10 \
-            --max-cognitive-complexity=10 \
-            --format="%(path)s:%(row)d:%(col)d: %(code)s %(text)s" \
-            > "$REPORT" || true
-          cat "$REPORT"
-          echo "issue_count=$(wc -l < "$REPORT")" >> "$GITHUB_OUTPUT"
-
-      # ───────────── 5. Hard-gate: block PRs *into main* if lint fails ─────────
-      - name: Fail if flake8 issues are present
-        if: github.event_name == 'pull_request' &&
-            github.event.pull_request.base.ref == 'main' &&
-            steps.flake8.outputs.issue_count != '0'
-        run: |
-          echo "::error file=flake8-report.txt,line=1::flake8 found ${{ steps.flake8.outputs.issue_count }} issue(s)."
-          exit 1
-
-      # ─────────────────────── 6. Inline PR annotations ───────────────────────
-      - name: Annotate PR with Flake8 (reviewdog)
-        if: github.event_name == 'pull_request'
-        uses: reviewdog/action-flake8@v3
+      - uses: actions/upload-artifact@v4
         with:
-          reporter: github-pr-review
-          level: warning
-          fail_level: none
-          flake8_args: "--ignore=E501,CCR001 --max-complexity=10 --max-cognitive-complexity=10"
+          name: mypy-report
+          path: mypy_report.txt
 
-      # ───────────────────────── 7. Upload report artefact ─────────────────────
-      - name: Upload Flake8 report
+  # ────────────────────────────────────────────────────────────────────────────
+  # TESTING & COVERAGE
+  # ────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          
+      - name: Install Test Dependencies
+        run: |
+          pip install pytest httpx pytest-cov pytest-md-report pytest-asyncio
+          pip install -r requirements.txt
+
+      - name: Create Config File
+        run: |
+          cp wheatley_V2/config/config.example.yaml wheatley_V2/config/config.yaml
+          cp wheatley/config/config.example.yaml wheatley/config/config.yaml
+
+      - name: Run Pytest
+        id: pytest
+        run: |
+          # Run pytest with coverage and markdown report
+          pytest --cov=. --cov-report=term-missing --md-report --md-report-flavor=github --md-report-output=pytest-md.txt > pytest_output.txt 2>&1 || true
+          
+          # Capture exit code
+          EXIT_CODE=$?
+          
+          # Save full output for artifact
+          cat pytest_output.txt > pytest_report.txt
+          
+          # Extract coverage percentage (simple grep)
+          COV=$(grep "TOTAL" pytest_output.txt | awk '{print $NF}')
+          echo "coverage=$COV" >> $GITHUB_OUTPUT
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Job Summary
         if: always()
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.pytest.outputs.status }}" == "success" ]; then
+            echo "### Tests Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Tests Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f pytest_output.txt ]; then
+            sed -n '/coverage: platform/,/TOTAL/p' pytest_output.txt >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f pytest-md.txt ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Detailed Report" >> $GITHUB_STEP_SUMMARY
+            
+            # Format the report
+            python .github/scripts/format_test_report.py pytest-md.txt pytest-md-formatted.txt
+            
+            if [ -f pytest-md-formatted.txt ]; then
+              cat pytest-md-formatted.txt >> $GITHUB_STEP_SUMMARY
+            else
+              cat pytest-md.txt >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: pytest_report.txt
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # FINAL REPORT
+  # ────────────────────────────────────────────────────────────────────────────
+  report:
+    name: Final Report
+    needs: [lint, type-check, test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install Script Dependencies
+        run: pip install requests
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: reports
+          merge-multiple: true
+
+      - name: Combine Reports
+        run: |
+          touch quality-report.txt
+          
+          echo "Processing reports..."
+          if [ -f reports/lint_report.txt ]; then 
+            echo "Found lint report"
+            cat reports/lint_report.txt >> quality-report.txt
+          fi
+          
+          if [ -f reports/mypy_report.txt ]; then 
+            echo "Found mypy report"
+            cat reports/mypy_report.txt >> quality-report.txt
+          fi
+          
+          if [ -f reports/pytest_report.txt ]; then 
+            echo "Found pytest report"
+            # Only append pytest failures if they exist (simple check for "FAILED")
+            if grep -q "FAILED" reports/pytest_report.txt; then
+               echo "========== PYTEST FAILURES ==========" >> quality-report.txt
+               cat reports/pytest_report.txt >> quality-report.txt
+            fi
+          fi
+
+      - name: Check for Issues
+        id: check_issues
+        run: |
+          if [ -s quality-report.txt ]; then
+            echo "Issues found!"
+            echo "has_issues=true" >> $GITHUB_OUTPUT
+          else
+            echo "No issues found."
+            echo "has_issues=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Final Summary
+        run: |
+          echo "# Quality Gate Summary" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_issues.outputs.has_issues }}" == "true" ]; then
+            echo "### Quality Gate Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the individual job summaries for details." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Quality Gate Passed" >> $GITHUB_STEP_SUMMARY
+            echo "Great job! The code is clean and tested." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Final Report
         uses: actions/upload-artifact@v4
         with:
-          name: flake8-report
-          path: flake8-report.txt
-          if-no-files-found: warn
+          name: quality-report
+          path: quality-report.txt
 
-      # ───── 8. Create / update “code-quality” issues (main & Test only) ──────
-      - name: Create / update code-quality issues
-        if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
+      - name: Manage GitHub Issues
+        if: (github.ref_name == 'main' || github.ref_name == 'Test' || github.base_ref == 'main' || github.base_ref == 'Test')
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          BRANCH_NAME: ${{ github.base_ref || github.ref_name }}
+          REPORT_FILE: quality-report.txt
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
         run: |
-          # Use the **target** branch of the PR, or the push branch
-          BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
-          LABELS="code-quality,branch:${BRANCH}"
+          python .github/scripts/manage_quality_issues.py
 
-          # Only proceed for main or Test
-          if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "Test" ]; then
-            echo "Skipping issue creation for branch '$BRANCH'"
-            exit 0
-          fi
-
-          cut -d':' -f1 flake8-report.txt | sort -u > files_with_issues.txt
-
-          while IFS= read -r file; do
-            grep "^$file:" flake8-report.txt | head -n 100 > file-issues.txt
-            [ -s file-issues.txt ] || continue
-
-            ISSUE_TITLE="Code quality issues in $file"
-            CURRENT_COUNT=$(wc -l < file-issues.txt)
-
-            { echo "### 🚨 flake8 issues in \`$file\` (first 100)"
-              echo '```'; cat file-issues.txt; echo '```'
-              echo "Branch : \`$BRANCH\`"
-              echo "Run    : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-              echo "Commit : ${{ github.sha }}"
-              echo "Errors : $CURRENT_COUNT"; } > issue_body.md
-
-            ISSUE_NUM=$(gh issue list --state open \
-                        --label "$LABELS" \
-                        --search "$ISSUE_TITLE" \
-                        --json number,title \
-                        | jq -r '.[0].number // empty')
-
-            if [ -n "$ISSUE_NUM" ]; then
-              LAST=$(gh issue view "$ISSUE_NUM" --json comments |
-                     jq -r '.comments|last|.body' |
-                     grep -oE 'Errors : [0-9]+' | awk '{print $3}' || echo "")
-              if [ "$CURRENT_COUNT" != "$LAST" ]; then
-                gh issue comment "$ISSUE_NUM" --body-file issue_body.md
-              fi
-            else
-              gh issue create --title "$ISSUE_TITLE" \
-                              --body-file issue_body.md \
-                              --label "$LABELS"
-            fi
-          done < files_with_issues.txt
-
-      # ─── 9. Close code-quality issues when file is clean (main & Test only) ──
-      - name: Close resolved code-quality issues
-        if: steps.flake8.outputs.issue_count >= 0 && (github.event_name == 'push' || github.event_name == 'pull_request')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fail Pipeline (PR to main)
+        if: github.event_name == 'pull_request' &&
+            github.event.pull_request.base.ref == 'main' &&
+            steps.check_issues.outputs.has_issues == 'true'
         run: |
-          BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME}}"
-
-          if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "Test" ]; then
-            echo "Skipping issue closure for branch '$BRANCH'"
-            exit 0
-          fi
-
-          LABEL="branch:${BRANCH}"
-
-          gh issue list --state open --label "$LABEL" --json number,title \
-            | jq -r '.[]|[.number,.title]|@tsv' > open.tsv
-
-          mapfile -t current_files < <(cut -d':' -f1 flake8-report.txt | sort -u)
-
-          while IFS=$'\t' read -r num title; do
-            file=${title#Code quality issues in }
-            if ! printf '%s\n' "${current_files[@]}" | grep -Fxq "$file"; then
-              gh issue comment "$num" --body "✅ All flake8 issues in \`$file\` resolved on branch \`$BRANCH\`. Closing."
-              gh issue close "$num"
-            fi
-          done < open.tsv
+          echo "::error::Code quality checks failed. See report."
+          exit 1
