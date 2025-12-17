@@ -56,21 +56,23 @@ def parse_report_lines(lines):
 
 
 def write_formatted_report(output_file, files):
-    """Write the formatted report to the output file."""
+    """Write the formatted report to the output file with error details."""
     with open(output_file, "w", encoding="utf-8") as f:
         for filepath, rows in files.items():
             f.write(f"<details>\n<summary>{filepath}</summary>\n\n")
-            f.write("| Function | Result |\n")
-            f.write("| :--- | :---: |\n")
+            f.write("| Function | Result | Details |\n")
+            f.write("| :--- | :---: | :--- |\n")
 
             for line in rows:
-                parts = [p.strip() for p in line.split("|")]
+                parts = [clean_cell(p.strip()) for p in line.split("|")]
                 if len(parts) < MIN_PARTS_FOR_RESULT:
                     continue
                 function_cell = parts[FUNCTION_INDEX]
                 result_cell = parts[RESULT_INDEX]
+                detail_parts = parts[RESULT_INDEX + 1 :]
+                details = " | ".join([p for p in detail_parts if p]) or "-"
 
-                f.write(f"| {function_cell} | {result_cell} |\n")
+                f.write(f"| {function_cell} | {result_cell} | {details} |\n")
 
             f.write("\n</details>\n\n")
 

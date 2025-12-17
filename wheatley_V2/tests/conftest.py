@@ -4,8 +4,11 @@ from pathlib import Path
 
 # Ensure wheatley_V2 root is importable so `helper` resolves.
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 def _stub_pydub():
