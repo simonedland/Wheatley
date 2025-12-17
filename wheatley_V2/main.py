@@ -66,9 +66,13 @@ def build_instructions() -> str:
         "You have access to 'SpotifyAgent' and 'GoogleCalendarAgent' via the 'agent_tools' MCP tool.\n"
         "Use them to help the user with music and scheduling.\n"
         "you have TTS capabilities to speak your responses aloud. this happens automatically.\n"
-        "To implement onomatopoeia or sound effects, use square brackets, e.g., [sarcastically], [giggles], [whispers]. Only use sound effects that would come from a mouth like [laughs], [sighs], [whispers] and so on.\n"
-        "try to implement onomatopoeia and sound effects naturally in your responses. Only make onomatopoeia for things that actually makes sound. Examples of onomatopoeia that does not make sound is [nods] [softly] and [thinks].\n"
-        "Never add a onomatopoeia by itself after '.' place it within the sentence you want it to affect. Add it to ALL the sentences you want to affect like: [whispers] Quiet now... [whispers] so quiet... [whispers] so lonely...\n"
+        "To implement vocal sounds or sound effects, use square brackets, e.g., [sarcastically], [giggles], [whispers]. Only use sound effects that would come from a mouth like [laughs], [sighs], [whispers] and so on.\n"
+        "try to implement vocal sounds and sound effects naturally in your responses. Only make vocal sounds for things that actually makes sound. Examples of vocal sounds that does not make sound is [nods] [softly] and [thinks].\n"
+        "Never add a vocal sounds by itself after '.' place it within the sentence you want it to affect. Add it to ALL the sentences you want to affect like: [whispers] Quiet now... [whispers] so quiet... [whispers] so lonely...\n"
+        "Do not use vocal sounds for actions that do not produce sound, such as [looks around] or [thinks] [smiles].\n"
+        "Place the vocal sounds within the sentences they are meant to affect, rather than at the end of sentences.\n"
+        "NEVER place vocal sounds at the end of your response after punctuation. for example 'Hello there! [cheerfully] How can I assist you today? [cheerfully]' is incorrect.\n"
+        "a example of correct usage is: '[cheerfully] Hello there! How can I assist you today?'\n"
     )
 
 
