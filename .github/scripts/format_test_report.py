@@ -155,56 +155,6 @@ def write_formatted_report(output_file, files):
                 f.write(f"| {function_cell} | {result_cell} | {details} |\n")
 
             f.write("\n</details>\n\n")
-            f.write("| :--- | :---: | :--- |\n")
-
-            for line in rows:
-                parts = [clean_cell(p.strip()) for p in line.split("|")]
-                if len(parts) <= FAILED_INDEX:
-                    continue
-
-                function_cell = parts[FUNCTION_INDEX]
-                passed_cell = parts[PASSED_INDEX]
-                failed_cell = parts[FAILED_INDEX]
-
-                if failed_cell == "1":
-                    result_cell = "❌ Failed"
-                    # Look up details
-                    fail_blocks = failure_map.get(norm_path, [])
-                    # Try to find block matching function name
-                    details = "-"
-                    for block in fail_blocks:
-                        if function_cell in block:
-                            details = block.replace("\n", "<br>")
-                            break
-                    if details == "-" and fail_blocks:
-                        # Fallback to first block if not found by name
-                        # But this might be wrong if multiple failures in file
-                        # For now, just join all blocks? Or leave as -?
-                        # Let's join all blocks if we can't match specific function
-                        # Or maybe the block contains "test_function"
-                        pass
-                    
-                    # If we didn't find a specific match, try to match by function name in the block
-                    if details == "-":
-                         for block in fail_blocks:
-                             if f" {function_cell} " in block or f"::{function_cell}" in block:
-                                 details = block.replace("\n", "<br>")
-                                 break
-                    
-                    # Fallback: if only 1 failure in file, use it
-                    if details == "-" and len(fail_blocks) == 1:
-                        details = fail_blocks[0].replace("\n", "<br>")
-
-                elif passed_cell == "1":
-                    result_cell = "✅ Passed"
-                    details = "-"
-                else:
-                    result_cell = "⚠️ Skipped"
-                    details = "-"
-
-                f.write(f"| {function_cell} | {result_cell} | {details} |\n")
-
-            f.write("\n</details>\n\n")
 
 
 def format_report(input_file, output_file):

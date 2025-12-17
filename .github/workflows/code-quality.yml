@@ -108,6 +108,7 @@ jobs:
         run: |
           pip install mypy requests types-requests types-PyYAML
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f wheatley/requirements.txt ]; then pip install -r wheatley/requirements.txt; fi
 
       - name: Run Mypy
         id: mypy
@@ -167,6 +168,7 @@ jobs:
         run: |
           pip install pytest httpx pytest-cov pytest-md-report
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f wheatley/requirements.txt ]; then pip install -r wheatley/requirements.txt; fi
 
       - name: Run Pytest
         id: pytest
