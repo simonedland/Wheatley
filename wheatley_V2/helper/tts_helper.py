@@ -3,20 +3,11 @@
 import asyncio
 import io
 import re
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from elevenlabs.client import ElevenLabs
-
-if TYPE_CHECKING:
-    # Minimal typing surface; runtime modules are loaded dynamically below.
-    class AudioSegment:
-        @staticmethod
-        def from_file(file: Any, format: str): ...
-
-    def play(segment: Any) -> None: ...
-else:
-    from pydub import AudioSegment
-    from pydub.playback import play
+from pydub import AudioSegment
+from pydub.playback import play
 
 
 ENABLE_CONTEXT_AWARE_TTS = False
