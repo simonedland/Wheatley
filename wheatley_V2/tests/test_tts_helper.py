@@ -25,7 +25,7 @@ if "pydub.playback" not in sys.modules:
     sys.modules["pydub.playback"] = playback_module
 
 
-@pytest.mark.asyncio
+
 async def test_api_call_success():
     handler = tts_helper.TTSHandler("fake_key")
     with patch("requests.post") as mock_post:
@@ -43,7 +43,7 @@ async def test_api_call_success():
         assert kwargs["json"]["text"] == "Hello world"
 
 
-@pytest.mark.asyncio
+
 async def test_api_call_failure():
     handler = tts_helper.TTSHandler("fake_key")
     with patch("requests.post") as mock_post:
@@ -54,7 +54,7 @@ async def test_api_call_failure():
         assert result is None
 
 
-@pytest.mark.asyncio
+
 async def test_play_success():
     handler = tts_helper.TTSHandler("fake_key")
     with patch("wheatley_V2.helper.tts_helper.play") as mock_play:
@@ -64,7 +64,7 @@ async def test_play_success():
             mock_play.assert_called_once()
 
 
-@pytest.mark.asyncio
+
 async def test_play_failure():
     handler = tts_helper.TTSHandler("fake_key")
     with patch("wheatley_V2.helper.tts_helper.play") as mock_play:
@@ -75,7 +75,7 @@ async def test_play_failure():
             mock_play.assert_called_once()
 
 
-@pytest.mark.asyncio
+
 async def test_full_pipeline():
     handler = tts_helper.TTSHandler("fake_key")
     
@@ -99,7 +99,7 @@ async def test_full_pipeline():
             assert mock_play.call_count == 2
 
 
-@pytest.mark.asyncio
+
 async def test_context_aware_pipeline():
     # Enable context aware temporarily
     original_setting = tts_helper.ENABLE_CONTEXT_AWARE_TTS
@@ -135,7 +135,7 @@ async def test_context_aware_pipeline():
     finally:
         tts_helper.ENABLE_CONTEXT_AWARE_TTS = original_setting
 
-@pytest.mark.asyncio
+
 async def test_process_text_splits_sentences_respects_abbreviations():
     handler = tts_helper.TTSHandler("key", voice_id="v", model_id="m")
 

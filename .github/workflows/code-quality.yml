@@ -165,7 +165,7 @@ jobs:
           
       - name: Install Test Dependencies
         run: |
-          pip install pytest httpx pytest-cov pytest-md-report
+          pip install pytest httpx pytest-cov pytest-md-report pytest-asyncio
           pip install -r requirements.txt
 
       - name: Create Config File

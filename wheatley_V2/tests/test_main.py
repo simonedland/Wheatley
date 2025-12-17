@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
 from wheatley_V2 import main
 
-@pytest.mark.asyncio
+
 async def test_main_loop():
     # Mock config
     mock_config = {
@@ -55,7 +55,7 @@ async def test_main_loop():
                         mock_tts_instance.flush_pending.assert_called()
                         mock_tts_instance.wait_idle.assert_called()
 
-@pytest.mark.asyncio
+
 async def test_main_no_tts():
     # Mock config with TTS disabled
     mock_config = {
