@@ -8,7 +8,8 @@ MIN_PARTS_IN_LINE = 3
 MIN_PARTS_FOR_RESULT = 4
 FILEPATH_INDEX = 1
 FUNCTION_INDEX = 2
-RESULT_INDEX = 3
+PASSED_INDEX = 3
+FAILED_INDEX = 4
 
 
 def clean_cell(cell_content):
@@ -16,12 +17,15 @@ def clean_cell(cell_content):
     content = cell_content.replace("$$", "")
 
     # Try to extract text inside \tt{...}
+    # Handle nested braces if necessary, but simple regex works for now
+    # \textcolor{#...}{\tt{...}}
     match = re.search(r"\\tt\{(.*?)\}", content)
     if match:
         content = match.group(1)
 
     # Unescape underscores
-    content = content.replace(r"\_", "_")
+    # Handle both single and double escaped underscores just in case
+    content = content.replace(r"\\_", "_").replace(r"\_", "_")
 
     return content.strip()
 
@@ -102,6 +106,9 @@ def write_formatted_report(output_file, files):
     failure_map = parse_pytest_failures()
     with open(output_file, "w", encoding="utf-8") as f:
         for filepath, rows in files.items():
+            if "TOTAL" in filepath:
+                continue
+
             norm_path = _normalize_path(filepath)
             f.write(f"<details>\n<summary>{filepath}</summary>\n\n")
             f.write("| Function | Result | Details |\n")
@@ -109,18 +116,90 @@ def write_formatted_report(output_file, files):
 
             for line in rows:
                 parts = [clean_cell(p.strip()) for p in line.split("|")]
-                if len(parts) < MIN_PARTS_FOR_RESULT:
+                if len(parts) <= FAILED_INDEX:
                     continue
+
                 function_cell = parts[FUNCTION_INDEX]
-                result_cell = parts[RESULT_INDEX]
-                detail_parts = parts[RESULT_INDEX + 1 :]
-                details = " | ".join([p for p in detail_parts if p])
-                if not details:
+                passed_cell = parts[PASSED_INDEX]
+                failed_cell = parts[FAILED_INDEX]
+
+                if failed_cell == "1":
+                    result_cell = "❌ Failed"
+                    # Look up details
                     fail_blocks = failure_map.get(norm_path, [])
-                    if fail_blocks:
-                        snippet = fail_blocks[0]
-                        details = snippet.replace("\n", "<br>")
-                if not details:
+                    # Try to find block matching function name
+                    details = "-"
+                    for block in fail_blocks:
+                        if function_cell in block:
+                            details = block.replace("\n", "<br>")
+                            break
+                    
+                    # If we didn't find a specific match, try to match by function name in the block
+                    if details == "-":
+                         for block in fail_blocks:
+                             if f" {function_cell} " in block or f"::{function_cell}" in block:
+                                 details = block.replace("\n", "<br>")
+                                 break
+                    
+                    # Fallback: if only 1 failure in file, use it
+                    if details == "-" and len(fail_blocks) == 1:
+                        details = fail_blocks[0].replace("\n", "<br>")
+
+                elif passed_cell == "1":
+                    result_cell = "✅ Passed"
+                    details = "-"
+                else:
+                    result_cell = "⚠️ Skipped"
+                    details = "-"
+
+                f.write(f"| {function_cell} | {result_cell} | {details} |\n")
+
+            f.write("\n</details>\n\n")
+            f.write("| :--- | :---: | :--- |\n")
+
+            for line in rows:
+                parts = [clean_cell(p.strip()) for p in line.split("|")]
+                if len(parts) <= FAILED_INDEX:
+                    continue
+
+                function_cell = parts[FUNCTION_INDEX]
+                passed_cell = parts[PASSED_INDEX]
+                failed_cell = parts[FAILED_INDEX]
+
+                if failed_cell == "1":
+                    result_cell = "❌ Failed"
+                    # Look up details
+                    fail_blocks = failure_map.get(norm_path, [])
+                    # Try to find block matching function name
+                    details = "-"
+                    for block in fail_blocks:
+                        if function_cell in block:
+                            details = block.replace("\n", "<br>")
+                            break
+                    if details == "-" and fail_blocks:
+                        # Fallback to first block if not found by name
+                        # But this might be wrong if multiple failures in file
+                        # For now, just join all blocks? Or leave as -?
+                        # Let's join all blocks if we can't match specific function
+                        # Or maybe the block contains "test_function"
+                        pass
+                    
+                    # If we didn't find a specific match, try to match by function name in the block
+                    if details == "-":
+                         for block in fail_blocks:
+                             if f" {function_cell} " in block or f"::{function_cell}" in block:
+                                 details = block.replace("\n", "<br>")
+                                 break
+                    
+                    # Fallback: if only 1 failure in file, use it
+                    if details == "-" and len(fail_blocks) == 1:
+                        details = fail_blocks[0].replace("\n", "<br>")
+
+                elif passed_cell == "1":
+                    result_cell = "✅ Passed"
+                    details = "-"
+                else:
+                    result_cell = "⚠️ Skipped"
                     details = "-"
 
                 f.write(f"| {function_cell} | {result_cell} | {details} |\n")
