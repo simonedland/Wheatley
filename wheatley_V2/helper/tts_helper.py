@@ -6,8 +6,8 @@ import re
 from typing import Any, Optional
 
 from elevenlabs.client import ElevenLabs
-from pydub import AudioSegment
-from pydub.playback import play
+from pydub import AudioSegment  # type: ignore[import-not-found]
+from pydub.playback import play  # type: ignore[import-not-found]
 
 
 ENABLE_CONTEXT_AWARE_TTS = False

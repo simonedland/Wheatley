@@ -14,7 +14,7 @@ except Exception:  # openai may not be installed during documentation builds
 try:
     from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
 except Exception:  # elevenlabs is optional
-    ElevenLabs = None
+    ElevenLabs = None  # type: ignore[assignment, misc]
 
 from colorama import Fore, Style  # type: ignore[import-untyped]
 
@@ -56,7 +56,7 @@ def _check_openai(api_key: str) -> bool:
 
 def _check_elevenlabs(api_key: str) -> bool:
     """Return ``True`` if ``api_key`` is valid for ElevenLabs."""
-    if not ElevenLabs or not api_key:
+    if not ElevenLabs or not api_key:  # type: ignore[truthy-function]
         return False
     try:
         client = ElevenLabs(api_key=api_key)
