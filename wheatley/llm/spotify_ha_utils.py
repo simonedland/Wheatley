@@ -114,26 +114,26 @@ class SpotifyHA:  # ────────────────────
         )
 
     # ── playback – read ───────────────────────────────────────────────
-    def get_current_playback(self):
+    def get_current_playback(self) -> Dict[str, Any] | None:
         """Get current playback information."""
         return self._sp.current_playback()
 
-    def get_current_track(self, *, simple: bool = True):
+    def get_current_track(self, *, simple: bool = True) -> Dict[str, Any] | None:
         """Get the currently playing track."""
         pb = self.get_current_playback()
         return self._flat(pb["item"]) if pb and pb.get("item") and simple else pb
 
-    def is_playing(self):
+    def is_playing(self) -> bool:
         """Check if playback is currently active."""
         pb = self.get_current_playback()
         return bool(pb and pb.get("is_playing"))
 
-    def get_queue(self, *, simple: bool = True):
+    def get_queue(self, *, simple: bool = True) -> list[Dict[str, Any]]:
         """Get the current playback queue."""
         q = self._sp.queue().get("queue", [])
         return [self._flat(t) for t in q] if simple else q
 
-    def _queue_wait_times(self):
+    def _queue_wait_times(self) -> list[tuple[Dict[str, Any], int]]:
         """Calculate wait times for each track in the queue."""
         pb = self.get_current_playback()
         rem_ms = (

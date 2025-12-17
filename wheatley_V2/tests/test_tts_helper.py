@@ -3,8 +3,6 @@ import importlib
 import sys
 import types
 
-import pytest  # type: ignore[import-not-found]
-
 
 def _import_tts(monkeypatch):
     """Import tts_helper with stubbed pydub modules to avoid external deps."""

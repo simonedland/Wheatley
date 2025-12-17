@@ -18,7 +18,17 @@ from pydub import AudioSegment  # type: ignore[import-not-found]
 import pyaudio  # type: ignore[import-untyped]
 from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
 from elevenlabs import VoiceSettings  # type: ignore[import-not-found]
-from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    cast,
+)
 import inspect
 
 # from local file google_agent import GoogleCalendarManager
@@ -247,14 +257,10 @@ class GPTClient:
         else:
             counter_context = "No emotion usage data available."
         # Dynamically inject last_mood and emotion counter context
+        desc_template = cast(str, set_animation_tool[0].get("description", ""))
+        desc = desc_template.replace("{last_mood}", self.last_mood)
         dynamic_set_animation_tool = [
-            {
-                **set_animation_tool[0],
-                "description": set_animation_tool[0]["description"].replace(
-                    "{last_mood}", self.last_mood
-                )
-                + f" {counter_context}",
-            }
+            {**set_animation_tool[0], "description": f"{desc} {counter_context}"}
         ]
         completion = openai.responses.create(
             model=self.model,
