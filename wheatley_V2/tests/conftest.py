@@ -174,8 +174,28 @@ def _stub_uvicorn():
     sys.modules.setdefault("uvicorn", uvicorn_module)
 
 
+def _stub_yaml():
+    """Provide a minimal yaml module using json for CI environments without PyYAML."""
+    import json
+
+    yaml_module = sys.modules.get("yaml", types.ModuleType("yaml"))
+
+    def safe_dump(data, *args, **kwargs):
+        return json.dumps(data)
+
+    def safe_load(stream, *args, **kwargs):
+        if hasattr(stream, "read"):
+            stream = stream.read()
+        return json.loads(stream) if stream else None
+
+    yaml_module.safe_dump = getattr(yaml_module, "safe_dump", safe_dump)
+    yaml_module.safe_load = getattr(yaml_module, "safe_load", safe_load)
+    sys.modules.setdefault("yaml", yaml_module)
+
+
 _stub_pydub()
 _stub_requests()
 _stub_agent_framework()
 _stub_fastmcp()
 _stub_uvicorn()
+_stub_yaml()
