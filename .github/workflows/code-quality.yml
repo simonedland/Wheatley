@@ -106,9 +106,8 @@ jobs:
           
       - name: Install Dependencies
         run: |
-          pip install mypy requests types-requests types-PyYAML colorama pydantic uvicorn fastmcp pyyaml agent_framework
-          if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
-          if [ -f wheatley/requirements.txt ]; then pip install --pre -r wheatley/requirements.txt || true; fi
+          pip install mypy requests types-requests types-PyYAML
+          pip install -r requirements.txt
 
       - name: Run Mypy
         id: mypy
@@ -166,9 +165,8 @@ jobs:
           
       - name: Install Test Dependencies
         run: |
-          pip install pytest httpx pytest-cov pytest-md-report colorama pydantic uvicorn fastmcp pyyaml agent_framework
-          if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
-          if [ -f wheatley/requirements.txt ]; then pip install --pre -r wheatley/requirements.txt || true; fi
+          pip install pytest httpx pytest-cov pytest-md-report
+          pip install -r requirements.txt
 
       - name: Run Pytest
         id: pytest
