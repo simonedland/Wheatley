@@ -9,13 +9,13 @@ from pathlib import Path
 from typing import Any, Dict
 
 import yaml
-from colorama import Fore, Style, init as color
-from agent_framework import ChatAgent
-from agent_framework import ChatMessageStore as Store
-from agent_framework import MCPStreamableHTTPTool as Tool
-from agent_framework.openai import OpenAIResponsesClient as OpenAI
+from colorama import Fore, Style, init as color  # type: ignore[import-untyped]
+from agent_framework import ChatAgent  # type: ignore[import-not-found]
+from agent_framework import ChatMessageStore as Store  # type: ignore[import-not-found]
+from agent_framework import MCPStreamableHTTPTool as Tool  # type: ignore[import-not-found]
+from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: ignore[import-not-found]
 
-from helper.tts_helper import TTSHandler
+from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
 
 APP_NAME = "Wheatley"
 CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"

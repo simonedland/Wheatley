@@ -2,8 +2,8 @@
 
 import os
 import unittest
-from llm.llm_client import GPTClient
-from tts.tts_engine import TextToSpeechEngine
+from llm.llm_client import GPTClient  # type: ignore[import-not-found]
+from tts.tts_engine import TextToSpeechEngine  # type: ignore[import-not-found]
 
 
 class ColorfulTestCase(unittest.TestCase):

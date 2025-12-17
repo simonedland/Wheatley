@@ -1,6 +1,6 @@
 """LLM client wrappers and helper functions used by the assistant."""
 
-import openai
+import openai  # type: ignore[import-not-found]
 import json
 import yaml
 import re
@@ -14,10 +14,10 @@ import time
 import asyncio
 from datetime import datetime, timedelta
 
-from pydub import AudioSegment
-import pyaudio
-from elevenlabs.client import ElevenLabs
-from elevenlabs import VoiceSettings
+from pydub import AudioSegment  # type: ignore[import-not-found]
+import pyaudio  # type: ignore[import-untyped]
+from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
+from elevenlabs import VoiceSettings  # type: ignore[import-not-found]
 from typing import Any, Callable, Dict, List, Tuple
 import inspect
 
@@ -25,7 +25,7 @@ import inspect
 try:
     from .google_agent import GoogleCalendarManager
 except ImportError:
-    from google_agent import GoogleCalendarManager
+    from google_agent import GoogleCalendarManager  # type: ignore[import-not-found, no-redef]
 
 from .llm_client_utils import (
     get_city_coordinates,
@@ -36,7 +36,7 @@ from .llm_client_utils import (
     build_tools,
     _load_config,
 )
-from utils.timing_logger import record_timing
+from utils.timing_logger import record_timing  # type: ignore[import-not-found]
 
 logging.basicConfig(level=logging.WARN)
 
@@ -396,7 +396,7 @@ class Functions:
         try:
             from ..service_auth import SERVICE_STATUS, GOOGLE_AGENT, SPOTIFY_AGENT
         except ImportError:
-            from service_auth import SERVICE_STATUS, GOOGLE_AGENT, SPOTIFY_AGENT
+            from service_auth import SERVICE_STATUS, GOOGLE_AGENT, SPOTIFY_AGENT  # type: ignore[import-not-found, no-redef]
         self.google_agent = GOOGLE_AGENT if SERVICE_STATUS.get("google") else None
         self.spotify_agent = SPOTIFY_AGENT if SERVICE_STATUS.get("spotify") else None
 
@@ -569,7 +569,7 @@ class Functions:
         return (
             f"Google calendar summary:\n{summary}"
             f"\n\nWeather Summary for Oslo:\n{weather}"
-            f"\n\nQuote of the Day: {self.get_quote()}"
+            f"\n\nQuote of the Day: {get_quote()}"
         )
 
     @tool("set_personality")
@@ -654,10 +654,10 @@ class Functions:
         from datetime import datetime
 
         try:
-            from ..main import Event
+            from ..main import Event  # type: ignore[import-not-found]
         except Exception:
             try:
-                from main import Event
+                from main import Event  # type: ignore[import-not-found]
             except Exception:
                 return
 
@@ -681,20 +681,20 @@ class Functions:
 
     def write_long_term_memory(self, data: dict) -> str:
         """Persist ``data`` to the long term memory JSON file."""
-        from utils.long_term_memory import overwrite_memory
+        from utils.long_term_memory import overwrite_memory  # type: ignore[import-not-found]
 
         overwrite_memory(data, path=self.memory_path)
         return "memory written"
 
     def read_long_term_memory(self) -> dict:
         """Return the contents of the long term memory file."""
-        from utils.long_term_memory import read_memory
+        from utils.long_term_memory import read_memory  # type: ignore[import-not-found]
 
         return {"memory": read_memory(path=self.memory_path)}
 
     def edit_long_term_memory(self, index: int, data: dict) -> str:
         """Update the memory entry at ``index`` with ``data``."""
-        from utils.long_term_memory import edit_memory
+        from utils.long_term_memory import edit_memory  # type: ignore[import-not-found]
 
         success = edit_memory(index, data, path=self.memory_path)
         return "memory updated" if success else "memory index out of range"

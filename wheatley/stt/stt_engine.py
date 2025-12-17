@@ -3,12 +3,12 @@
 import os
 import sys
 import wave
-import numpy as np
-import pyaudio
-import openai
+import numpy as np  # type: ignore[import-untyped]
+import pyaudio  # type: ignore[import-untyped]
+import openai  # type: ignore[import-not-found]
 import yaml
 import struct
-import pvporcupine
+import pvporcupine  # type: ignore[import-not-found]
 import time
 import asyncio
 import random
@@ -21,7 +21,7 @@ except ImportError:
     _MODULE_ROOT = Path(__file__).resolve().parents[1]
     if str(_MODULE_ROOT) not in sys.path:
         sys.path.append(str(_MODULE_ROOT))
-    from utils.timing_logger import record_timing
+    from utils.timing_logger import record_timing  # type: ignore[import-not-found, no-redef]
 # ---------------------------------------------------------------------------
 # LED colour constants used to signal microphone state on the hardware.  The
 # values represent ``(R, G, B)`` tuples that are forwarded to the Arduino via
