@@ -12,10 +12,6 @@ def _write_config(tmp_path, data):
 
 def test_require_returns_value():
     cfg = {"level1": {"level2": "value"}}
-    
-    #temp incert error
-    
-    cfg = {"level1": {"level2": "error"}}
     assert v2_main._require(cfg, ["level1", "level2"]) == "value"
 
 
