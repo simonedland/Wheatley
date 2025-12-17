@@ -18,7 +18,7 @@ from pydub import AudioSegment  # type: ignore[import-not-found]
 import pyaudio  # type: ignore[import-untyped]
 from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
 from elevenlabs import VoiceSettings  # type: ignore[import-not-found]
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple
 import inspect
 
 # from local file google_agent import GoogleCalendarManager
@@ -72,14 +72,14 @@ class TextToSpeech:
 
     """Minimal wrapper around the ElevenLabs API for speech synthesis."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialise the ElevenLabs client using values from ``config.yaml``."""
         self._load_config()
         # Disable verbose logging from elevenlabs to remove INFO prints
         logging.getLogger("elevenlabs").setLevel(logging.WARNING)
         self.client = ElevenLabs(api_key=self.api_key)
 
-    def elevenlabs_generate_audio(self, text):
+    def elevenlabs_generate_audio(self, text: str) -> Iterable[bytes]:
         """Generate audio from ``text`` using ElevenLabs TTS."""
         start_time = time.time()
         # Generates audio using ElevenLabs TTS with configured parameters
@@ -97,7 +97,7 @@ class TextToSpeech:
         """Reload TTS settings from ``config.yaml`` at runtime."""
         self._load_config()
 
-    def generate_and_play_advanced(self, text):
+    def generate_and_play_advanced(self, text: str) -> None:
         """Generate and play audio from ``text`` using ElevenLabs TTS using in-memory decode."""
         generate_start = time.time()
         self.reload_config()
@@ -139,7 +139,9 @@ class TextToSpeech:
 class GPTClient:
     """Wrapper for OpenAI chat interactions tailored for Wheatley."""
 
-    def __init__(self, model="gpt-4o-mini"):
+    Conversation = List[Dict[str, Any]]
+
+    def __init__(self, model: str = "gpt-4o-mini"):
         """Create client using ``model`` and configuration secrets."""
         config = _load_config()
         self.api_key = config["secrets"]["openai_api_key"]
@@ -157,7 +159,7 @@ class GPTClient:
         except Exception:
             self.emotion_counter = {}
 
-    def get_text(self, conversation):
+    def get_text(self, conversation: Conversation) -> str:
         """Return the assistant's textual reply for ``conversation``."""
         start_time = time.time()
         completion = openai.responses.create(
@@ -177,7 +179,9 @@ class GPTClient:
             raise Exception("No text found in the response message")
         return text
 
-    def sentence_stream(self, conversation):
+    def sentence_stream(
+        self, conversation: Conversation
+    ) -> Generator[Tuple[str, float, float], None, None]:
         """Yield sentences from a streaming completion with timing info."""
         stream = openai.chat.completions.create(
             model=self.model, stream=True, messages=conversation
@@ -209,7 +213,7 @@ class GPTClient:
             end_time = time.time()
             yield buf.strip(), sentence_start or end_time, end_time
 
-    def update_last_mood_and_counter(self, animation):
+    def update_last_mood_and_counter(self, animation: str) -> None:
         """Update the last mood and emotion counter based on the selected animation."""
         self.last_mood = animation
         if animation in self.emotion_counter:
@@ -230,7 +234,7 @@ class GPTClient:
         except Exception as e:
             logging.error(f"Failed to update emotion_counter.json: {e}")
 
-    def reply_with_animation(self, conversation):
+    def reply_with_animation(self, conversation: Conversation) -> Any:
         """Ask GPT to select an animation based on the conversation."""
         start_time = time.time()
         # Compose context about emotion counter for the LLM
@@ -279,7 +283,7 @@ class GPTClient:
             self.update_last_mood_and_counter(animation)
         return animation
 
-    def get_workflow(self, conversation):
+    def get_workflow(self, conversation: Conversation) -> Optional[List[Dict[str, Any]]]:
         """Return a list of tool calls suggested by GPT."""
         start_time = time.time()
         tools = build_tools()
