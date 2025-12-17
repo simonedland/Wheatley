@@ -118,7 +118,7 @@ jobs:
           
           if [ -s mypy_report.txt ]; then
             echo "status=failure" >> $GITHUB_OUTPUT
-            echo "count=$(wc -l < mypy_report.txt)" >> $GITHUB_OUTPUT
+            echo "count=$(wc -l < mypy_report.txt | tr -d ' ')" >> $GITHUB_OUTPUT
             # Print to console for logs
             cat mypy_report.txt
           else
@@ -191,8 +191,8 @@ jobs:
             echo "status=success" >> $GITHUB_OUTPUT
           else
             echo "status=failure" >> $GITHUB_OUTPUT
-            # Fail the step so the job fails
-            exit $EXIT_CODE
+            # Do not fail the step, so artifacts are uploaded and report job runs
+            # exit $EXIT_CODE
           fi
 
       - name: Job Summary
@@ -225,6 +225,13 @@ jobs:
             else
               cat pytest-md.txt >> $GITHUB_STEP_SUMMARY
             fi
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Execution Error" >> $GITHUB_STEP_SUMMARY
+            echo "Pytest failed to generate a report (likely collection error)." >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat pytest_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
           fi
 
       - uses: actions/upload-artifact@v4
