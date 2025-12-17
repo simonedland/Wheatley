@@ -20,7 +20,7 @@ import json
 import logging
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, Future
 from dataclasses import dataclass, field
 from datetime import datetime
 from glob import glob
@@ -511,7 +511,7 @@ class _StreamContext:
     sentence_q: asyncio.Queue = field(
         default_factory=lambda: asyncio.Queue(QUEUE_MAXSIZE)
     )
-    tts_futures: Dict[float, asyncio.Future] = field(default_factory=dict)
+    tts_futures: Dict[float, Future[bytes | None]] = field(default_factory=dict)
     playback_q: Queue = field(default_factory=lambda: Queue(QUEUE_MAXSIZE))
     timing: Dict[str, float] = field(default_factory=dict)
     loop: asyncio.AbstractEventLoop = field(default_factory=asyncio.get_running_loop)
@@ -838,6 +838,7 @@ async def stream_assistant_reply(
     cfg["tts_engine"] = tts_engine
     ctx = _make_context(cfg, manager)
     ctx.timing["stream_start"] = stream_start
+    assert ctx.play_executor is not None
     ctx.play_executor.submit(_playback_worker, ctx, playback_done_event)
     ctx.sentence_q.ctx = ctx  # type: ignore[attr-defined]
 

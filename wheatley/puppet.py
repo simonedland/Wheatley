@@ -19,6 +19,7 @@ import threading
 import time
 import tkinter as tk
 from functools import partial
+from typing import Any
 from tkinter import (
     BOTH,
     END,
@@ -68,7 +69,7 @@ BAR_HEIGHT = 28
 
 # ── optional serial ----------------------------------------------------
 try:
-    import serial
+    import serial  # type: ignore[import-untyped]
 except ImportError:
     serial = None
 
@@ -131,14 +132,14 @@ class PuppetGUI(Tk):
         super().__init__()
         self.backend = backend
         self.limits_ready = False
-        self.move_buttons: list[Any] = []
-        self.cfg_buttons: list[Any] = []
-        self.current_angles: list[Any] = []  # NEW – actual positions
+            self.move_buttons: list[Any] = []  # List of move buttons
+            self.cfg_buttons: list[Any] = []  # List of config buttons
+            self.current_angles: list[Any] = []  # List of actual positions
         self.title("Servo Puppet")
         self.geometry("1280x860")
         self.anim_file = "animations.json"
         self.animations = self._load_json()
-        self.row_vars: list[Any] = []  # (scale, vel, idle, intv, canvas)
+            self.row_vars: list[Any] = []  # List of row variables (scale, vel, idle, intv, canvas)
         self.servo_min = list(DEFAULT_MIN)
         self.servo_max = list(DEFAULT_MAX)
         self._theme()
@@ -271,7 +272,7 @@ class PuppetGUI(Tk):
         self.move_buttons.append(move_btn)
         self.cfg_buttons.append(cfg_btn)
         idx = len(self.row_vars)
-        self.row_vars.append((scale, vel, idle, intv, canvas))
+        self.row_vars.append((scale, vel, idle, intv, canvas))  # Append row variables
         idle.bind("<FocusOut>", lambda _e, row=idx: self._draw_band(row))
         scale.configure(command=lambda _v, row=idx: self._draw_band(row))
         canvas.bind("<Configure>", lambda _e, row=idx: self._draw_band(row))
