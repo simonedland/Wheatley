@@ -18,17 +18,7 @@ from pydub import AudioSegment  # type: ignore[import-not-found]
 import pyaudio  # type: ignore[import-untyped]
 from elevenlabs.client import ElevenLabs  # type: ignore[import-not-found]
 from elevenlabs import VoiceSettings  # type: ignore[import-not-found]
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    cast,
-)
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple
 import inspect
 
 # from local file google_agent import GoogleCalendarManager
@@ -257,7 +247,7 @@ class GPTClient:
         else:
             counter_context = "No emotion usage data available."
         # Dynamically inject last_mood and emotion counter context
-        desc_template = cast(str, set_animation_tool[0].get("description", ""))
+        desc_template = str(set_animation_tool[0].get("description", ""))
         desc = desc_template.replace("{last_mood}", self.last_mood)
         dynamic_set_animation_tool = [
             {**set_animation_tool[0], "description": f"{desc} {counter_context}"}
@@ -289,7 +279,9 @@ class GPTClient:
             self.update_last_mood_and_counter(animation)
         return animation
 
-    def get_workflow(self, conversation: Conversation) -> Optional[List[Dict[str, Any]]]:
+    def get_workflow(
+        self, conversation: Conversation
+    ) -> Optional[List[Dict[str, Any]]]:
         """Return a list of tool calls suggested by GPT."""
         start_time = time.time()
         tools = build_tools()

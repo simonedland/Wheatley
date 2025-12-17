@@ -26,6 +26,10 @@ def clean_cell(cell_content):
     return content.strip()
 
 
+def _normalize_path(path: str) -> str:
+    return os.path.normpath(path).replace("\\", "/")
+
+
 def parse_report_lines(lines):
     """Parse the report lines and group by filepath."""
     files = {}
@@ -45,7 +49,7 @@ def parse_report_lines(lines):
             continue
 
         filepath_cell = parts[FILEPATH_INDEX]
-        filepath = clean_cell(filepath_cell)
+        filepath = _normalize_path(clean_cell(filepath_cell))
 
         if filepath not in files:
             files[filepath] = []
@@ -64,7 +68,8 @@ def parse_pytest_failures(report_path="pytest_report.txt"):
     current_file = None
     buffer = []
 
-    heading_re = re.compile(r"(ERROR|FAILED).*?(w[^\s:]*\.py)")
+    path_re = re.compile(r"([\w./-]*wheatley[^\s:]*\.py)")
+    separator_re = re.compile(r"^=+")
 
     def _flush():
         nonlocal buffer, current_file
@@ -76,15 +81,14 @@ def parse_pytest_failures(report_path="pytest_report.txt"):
 
     with open(report_path, encoding="utf-8") as f:
         for line in f:
-            m = heading_re.search(line)
-            if m:
+            m = path_re.search(line)
+            if m and ("ERROR" in line or "FAILED" in line or line.startswith("E   ")):
                 _flush()
-                current_file = m.group(2)
+                current_file = _normalize_path(m.group(1))
                 buffer.append(line)
                 continue
             if current_file:
-                # Treat separator lines as block boundaries
-                if line.startswith("=\n") or line.startswith("-\n"):
+                if separator_re.match(line):
                     _flush()
                     current_file = None
                     continue
@@ -98,6 +102,7 @@ def write_formatted_report(output_file, files):
     failure_map = parse_pytest_failures()
     with open(output_file, "w", encoding="utf-8") as f:
         for filepath, rows in files.items():
+            norm_path = _normalize_path(filepath)
             f.write(f"<details>\n<summary>{filepath}</summary>\n\n")
             f.write("| Function | Result | Details |\n")
             f.write("| :--- | :---: | :--- |\n")
@@ -111,7 +116,7 @@ def write_formatted_report(output_file, files):
                 detail_parts = parts[RESULT_INDEX + 1 :]
                 details = " | ".join([p for p in detail_parts if p])
                 if not details:
-                    fail_blocks = failure_map.get(filepath, [])
+                    fail_blocks = failure_map.get(norm_path, [])
                     if fail_blocks:
                         snippet = fail_blocks[0]
                         details = snippet.replace("\n", "<br>")
