@@ -5,20 +5,20 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from pathlib import Path
-from typing import Any, Dict
+import time
+from datetime import datetime
 
-import yaml
 from colorama import Fore, Style, init as color  # type: ignore[import-untyped]
 from agent_framework import ChatAgent  # type: ignore[import-not-found]
 from agent_framework import ChatMessageStore as Store  # type: ignore[import-not-found]
 from agent_framework import MCPStreamableHTTPTool as Tool  # type: ignore[import-not-found]
 from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: ignore[import-not-found]
 
+from helper.config import load_config  # type: ignore[import-not-found]
 from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
+from helper.mcp_bootstrapper import start_mcp_server  # type: ignore[import-not-found]
 
 APP_NAME = "Wheatley"
-CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
 
 
@@ -27,45 +27,14 @@ def log(msg: str) -> None:
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
 
 
-def _require(cfg: Dict[str, Any], path: list[str]) -> Any:
-    """Return nested config value or raise a clear error if missing."""
-    cur: Any = cfg
-    for key in path:
-        if not isinstance(cur, dict) or key not in cur:
-            joined = "/".join(path)
-            raise KeyError(f"Missing required config key: {joined}")
-        cur = cur[key]
-    return cur
-
-
-def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
-    """Load config/config.yaml and require all values to be present."""
-    if not path.exists():
-        raise FileNotFoundError(f"Config file not found: {path}")
-
-    with path.open("r", encoding="utf-8") as f:
-        loaded = yaml.safe_load(f)
-
-    if not isinstance(loaded, dict):
-        raise ValueError("Config file must contain a YAML mapping")
-
-    # Validate required top-level sections early for clearer errors
-    _require(loaded, ["secrets", "openai_api_key"])
-    _require(loaded, ["llm", "model"])
-    _require(loaded, ["secrets", "elevenlabs_api_key"])
-    _require(loaded, ["tts", "voice_id"])
-    _require(loaded, ["tts", "model_id"])
-    _require(loaded, ["tts", "enabled"])
-
-    return loaded
-
-
 def build_instructions() -> str:
     """Build agent instructions for Wheatley."""
+    now = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
     return (
+        f"Current Date and Time: {now}\n"
         "You are Wheatley — a helpful AI assistant.\n"
-        "You have access to 'SpotifyAgent' and 'GoogleCalendarAgent' via the 'agent_tools' MCP tool.\n"
-        "Use them to help the user with music and scheduling.\n"
+        "You have access to 'SpotifyAgent', 'GoogleCalendarAgent', and 'ResearcherAgent' via the 'agent_tools' MCP tool.\n"
+        "Use them to help the user with music, scheduling, and web research.\n"
         "you have TTS capabilities to speak your responses aloud. this happens automatically.\n"
         "To implement vocal sounds or sound effects, use square brackets, e.g., [sarcastically], [giggles], [whispers]. Only use sound effects that would come from a mouth like [laughs], [sighs], [whispers] and so on.\n"
         "try to implement vocal sounds and sound effects naturally in your responses. Only make vocal sounds for things that actually makes sound. Examples of vocal sounds that does not make sound is [nods] [softly] and [thinks].\n"
@@ -80,20 +49,47 @@ def build_instructions() -> str:
 async def main() -> None:
     """Run the Wheatley agent."""
     color(autoreset=True)
+
+    # Print Banner
+    print(f"{Fore.CYAN}{Style.BRIGHT}")
+    print(r"""
+ __      __  __                    __   __
+/  \    /  \|  |__    ____ _____ _/  |_|  |   ____ ___.__.
+\   \/\/   /|  |  \ _/ __ \\__  \\   __\  | _/ __ <   |  |
+ \        / |   Y  \\  ___/ / __ \|  | |  |_\  ___/\___  |
+  \__/\  /  |___|  / \___  >____  /__| |____/\___  > ____|
+       \/        \/      \/     \/               \/\/
+    """)
+    print(f"{Style.RESET_ALL}")
+    print(f"{Fore.GREEN}Initializing Wheatley V2...{Style.RESET_ALL}")
+
+    # Bootstrap MCP Servers
+    print(f"{Fore.YELLOW}Bootstrapping MCP Servers...{Style.RESET_ALL}")
+    start_mcp_server("SpotifyAgent_tools.py")
+    start_mcp_server("GoogleCalendarAgent_tools.py")
+
+    print(f"{Fore.YELLOW}Waiting for sub-agents to initialize...{Style.RESET_ALL}")
+    time.sleep(2)
+
+    start_mcp_server("agent_MCP.py")
+    print(f"{Fore.YELLOW}Waiting for main agent to initialize...{Style.RESET_ALL}")
+    time.sleep(3)
+
     config = load_config()
-    openai_key = _require(config, ["secrets", "openai_api_key"])
-    llm_model = _require(config, ["llm", "model"])
+    openai_key = config["secrets"]["openai_api_key"]
+    llm_model = config["llm"]["model"]
+    max_tokens = config["llm"].get("max_tokens", 1000)
     os.environ["OPENAI_API_KEY"] = openai_key
     os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
 
     log(f"Model: {Fore.CYAN}{llm_model}{Style.RESET_ALL}")
     log(f"MCP endpoint: {Fore.CYAN}{AGENT_MCP_URL}{Style.RESET_ALL}")
 
-    xi_key = _require(config, ["secrets", "elevenlabs_api_key"])
-    tts_cfg = _require(config, ["tts"])
-    voice_id = _require(tts_cfg, ["voice_id"])
-    model_id = _require(tts_cfg, ["model_id"])
-    tts_enabled = _require(tts_cfg, ["enabled"])
+    xi_key = config["secrets"]["elevenlabs_api_key"]
+    tts_cfg = config["tts"]
+    voice_id = tts_cfg["voice_id"]
+    model_id = tts_cfg["model_id"]
+    tts_enabled = tts_cfg["enabled"]
 
     # Build tool & agent contexts
     async with (
@@ -123,16 +119,29 @@ async def main() -> None:
 
         # Main interaction loop
         while True:
-            user = await asyncio.to_thread(input, "User: ")
+            print(
+                f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} ",
+                end="",
+                flush=True,
+            )
+            user = await asyncio.to_thread(input)
             user = (user or "").strip()
             if not user:
                 continue
 
-            reply = agent.run_stream(user, tools=tools, thread=thread)
-            print("Wheatley: ", end="", flush=True)
+            reply = agent.run_stream(
+                user, tools=tools, thread=thread, max_tokens=max_tokens
+            )
+            print(
+                f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
+                end="",
+                flush=True,
+            )
             async for chunk in reply:
                 if chunk.text:
-                    print(chunk.text, end="", flush=True)
+                    print(
+                        f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}", end="", flush=True
+                    )
                     if tts:
                         tts.process_text(chunk.text)
             print()

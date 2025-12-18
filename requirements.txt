@@ -13,8 +13,8 @@ pytest
 pytest-asyncio
 #matplotlib
 pyyaml
-#pyttsx3
-#elevenlabs
+pyttsx3
+elevenlabs
 #pyaudio
 colorama
 pydantic
