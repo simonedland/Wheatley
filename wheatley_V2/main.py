@@ -5,17 +5,14 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from pathlib import Path
-from typing import Any, Dict
 
-import yaml
 from colorama import Fore, Style, init as color  # type: ignore[import-untyped]
 from agent_framework import ChatAgent  # type: ignore[import-not-found]
 from agent_framework import ChatMessageStore as Store  # type: ignore[import-not-found]
 from agent_framework import MCPStreamableHTTPTool as Tool  # type: ignore[import-not-found]
 from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: ignore[import-not-found]
 
-from helper.config import load_config
+from helper.config import load_config  # type: ignore[import-not-found]
 from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
 
 APP_NAME = "Wheatley"

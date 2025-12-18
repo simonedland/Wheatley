@@ -4,16 +4,13 @@
 
 import asyncio
 import os
-from pathlib import Path
-from typing import Any, Dict
 from random import randint
 from typing import Annotated
-import yaml
 
 from agent_framework.openai import OpenAIAssistantsClient  # type: ignore[import-not-found]
 from pydantic import Field  # type: ignore[import-not-found]
 
-from helper.config import load_config
+from helper.config import load_config  # type: ignore[import-not-found]
 
 """
 OpenAI Assistants Basic Example
