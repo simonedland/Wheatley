@@ -5,13 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-import subprocess
 import time
-import platform
-import atexit
-import shutil
-import signal
-from pathlib import Path
 
 from colorama import Fore, Style, init as color  # type: ignore[import-untyped]
 from agent_framework import ChatAgent  # type: ignore[import-not-found]
@@ -21,74 +15,10 @@ from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: igno
 
 from helper.config import load_config  # type: ignore[import-not-found]
 from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
+from helper.mcp_bootstrapper import start_mcp_server  # type: ignore[import-not-found]
 
 APP_NAME = "Wheatley"
 AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
-
-MCP_PROCESSES: list[subprocess.Popen] = []
-
-
-def cleanup_mcp_processes():
-    """Kill all started MCP processes."""
-    if not MCP_PROCESSES:
-        return
-
-    print(f"\n{Fore.YELLOW}Shutting down MCP servers...{Style.RESET_ALL}")
-    for p in MCP_PROCESSES:
-        if p.poll() is None:  # If still running
-            try:
-                if platform.system() == "Windows":
-                    p.terminate()
-                else:
-                    os.kill(p.pid, signal.SIGTERM)
-            except Exception as e:
-                print(f"{Fore.RED}Error killing process {p.pid}: {e}{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}MCP Servers terminated.{Style.RESET_ALL}")
-
-
-atexit.register(cleanup_mcp_processes)
-
-
-def start_mcp_server(script_name: str):
-    """Start an MCP server in a new terminal window."""
-    script_path = Path(__file__).parent / "MCP" / script_name
-
-    if not script_path.exists():
-        print(
-            f"{Fore.RED}Error: Could not find {script_name} at {script_path}{Style.RESET_ALL}"
-        )
-        return
-
-    cmd = [sys.executable, str(script_path)]
-    system = platform.system()
-    process = None
-
-    try:
-        if system == "Windows":
-            # CREATE_NEW_CONSOLE = 0x00000010
-            # Use getattr to avoid mypy errors on non-Windows systems
-            creation_flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 16)
-            process = subprocess.Popen(cmd, creationflags=creation_flags)
-        elif system == "Linux":
-            # Only use lxterminal as requested
-            if shutil.which("lxterminal"):
-                process = subprocess.Popen(
-                    ["lxterminal", "-e", sys.executable, str(script_path)]
-                )
-            else:
-                print(
-                    f"{Fore.YELLOW}lxterminal not found. Running {script_name} in background.{Style.RESET_ALL}"
-                )
-                process = subprocess.Popen(cmd)
-
-        if process:
-            MCP_PROCESSES.append(process)
-            print(
-                f"{Fore.GREEN}Started {script_name} (PID: {process.pid}){Style.RESET_ALL}"
-            )
-
-    except Exception as e:
-        print(f"{Fore.RED}Failed to start {script_name}: {e}{Style.RESET_ALL}")
 
 
 def log(msg: str) -> None:
