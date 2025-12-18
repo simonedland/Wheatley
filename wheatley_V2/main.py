@@ -83,7 +83,9 @@ def start_mcp_server(script_name: str):
 
         if process:
             MCP_PROCESSES.append(process)
-            print(f"{Fore.GREEN}Started {script_name} (PID: {process.pid}){Style.RESET_ALL}")
+            print(
+                f"{Fore.GREEN}Started {script_name} (PID: {process.pid}){Style.RESET_ALL}"
+            )
 
     except Exception as e:
         print(f"{Fore.RED}Failed to start {script_name}: {e}{Style.RESET_ALL}")
@@ -114,7 +116,7 @@ def build_instructions() -> str:
 async def main() -> None:
     """Run the Wheatley agent."""
     color(autoreset=True)
-    
+
     # Print Banner
     print(f"{Fore.CYAN}{Style.BRIGHT}")
     print(r"""
@@ -184,7 +186,11 @@ async def main() -> None:
 
         # Main interaction loop
         while True:
-            print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} ", end="", flush=True)
+            print(
+                f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} ",
+                end="",
+                flush=True,
+            )
             user = await asyncio.to_thread(input)
             user = (user or "").strip()
             if not user:
@@ -193,10 +199,16 @@ async def main() -> None:
             reply = agent.run_stream(
                 user, tools=tools, thread=thread, max_tokens=max_tokens
             )
-            print(f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ", end="", flush=True)
+            print(
+                f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
+                end="",
+                flush=True,
+            )
             async for chunk in reply:
                 if chunk.text:
-                    print(f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}", end="", flush=True)
+                    print(
+                        f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}", end="", flush=True
+                    )
                     if tts:
                         tts.process_text(chunk.text)
             print()
