@@ -30,23 +30,23 @@ class TTSHandler:
         self.client = ElevenLabs(api_key=xi_api_key)
         self.voice_id = voice_id
         self.model_id = model_id
-        
+
         # Queues for passing data between workers
         self.text_queue: asyncio.Queue[tuple[int, str]] = asyncio.Queue()
         self.audio_queue: asyncio.Queue[tuple[int, Optional[bytes]]] = asyncio.Queue()
-        
+
         # Buffer for accumulating text chunks until a full sentence is formed
         self.text_buffer = ""
         self.scan_index = 0
         self.sent_count = 0
-        
+
         # Tracking for active tasks
         self.tasks: list[asyncio.Task[Any]] = []
-        
+
         # Event to signal when all processing and playback is complete
         self.idle_event = asyncio.Event()
         self.idle_event.set()
-        
+
         # Counters for idle check
         self.pending_sent = 0
         self.pending_audio = 0

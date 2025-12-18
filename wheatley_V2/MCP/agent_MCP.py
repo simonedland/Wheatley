@@ -6,10 +6,8 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict
 
 import uvicorn  # type: ignore[import-not-found]
-import yaml
 from colorama import Fore, Style, init as colorama_init  # type: ignore[import-untyped]
 from fastmcp import FastMCP  # type: ignore[import-not-found]
 from agent_framework import MCPStreamableHTTPTool as Tool  # type: ignore[import-not-found]
@@ -17,7 +15,7 @@ from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: igno
 
 # Add parent directory to path to allow importing helper
 sys.path.append(str(Path(__file__).parent.parent))
-from helper.config import load_config
+from helper.config import load_config  # type: ignore[import-not-found]
 
 APP_NAME = "Agents_MCP"
 SPOTIFY_MCP_URL = os.getenv("SPOTIFY_MCP_URL", "http://localhost:8766/mcp")
@@ -59,7 +57,7 @@ async def _run_agent_text(agent_obj, query: str, **kwargs) -> str:
     # Ensure max_tokens is passed if not already in kwargs
     if "max_tokens" not in kwargs:
         kwargs["max_tokens"] = max_tokens
-    
+
     resp = agent_obj.run(query, **kwargs)
     if hasattr(resp, "__await__"):
         resp = await resp
