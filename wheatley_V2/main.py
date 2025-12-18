@@ -25,7 +25,7 @@ from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
 APP_NAME = "Wheatley"
 AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
 
-MCP_PROCESSES = []
+MCP_PROCESSES: list[subprocess.Popen] = []
 
 
 def cleanup_mcp_processes():
@@ -66,7 +66,9 @@ def start_mcp_server(script_name: str):
     try:
         if system == "Windows":
             # CREATE_NEW_CONSOLE = 0x00000010
-            process = subprocess.Popen(cmd, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            # Use getattr to avoid mypy errors on non-Windows systems
+            creation_flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 16)
+            process = subprocess.Popen(cmd, creationflags=creation_flags)
         elif system == "Linux":
             # Only use lxterminal as requested
             if shutil.which("lxterminal"):
