@@ -6,18 +6,18 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict
 
 import uvicorn  # type: ignore[import-not-found]
-import yaml
 from colorama import Fore, Style, init as colorama_init  # type: ignore[import-untyped]
 from fastmcp import FastMCP  # type: ignore[import-not-found]
 from agent_framework import MCPStreamableHTTPTool as Tool  # type: ignore[import-not-found]
 from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: ignore[import-not-found]
 
+# Add parent directory to path to allow importing helper
+sys.path.append(str(Path(__file__).parent.parent))
+from helper.config import load_config  # type: ignore[import-not-found]
 
 APP_NAME = "Agents_MCP"
-CONFIG_PATH = Path(__file__).parent / ".." / "config" / "config.yaml"
 SPOTIFY_MCP_URL = os.getenv("SPOTIFY_MCP_URL", "http://localhost:8766/mcp")
 CALENDAR_MCP_URL = os.getenv("CALENDAR_MCP_URL", "http://localhost:8767/mcp")
 
@@ -30,37 +30,10 @@ logger.handlers[:] = [handler]
 logger.propagate = False
 
 
-def _require(cfg: Dict[str, Any], path: list[str]) -> Any:
-    """Return nested config value or raise a clear error if missing."""
-    cur: Any = cfg
-    for key in path:
-        if not isinstance(cur, dict) or key not in cur:
-            joined = "/".join(path)
-            raise KeyError(f"Missing required config key: {joined}")
-        cur = cur[key]
-    return cur
-
-
-def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
-    """Load config/config.yaml and require all referenced values."""
-    if not path.exists():
-        raise FileNotFoundError(f"Config file not found: {path}")
-
-    with path.open("r", encoding="utf-8") as f:
-        loaded = yaml.safe_load(f)
-
-    if not isinstance(loaded, dict):
-        raise ValueError("Config file must contain a YAML mapping")
-
-    _require(loaded, ["secrets", "openai_api_key"])
-    _require(loaded, ["llm", "model"])
-
-    return loaded
-
-
 config = load_config()
-openai_key = _require(config, ["secrets", "openai_api_key"])
-llm_model = _require(config, ["llm", "model"])
+openai_key = config["secrets"]["openai_api_key"]
+llm_model = config["llm"]["model"]
+max_tokens = config["llm"].get("max_tokens", 1000)
 os.environ["OPENAI_API_KEY"] = openai_key
 os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
 
@@ -81,6 +54,10 @@ calendar_agent = _openai.create_agent(
 
 async def _run_agent_text(agent_obj, query: str, **kwargs) -> str:
     """Run an agent and return the text response."""
+    # Ensure max_tokens is passed if not already in kwargs
+    if "max_tokens" not in kwargs:
+        kwargs["max_tokens"] = max_tokens
+
     resp = agent_obj.run(query, **kwargs)
     if hasattr(resp, "__await__"):
         resp = await resp

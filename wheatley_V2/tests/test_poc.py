@@ -10,16 +10,6 @@ def _write_config(tmp_path, data):
     return cfg_path
 
 
-def test_poc_require_returns_value():
-    cfg = {"secrets": {"token": "abc"}}
-    assert PoC._require(cfg, ["secrets", "token"]) == "abc"
-
-
-def test_poc_require_missing_key_raises_keyerror():
-    with pytest.raises(KeyError):
-        PoC._require({}, ["secrets", "openai_api_key"])
-
-
 def test_poc_load_config_valid(tmp_path, monkeypatch):
     cfg_path = _write_config(
         tmp_path,

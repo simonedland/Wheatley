@@ -5,40 +5,23 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from pathlib import Path
-from typing import Any, Dict
 
-import yaml
 from colorama import Fore, Style, init as color  # type: ignore[import-untyped]
 from agent_framework import ChatAgent  # type: ignore[import-not-found]
 from agent_framework import ChatMessageStore as Store  # type: ignore[import-not-found]
 from agent_framework import MCPStreamableHTTPTool as Tool  # type: ignore[import-not-found]
 from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: ignore[import-not-found]
 
+from helper.config import load_config  # type: ignore[import-not-found]
 from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
 
 APP_NAME = "Wheatley"
-CONFIG_PATH = Path(__file__).parent / "config" / "config.yaml"
 AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
 
 
 def log(msg: str) -> None:
     """Log a message with agent name prefix."""
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
-
-
-def load_config(path: Path = CONFIG_PATH) -> Dict[str, Any]:
-    """Load config/config.yaml."""
-    if not path.exists():
-        raise FileNotFoundError(f"Config file not found: {path}")
-
-    with path.open("r", encoding="utf-8") as f:
-        loaded = yaml.safe_load(f)
-
-    if not isinstance(loaded, dict):
-        raise ValueError("Config file must contain a YAML mapping")
-
-    return loaded
 
 
 def build_instructions() -> str:
@@ -64,6 +47,7 @@ async def main() -> None:
     config = load_config()
     openai_key = config["secrets"]["openai_api_key"]
     llm_model = config["llm"]["model"]
+    max_tokens = config["llm"].get("max_tokens", 1000)
     os.environ["OPENAI_API_KEY"] = openai_key
     os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
 
@@ -109,7 +93,9 @@ async def main() -> None:
             if not user:
                 continue
 
-            reply = agent.run_stream(user, tools=tools, thread=thread)
+            reply = agent.run_stream(
+                user, tools=tools, thread=thread, max_tokens=max_tokens
+            )
             print("Wheatley: ", end="", flush=True)
             async for chunk in reply:
                 if chunk.text:
