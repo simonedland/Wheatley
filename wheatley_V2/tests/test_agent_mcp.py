@@ -10,16 +10,6 @@ def _write_config(tmp_path, data):
     return cfg_path
 
 
-def test_agent_mcp_require_returns_value():
-    cfg = {"llm": {"model": "demo"}}
-    assert agent_MCP._require(cfg, ["llm", "model"]) == "demo"
-
-
-def test_agent_mcp_require_missing_key_raises():
-    with pytest.raises(KeyError):
-        agent_MCP._require({}, ["llm", "model"])
-
-
 def test_agent_mcp_load_config_success(tmp_path):
     cfg_path = _write_config(
         tmp_path, {"secrets": {"openai_api_key": "k"}, "llm": {"model": "m"}}

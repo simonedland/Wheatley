@@ -9,9 +9,6 @@ from elevenlabs.client import ElevenLabs
 from pydub import AudioSegment  # type: ignore[import-not-found]
 from pydub.playback import play  # type: ignore[import-not-found]
 
-
-ENABLE_CONTEXT_AWARE_TTS = False
-
 SENTENCE_END_RE = re.compile(r"[.!?]\s+")
 ABBREVIATIONS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}
 
@@ -33,34 +30,34 @@ class TTSHandler:
         self.client = ElevenLabs(api_key=xi_api_key)
         self.voice_id = voice_id
         self.model_id = model_id
+        
         # Queues for passing data between workers
-        self.text_queue: asyncio.Queue[
-            tuple[int, str, Optional[str], Optional[str]]
-        ] = asyncio.Queue()
+        self.text_queue: asyncio.Queue[tuple[int, str]] = asyncio.Queue()
         self.audio_queue: asyncio.Queue[tuple[int, Optional[bytes]]] = asyncio.Queue()
+        
         # Buffer for accumulating text chunks until a full sentence is formed
         self.text_buffer = ""
         self.scan_index = 0
         self.sent_count = 0
-        # Tracking for active tasks and pending work items
+        
+        # Tracking for active tasks
         self.tasks: list[asyncio.Task[Any]] = []
-        self.pending_sent = 0
-        self.pending_audio = 0
-        # Buffering for context-aware generation (previous/next text)
-        self.last_text: Optional[str] = None
-        self.buffered_item: Optional[tuple[int, str]] = None
+        
         # Event to signal when all processing and playback is complete
         self.idle_event = asyncio.Event()
         self.idle_event.set()
+        
+        # Counters for idle check
+        self.pending_sent = 0
+        self.pending_audio = 0
 
-    def _maybe_idle(self):
+    def _check_idle(self):
         """Check queues and counters then set the idle event when clear."""
-        if not (
-            self.pending_sent
-            or self.pending_audio
-            or not self.text_queue.empty()
-            or not self.audio_queue.empty()
-            or self.buffered_item
+        if (
+            self.pending_sent == 0
+            and self.pending_audio == 0
+            and self.text_queue.empty()
+            and self.audio_queue.empty()
         ):
             self.idle_event.set()
 
@@ -77,14 +74,6 @@ class TTSHandler:
             self._push_sentence(self.text_buffer.strip())
             self.text_buffer = ""
             self.scan_index = 0
-
-        if self.buffered_item:
-            idx, txt = self.buffered_item
-            self.text_queue.put_nowait((idx, txt, self.last_text, None))
-            self.last_text = txt
-            self.pending_sent += 1
-            self.buffered_item = None
-            self.idle_event.clear()
 
     def process_text(self, chunk: str):
         """Accumulate text chunks, split into sentences, and enqueue for processing."""
@@ -105,22 +94,10 @@ class TTSHandler:
                 self._push_sentence(sent)
 
     def _push_sentence(self, sent: str):
-        """Buffer sentence to determine next_text, then enqueue previous buffered sentence."""
-        if not ENABLE_CONTEXT_AWARE_TTS:
-            self.text_queue.put_nowait((self.sent_count, sent, None, None))
-            self.sent_count += 1
-            self.pending_sent += 1
-            self.idle_event.clear()
-            return
-
-        if self.buffered_item:
-            idx, txt = self.buffered_item
-            self.text_queue.put_nowait((idx, txt, self.last_text, sent))
-            self.last_text = txt
-            self.pending_sent += 1
-
-        self.buffered_item = (self.sent_count, sent)
+        """Enqueue sentence for TTS generation."""
+        self.text_queue.put_nowait((self.sent_count, sent))
         self.sent_count += 1
+        self.pending_sent += 1
         self.idle_event.clear()
 
     async def _proc_tts(self):
@@ -128,26 +105,29 @@ class TTSHandler:
         sem = asyncio.Semaphore(2)
         tasks = []
 
-        async def _fetch(idx, txt, prev, nxt):
+        async def _fetch(idx, txt):
             async with sem:
                 # Run blocking API call in executor
                 audio = await asyncio.get_running_loop().run_in_executor(
-                    None, self._api_call, txt, prev, nxt
+                    None, self._api_call, txt
                 )
                 if audio:
                     self.pending_audio += 1
                     self.idle_event.clear()
                 await self.audio_queue.put((idx, audio))
-
-        while (item := await self.text_queue.get()) is not None:
-            if self.pending_sent:
                 self.pending_sent -= 1
+                self._check_idle()
+
+        while True:
+            item = await self.text_queue.get()
+            if item is None:
+                break
             tasks.append(asyncio.create_task(_fetch(*item)))
 
         if tasks:
             await asyncio.gather(*tasks)
         await self.audio_queue.put((-1, b""))
-        self._maybe_idle()  # Signal playback worker to stop
+        self._check_idle()
 
     async def _play_audio(self):
         """Play audio segments in the correct order."""
@@ -178,28 +158,27 @@ class TTSHandler:
                         None, self._play, data
                     )
                 expect += 1
-                if self.pending_audio:
+                if self.pending_audio > 0:
                     self.pending_audio -= 1
-                    self._maybe_idle()
+                self._check_idle()
 
             if stream_done and not buf:
                 break
-        self._maybe_idle()
+        self._check_idle()
 
-    def _api_call(self, text, prev=None, nxt=None):
+    def _api_call(self, text):
         """Call ElevenLabs SDK and return audio bytes."""
         try:
             audio_generator = self.client.text_to_speech.convert(
                 voice_id=self.voice_id,
                 model_id=self.model_id,
                 text=text,
-                previous_text=prev,
-                next_text=nxt,
                 output_format="mp3_22050_32",
             )
             return b"".join(audio_generator)
         except Exception as e:
             print(f"[TTS Error] {e}")
+            return None
 
     def _play(self, data):
         """Play audio bytes using pydub."""
