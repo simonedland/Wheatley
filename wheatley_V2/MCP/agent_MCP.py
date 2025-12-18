@@ -50,6 +50,10 @@ spotify_agent = _openai.create_agent(
 calendar_agent = _openai.create_agent(
     name="GoogleCalendarAgent", description="Manages calendar events and schedules."
 )
+researcher_agent = _openai.create_agent(
+    name="ResearcherAgent",
+    description="Researches topics using web search and saves notes.",
+)
 
 
 async def _run_agent_text(agent_obj, query: str, **kwargs) -> str:
@@ -86,6 +90,18 @@ async def calendar_agent_tool(query: str) -> str:
         request_timeout=60,
     ) as calendar_tools:
         return await _run_agent_text(calendar_agent, query, tools=calendar_tools)
+
+
+@mcp.tool(name="ResearcherAgent", description="Researches topics on the web.")
+async def researcher_agent_tool(query: str) -> str:
+    """Run the ResearcherAgent and return the response."""
+    logger.info("%sResearcherAgent%s query=%s", Fore.GREEN, Style.RESET_ALL, query)
+    # Pass both the MCP tools and the OpenAI web_search tool
+    return await _run_agent_text(
+        researcher_agent,
+        query,
+        tools=[{"type": "web_search"}],
+    )
 
 
 app = mcp.http_app(path="/mcp", transport="http")

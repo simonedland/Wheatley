@@ -6,6 +6,7 @@ import asyncio
 import os
 import sys
 import time
+from datetime import datetime
 
 from colorama import Fore, Style, init as color  # type: ignore[import-untyped]
 from agent_framework import ChatAgent  # type: ignore[import-not-found]
@@ -28,10 +29,12 @@ def log(msg: str) -> None:
 
 def build_instructions() -> str:
     """Build agent instructions for Wheatley."""
+    now = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
     return (
+        f"Current Date and Time: {now}\n"
         "You are Wheatley — a helpful AI assistant.\n"
-        "You have access to 'SpotifyAgent' and 'GoogleCalendarAgent' via the 'agent_tools' MCP tool.\n"
-        "Use them to help the user with music and scheduling.\n"
+        "You have access to 'SpotifyAgent', 'GoogleCalendarAgent', and 'ResearcherAgent' via the 'agent_tools' MCP tool.\n"
+        "Use them to help the user with music, scheduling, and web research.\n"
         "you have TTS capabilities to speak your responses aloud. this happens automatically.\n"
         "To implement vocal sounds or sound effects, use square brackets, e.g., [sarcastically], [giggles], [whispers]. Only use sound effects that would come from a mouth like [laughs], [sighs], [whispers] and so on.\n"
         "try to implement vocal sounds and sound effects naturally in your responses. Only make vocal sounds for things that actually makes sound. Examples of vocal sounds that does not make sound is [nods] [softly] and [thinks].\n"
