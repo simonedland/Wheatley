@@ -16,6 +16,7 @@ from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: igno
 
 from helper.config import load_config  # type: ignore[import-not-found]
 from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
+from helper.stt_helper import SpeechToTextEngine  # type: ignore[import-not-found]
 from helper.mcp_bootstrapper import start_mcp_server  # type: ignore[import-not-found]
 
 APP_NAME = "Wheatley"
@@ -23,12 +24,69 @@ AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
 
 
 def log(msg: str) -> None:
-    """Log a message with agent name prefix."""
+    """
+    Prints a message to stdout prefixed with the agent name in color.
+
+    Prints the provided message with a colorized "[Wheatley]" prefix and immediately flushes stdout.
+    """
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
 
 
+def handle_task_exception(task: asyncio.Task) -> None:
+    """
+    Handle and log exceptions raised by an asyncio Task.
+
+    Calls task.result() to propagate any exception raised in the task, suppresses asyncio.CancelledError, and logs other exceptions to the console.
+
+    Parameters:
+        task (asyncio.Task): The background task to inspect for exceptions.
+    """
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        log(f"{Fore.RED}Background task failed: {e}{Style.RESET_ALL}")
+
+
+async def console_input_loop(queue: asyncio.Queue) -> None:
+    """
+    Run a blocking console input reader that enqueues user messages.
+
+    Continuously reads lines from standard input and, for each non-empty line, puts a dict {"text": <input>, "source": "console"} onto the provided asyncio.Queue. Prints an initial prompt before reading and exits the loop on EOF.
+
+    Parameters:
+        queue (asyncio.Queue): Queue that will receive user message dictionaries with keys:
+            - "text" (str): the entered text
+            - "source" (str): the string "console"
+    """
+    print(
+        f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+        end="",
+        flush=True,
+    )
+    while True:
+        try:
+            user_input = await asyncio.to_thread(input)
+            user_input = (user_input or "").strip()
+            if user_input:
+                await queue.put({"text": user_input, "source": "console"})
+            # Print prompt again after input
+            # Note: This might conflict with STT output, but it's a simple solution
+        except EOFError:
+            await queue.put({"text": None, "source": "console"})
+            break
+
+
 def build_instructions() -> str:
-    """Build agent instructions for Wheatley."""
+    """
+    Builds the instruction text used to configure the Wheatley agent.
+
+    The returned text includes the current date and time, a brief identity for Wheatley, the list of available MCP tools (SpotifyAgent, GoogleCalendarAgent, ResearcherAgent), and explicit guidelines for TTS usage and embedded vocal sound/effect notation (e.g., placement and allowed forms like `[laughs]`, `[whispers]`).
+
+    Returns:
+        instructions (str): Complete instruction text to present to the agent.
+    """
     now = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
     return (
         f"Current Date and Time: {now}\n"
@@ -48,22 +106,33 @@ def build_instructions() -> str:
 
 async def main() -> None:
     """
-    Initialize and run the Wheatley agent, entering an interactive loop to accept user input and stream agent responses.
+    Run the Wheatley agent: initialize required services, load configuration and models, create tool and agent contexts, and enter a queue-driven interactive loop that sends user input to the agent and streams responses to the console and optional TTS/STT.
 
-    Sets up color output, bootstraps required MCP servers, loads configuration and LLM/TTS settings, creates the agent and tool contexts, and optionally starts text-to-speech. Then repeatedly reads user input, sends it to the agent, streams and prints response chunks, and forwards text to TTS when enabled. The function runs until the process is interrupted.
+    Initializes color output, bootstraps MCP servers, sets environment variables for the LLM, attempts to initialize speech-to-text, and (when configured) starts text-to-speech. Starts background tasks for console input and optional hotword-based STT, then continuously reads user messages from an asyncio queue, forwards them to the agent for streamed responses, prints response chunks as they arrive, and forwards text to the TTS engine when enabled. Ensures background tasks are cancelled and STT/TTS resources are cleaned up on shutdown.
     """
     color(autoreset=True)
 
     # Print Banner
     print(f"{Fore.CYAN}{Style.BRIGHT}")
-    print(r"""
- __      __  __                    __   __
-/  \    /  \|  |__    ____ _____ _/  |_|  |   ____ ___.__.
-\   \/\/   /|  |  \ _/ __ \\__  \\   __\  | _/ __ <   |  |
- \        / |   Y  \\  ___/ / __ \|  | |  |_\  ___/\___  |
-  \__/\  /  |___|  / \___  >____  /__| |____/\___  > ____|
-       \/        \/      \/     \/               \/\/
-    """)
+    print(
+        r"""
+⠀⠀⡀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠘⢿⣝⠛⠋⠉⠉⠉⣉⠩⠍⠉⣿⠿⡭⠉⠛⠃⠲⣞⣉⡙⠿⣇⠀⠀⠀
+⠀⠀⠈⠻⣷⣄⡠⢶⡟⢀⣀⢠⣴⡏⣀⡀⠀⠀⣠⡾⠋⢉⣈⣸⣿⡀⠀⠀
+⠀⠀⠀⠀⠙⠋⣼⣿⡜⠃⠉⠀⡎⠉⠉⢺⢱⢢⣿⠃⠘⠈⠛⢹⣿⡇⠀⠀
+⠀⠀⠀⢀⡞⣠⡟⠁⠀⠀⣀⡰⣀⠀⠀⡸⠀⠑⢵⡄⠀⠀⠀⠀⠉⠀⣧⡀
+⠀⠀⠀⠌⣰⠃⠁⣠⣖⣡⣄⣀⣀⣈⣑⣔⠂⠀⠠⣿⡄⠀⠀⠀⠀⠠⣾⣷
+⠀⠀⢸⢠⡇⠀⣰⣿⣿⡿⣡⡾⠿⣿⣿⣜⣇⠀⠀⠘⣿⠀⠀⠀⠀⢸⡀⢸
+⠀⠀⡆⢸⡀⠀⣿⣿⡇⣾⡿⠁⠀⠀⣹⣿⢸⠀⠀⠀⣿⡆⠀⠀⠀⣸⣤⣼
+⠀⠀⢳⢸⡧⢦⢿⣿⡏⣿⣿⣦⣀⣴⣻⡿⣱⠀⠀⠀⣻⠁⠀⠀⠀⢹⠛⢻
+⠀⠀⠈⡄⢷⠘⠞⢿⠻⠶⠾⠿⣿⣿⣭⡾⠃⠀⠀⢀⡟⠀⠀⠀⠀⣹⠀⡆
+⠀⠀⠀⠰⣘⢧⣀⠀⠙⠢⢤⠠⠤⠄⠊⠀⠀⠀⣠⠟⠀⠀⠀⠀⠀⢧⣿⠃
+⠀⣀⣤⣿⣇⠻⣟⣄⡀⠀⠘⣤⣣⠀⠀⠀⣀⢼⠟⠀⠀⠀⠀⠀⠄⣿⠟⠀
+⠿⠏⠭⠟⣤⣴⣬⣨⠙⠲⢦⣧⡤⣔⠲⠝⠚⣷⠀⠀⠀⢀⣴⣷⡠⠃⠀⠀
+⠀⠀⠀⠀⠀⠉⠉⠉⠛⠻⢛⣿⣶⣶⡽⢤⡄⢛⢃⣒⢠⣿⣿⠟⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠁⠀⠁⠀⠀⠀⠀⠀
+        """
+    )
     print(f"{Style.RESET_ALL}")
     print(f"{Fore.GREEN}Initializing Wheatley V2...{Style.RESET_ALL}")
 
@@ -95,64 +164,119 @@ async def main() -> None:
     model_id = tts_cfg["model_id"]
     tts_enabled = tts_cfg["enabled"]
 
-    # Build tool & agent contexts
-    async with (
-        Tool(
-            name="agent_tools",
-            description="Access to Spotify and Calendar agents.",
-            url=AGENT_MCP_URL,
-            request_timeout=60,
-        ) as tools,
-        ChatAgent(
-            name=APP_NAME,
-            description="A helpful assistant with access to Spotify and Calendar.",
-            instructions=build_instructions(),
-            chat_message_store_factory=Store,
-            chat_client=OpenAI(),
-        ) as agent,
-    ):
-        thread = agent.get_new_thread()
+    # Initialize STT
+    stt = None
+    try:
+        stt = SpeechToTextEngine()
+        log(f"{Fore.GREEN}STT Initialized.{Style.RESET_ALL}")
+    except Exception as e:
+        log(f"{Fore.RED}STT Initialization failed: {e}{Style.RESET_ALL}")
 
-        tts = (
-            TTSHandler(xi_key, voice_id=voice_id, model_id=model_id)
-            if xi_key and tts_enabled
-            else None
-        )
-        if tts:
-            tts.start()
+    background_tasks = []
+    tts = None
 
-        # Main interaction loop
-        while True:
-            print(
-                f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} ",
-                end="",
-                flush=True,
+    try:
+        # Build tool & agent contexts
+        async with (
+            Tool(
+                name="agent_tools",
+                description="Access to Spotify and Calendar agents.",
+                url=AGENT_MCP_URL,
+                request_timeout=60,
+            ) as tools,
+            ChatAgent(
+                name=APP_NAME,
+                description="A helpful assistant with access to Spotify and Calendar.",
+                instructions=build_instructions(),
+                chat_message_store_factory=Store,
+                chat_client=OpenAI(),
+            ) as agent,
+        ):
+            thread = agent.get_new_thread()
+
+            tts = (
+                TTSHandler(xi_key, voice_id=voice_id, model_id=model_id)
+                if xi_key and tts_enabled
+                else None
             )
-            user = await asyncio.to_thread(input)
-            user = (user or "").strip()
-            if not user:
-                continue
-
-            reply = agent.run_stream(
-                user, tools=tools, thread=thread, max_tokens=max_tokens
-            )
-            print(
-                f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
-                end="",
-                flush=True,
-            )
-            async for chunk in reply:
-                if chunk.text:
-                    print(
-                        f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}", end="", flush=True
-                    )
-                    if tts:
-                        tts.process_text(chunk.text)
-            print()
-
             if tts:
-                await tts.flush_pending()
-                await tts.wait_idle()
+                tts.start()
+
+            input_queue: asyncio.Queue[dict] = asyncio.Queue()
+
+            # Start console input task
+            console_task = asyncio.create_task(console_input_loop(input_queue))
+            console_task.add_done_callback(handle_task_exception)
+            background_tasks.append(console_task)
+
+            # Start hotword listener if STT is available
+            if stt:
+                hotword_task = asyncio.create_task(
+                    stt.hotword_listener(input_queue, tts_engine=tts)
+                )
+                hotword_task.add_done_callback(handle_task_exception)
+                background_tasks.append(hotword_task)
+
+            # Main interaction loop
+            while True:
+                user_data = await input_queue.get()
+                user = user_data["text"]
+                source = user_data["source"]
+
+                if user is None:
+                    break
+
+                if source == "stt":
+                    print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user}")
+
+                reply = agent.run_stream(
+                    user, tools=tools, thread=thread, max_tokens=max_tokens
+                )
+                print(
+                    f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
+                    end="",
+                    flush=True,
+                )
+                async for chunk in reply:
+                    if chunk.text:
+                        print(
+                            f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}",
+                            end="",
+                            flush=True,
+                        )
+                        if tts:
+                            tts.process_text(chunk.text)
+                print()
+
+                if tts:
+                    await tts.flush_pending()
+                    await tts.wait_idle()
+
+                # Re-print prompt
+                print(
+                    f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+                    end="",
+                    flush=True,
+                )
+    finally:
+        # Cancel background tasks
+        for task in background_tasks:
+            task.cancel()
+
+        if background_tasks:
+            await asyncio.gather(*background_tasks, return_exceptions=True)
+
+        if tts:
+            for task in tts.tasks:
+                task.cancel()
+            if tts.tasks:
+                await asyncio.gather(*tts.tasks, return_exceptions=True)
+            tts.cleanup()
+            log(f"{Fore.GREEN}TTS Cleaned up.{Style.RESET_ALL}")
+
+        if stt:
+            stt.cleanup()
+            log(f"{Fore.GREEN}STT Cleaned up.{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
