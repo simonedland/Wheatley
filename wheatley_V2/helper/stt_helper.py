@@ -4,6 +4,7 @@ import asyncio
 import os
 import random
 import struct
+import tempfile
 import time
 import wave
 from pathlib import Path
@@ -17,11 +18,8 @@ import pvporcupine  # type: ignore[import-not-found]
 import yaml
 
 # Directory containing pre-recorded greetings played after hotword detection
-# Pointing to the V1 directory for now
-HOTWORD_GREETINGS_DIR = (
-    Path(__file__).parents[2] / "wheatley" / "stt" / "hotword_greetings"
-)
-KEYWORD_FILE_PATH = Path(__file__).parents[2] / "wheatley" / "stt" / "wheatley.ppn"
+HOTWORD_GREETINGS_DIR = Path(__file__).parents[1] / "stt" / "hotword_greetings"
+KEYWORD_FILE_PATH = Path(__file__).parents[1] / "stt" / "wheatley.ppn"
 
 
 class SpeechToTextEngine:
@@ -75,8 +73,8 @@ class SpeechToTextEngine:
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = stt_config.get("channels", 1)
         self.RATE = stt_config.get("rate", 16000)  # 16kHz is optimal for Whisper
-        self.THRESHOLD = 1500  # stt_config.get("threshold", 1500)
-        self.SILENCE_LIMIT = 3  # stt_config.get("silence_limit", 2)
+        self.THRESHOLD = stt_config.get("threshold", 1500)
+        self.SILENCE_LIMIT = stt_config.get("silence_limit", 3)
 
         # Set OpenAI API key from config
         self.porcupine_api_key = config.get("secrets", {}).get("porcupine_api_key")
@@ -143,14 +141,16 @@ class SpeechToTextEngine:
                 try:
                     self._stream.stop_stream()
                     self._stream.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(
+                        f"[STT] Failed to stop/close audio stream during calibration: {e}"
+                    )
                 self._stream = None
             if self._audio:
                 try:
                     self._audio.terminate()
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[STT] Failed to terminate PyAudio during calibration: {e}")
                 self._audio = None
 
     # ------------------------------------------------------------------
@@ -185,12 +185,6 @@ class SpeechToTextEngine:
     # Recording helper methods
     # ----------------------------
     def _tts_playing(self, tts_engine) -> bool:
-        # Check if TTS is playing (using the V2 TTSHandler)
-        # V2 TTSHandler doesn't seem to have is_playing() method directly exposed in the snippet I saw?
-        # I need to check tts_helper.py again.
-        # It has `wait_idle()`. It has `_play_audio` task.
-        # I might need to add `is_playing` property to TTSHandler in tts_helper.py
-        # For now, I'll assume I can check it or I'll add it.
         """
         Determine whether the provided TTS engine is currently playing audio.
 
@@ -380,15 +374,22 @@ class SpeechToTextEngine:
             if not frames:
                 return None
 
-            import tempfile
-
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
                 wav_filename = tmp.name
-            with wave.open(wav_filename, "wb") as wf:
-                wf.setnchannels(self.CHANNELS)
-                wf.setsampwidth(audio.get_sample_size(self.FORMAT))
-                wf.setframerate(self.RATE)
-                wf.writeframes(b"".join(frames))
+            try:
+                with wave.open(wav_filename, "wb") as wf:
+                    wf.setnchannels(self.CHANNELS)
+                    wf.setsampwidth(audio.get_sample_size(self.FORMAT))
+                    wf.setframerate(self.RATE)
+                    wf.writeframes(b"".join(frames))
+            except Exception:
+                # Clean up temporary file on WAV writing failure
+                try:
+                    if os.path.exists(wav_filename):
+                        os.remove(wav_filename)
+                except OSError:
+                    pass
+                raise
             return wav_filename
         finally:
             audio.terminate()
@@ -435,13 +436,15 @@ class SpeechToTextEngine:
                 print(f"[Hotword] Using custom keyword file '{KEYWORD_FILE_PATH}'")
             else:
                 raise FileNotFoundError("Custom keyword file not found")
-        except Exception:
+        except Exception as e:
             self._porcupine = pvporcupine.create(
                 access_key=self.porcupine_api_key,
                 keywords=keywords,
                 sensitivities=sensitivities,
             )
-            print("[Hotword] Using default keywords")
+            print(
+                f"[Hotword] Using default keywords due to error ({type(e).__name__}): {e}"
+            )
 
     def listen_for_hotword(self, keywords=None, sensitivities=None):
         """
@@ -521,20 +524,19 @@ class SpeechToTextEngine:
         if idx is None:
             return ""
 
-        # self._play_hotword_greeting(tts_engine)
-
         wav_file = self.record_until_silent(tts_engine=tts_engine)
         if not wav_file or self.is_paused():
             print("No audio detected or paused.")
             return ""
 
-        if self.is_paused():
-            print("[STT] Paused before transcription.")
-            return ""
-
-        text = self.transcribe(wav_file)
-        os.remove(wav_file)
-        return text
+        try:
+            text = self.transcribe(wav_file)
+            return text
+        finally:
+            try:
+                os.remove(wav_file)
+            except OSError:
+                pass
 
     async def hotword_listener(self, queue: asyncio.Queue, tts_engine=None):
         """
@@ -595,10 +597,10 @@ class SpeechToTextEngine:
             try:
                 self._stream.stop_stream()
                 self._stream.close()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[STT] Failed to cleanup stream: {e}")
         if self._audio is not None:
             try:
                 self._audio.terminate()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[STT] Failed to terminate PyAudio: {e}")
