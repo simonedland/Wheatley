@@ -28,12 +28,12 @@ class TTSHandler:
     ):
         """
         Create a TTSHandler configured to use the ElevenLabs API and initialize internal queues, buffers, and synchronization primitives.
-        
+
         Parameters:
             xi_api_key (str): ElevenLabs API key used to create the client.
             voice_id (str): Identifier of the voice to use for synthesis (default provided).
             model_id (str): Identifier of the ElevenLabs model to use for synthesis (default provided).
-        
+
         Attributes initialized:
             client: ElevenLabs client instance authenticated with xi_api_key.
             voice_id, model_id: Stored identifiers for voice and model selection.
@@ -72,7 +72,7 @@ class TTSHandler:
     def is_playing(self) -> bool:
         """
         Indicates whether TTS processing or audio playback is active.
-        
+
         Returns:
             `true` if TTS processing or playback is active, `false` otherwise.
         """
@@ -81,7 +81,7 @@ class TTSHandler:
     def _check_idle(self):
         """
         Set the idle event when there are no pending sentences, no pending audio, and both queues are empty.
-        
+
         Checks self.pending_sent, self.pending_audio, self.text_queue, and self.audio_queue; if all indicate no outstanding work, signals idle by calling self.idle_event.set().
         """
         if (

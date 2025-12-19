@@ -30,10 +30,10 @@ class SpeechToTextEngine:
     def __init__(self, config_path: Optional[Path] = None):
         """
         Create and configure a SpeechToTextEngine, initialize internal audio/hotword state, and prepare microphone thresholds.
-        
+
         Parameters:
             config_path (Optional[Path]): Path to the YAML configuration file. If omitted, defaults to the package's config/config.yaml.
-        
+
         Notes:
             - Initializes internal references for audio, stream, and hotword detector and creates control events used to pause/stop listening.
             - Leaves the engine in a paused state.
@@ -64,7 +64,7 @@ class SpeechToTextEngine:
     def _load_config(self):
         """
         Load STT-related configuration from the instance's config_path and initialize runtime settings and API keys.
-        
+
         Reads YAML configuration and sets audio parameters (CHUNK, FORMAT, CHANNELS, RATE, THRESHOLD, SILENCE_LIMIT) on the instance, assigns OpenAI and Porcupine API keys (setting openai.api_key), raises ValueError if the OpenAI API key is missing, and prints a warning if the Porcupine API key is not provided.
         """
         with open(self.config_path, "r") as f:
@@ -99,12 +99,12 @@ class SpeechToTextEngine:
     def calibrate_threshold(self, ambient_time: float = 2.0) -> None:
         """
         Calibrate the engine's microphone sensitivity from ambient audio and set self.THRESHOLD.
-        
+
         Samples microphone input for up to `ambient_time` seconds to determine the ambient maximum amplitude and sets `self.THRESHOLD` to either 1.5× that ambient maximum or 500, whichever is greater.
-        
+
         Parameters:
             ambient_time (float): Seconds to sample ambient audio for calibration (default 2.0).
-        
+
         Side effects:
             Sets `self.THRESHOLD` (int). Temporarily opens `self._audio` and `self._stream` for sampling and ensures they are closed and set to `None` on completion.
         """
@@ -175,7 +175,7 @@ class SpeechToTextEngine:
     def is_paused(self):
         """
         Indicates whether the engine is currently paused.
-        
+
         Returns:
             `True` if listening is paused, `False` otherwise.
         """
@@ -193,10 +193,10 @@ class SpeechToTextEngine:
         # For now, I'll assume I can check it or I'll add it.
         """
         Determine whether the provided TTS engine is currently playing audio.
-        
+
         Parameters:
             tts_engine: The text-to-speech engine instance to check; may be None.
-        
+
         Returns:
             bool: `true` if `tts_engine` is present and exposes an `is_playing` attribute that is truthy, `false` otherwise.
         """
@@ -209,7 +209,7 @@ class SpeechToTextEngine:
     def _wait_for_tts(self, tts_engine) -> None:
         """
         Block until the provided TTS engine is no longer playing.
-        
+
         Parameters:
             tts_engine: The text-to-speech engine to poll. The engine is queried via the class's `_tts_playing`
                 helper; if the engine is None or not reporting playback, this method returns immediately.
@@ -221,9 +221,9 @@ class SpeechToTextEngine:
     def _play_hotword_greeting(self, tts_engine) -> None:
         """
         Attempt to play a random greeting audio file from HOTWORD_GREETINGS_DIR if possible.
-        
+
         If `tts_engine` is None, the directory does not exist, no `.mp3` files are found, or a FileNotFoundError occurs while listing files, the function does nothing. When a file is selected the function logs the chosen filename (currently via a print statement) rather than performing actual playback.
-        
+
         Parameters:
             tts_engine: The TTS engine instance used to play the greeting; if None, the greeting is skipped.
         """
@@ -247,10 +247,10 @@ class SpeechToTextEngine:
     def _should_abort(self, tts_engine) -> bool:
         """
         Determine whether ongoing recording should be aborted due to pause state or active TTS playback.
-        
+
         Parameters:
             tts_engine: The text-to-speech engine to check for active playback; may be None.
-        
+
         Returns:
             `true` if listening is paused or the TTS engine is currently playing, `false` otherwise.
         """
@@ -267,13 +267,13 @@ class SpeechToTextEngine:
     def _monitor_for_sound(self, stream, start_time, max_wait_seconds, tts_engine):
         """
         Waits for audible input on the given audio stream and returns the first captured frame with observed amplitude bounds.
-        
+
         Parameters:
             stream: An open PyAudio input stream used to read raw audio frames.
             start_time (float): Monotonic timestamp when monitoring began; used to enforce max_wait_seconds.
             max_wait_seconds (Optional[float]): Maximum seconds to wait for sound before aborting; pass None for no timeout.
             tts_engine: Optional TTS engine instance checked to determine whether monitoring should abort while TTS is active.
-        
+
         Returns:
             tuple: (frames, min_amplitude, max_amplitude)
                 frames (list[bytes]): A list containing the first audio frame that exceeded the amplitude threshold, or an empty list if aborted or timed out.
@@ -306,14 +306,14 @@ class SpeechToTextEngine:
     ):
         """
         Continue recording from the given audio stream until a sustained period of silence is detected, updating observed amplitude statistics.
-        
+
         Parameters:
             stream: Open audio input stream with a .read(CHUNK) method to pull audio frames.
             frames (list): Mutable list of audio frame bytes already collected; new frames are appended.
             tts_engine: Optional TTS engine checked to decide whether recording should abort.
             min_amplitude (int): Current minimum observed frame amplitude; will be updated if lower values are seen.
             max_amplitude (int): Current maximum observed frame amplitude; will be updated if higher values are seen.
-        
+
         Returns:
             tuple: (frames, min_amplitude, max_amplitude) where `frames` is the list of collected audio frames (or an empty list if recording was aborted), and the amplitude values reflect the updated min and max observed during this recording phase.
         """
@@ -335,14 +335,14 @@ class SpeechToTextEngine:
     def record_until_silent(self, max_wait_seconds=None, tts_engine=None):
         """
         Record audio from the default input until a silence window is detected and save it to a temporary WAV file.
-        
+
         The method waits for any active TTS playback to finish, then performs a two-phase recording:
         first it waits for sound above the configured threshold, then it continues recording until a configured silence window is observed. The recorded audio is written to a temporary WAV file which is returned.
-        
+
         Parameters:
             max_wait_seconds (float | None): Maximum time in seconds to wait for initial sound before aborting. If None, no explicit initial timeout is applied.
             tts_engine (object | None): Optional TTS engine whose playback state is checked to avoid recording while TTS is speaking; only an attribute like `is_playing` is required.
-        
+
         Returns:
             str | None: Path to the temporary WAV file containing the recorded audio, or `None` if no audio was recorded (e.g., timed out or aborted).
         """
@@ -396,10 +396,10 @@ class SpeechToTextEngine:
     def transcribe(self, filename):
         """
         Transcribe a local audio file to text using the Whisper model.
-        
+
         Parameters:
             filename (str or Path): Path to the audio file to transcribe.
-        
+
         Returns:
             str: The transcribed text from the audio file.
         """
@@ -412,11 +412,11 @@ class SpeechToTextEngine:
     def hotword_config(self, keywords=None, sensitivities=None):
         """
         Configure and initialize the Porcupine hotword detector on this instance, preferring a local custom keyword file when available.
-        
+
         Parameters:
             keywords (Optional[list[str]]): Keyword names to use if no custom keyword file is present. Defaults to ["computer", "jarvis"].
             sensitivities (Optional[list[float]]): Sensitivity values (0.0 to 1.0) corresponding to each keyword. Defaults to 0.5 for each keyword.
-        
+
         Behavior:
             If a custom keyword file exists at KEYWORD_FILE_PATH, the detector is initialized with that file; otherwise the detector is initialized with the provided keyword names and sensitivities. The initialized Porcupine instance is stored on self._porcupine.
         """
@@ -446,11 +446,11 @@ class SpeechToTextEngine:
     def listen_for_hotword(self, keywords=None, sensitivities=None):
         """
         Listen for configured Porcupine hotwords and return which keyword was detected.
-        
+
         Parameters:
             keywords (Optional[list[str]]): Sequence of hotword names to listen for. Defaults to ["computer", "jarvis"] when not provided.
             sensitivities (Optional[list[float]]): Per-keyword sensitivity values (0.0-1.0). If omitted, default sensitivities are used.
-        
+
         Returns:
             int | None: The index of the detected keyword in the `keywords` list, or `None` if hotword detection is disabled (no Porcupine API key) or no keyword was detected before the listener was stopped.
         """
@@ -507,10 +507,10 @@ class SpeechToTextEngine:
     def get_voice_input(self, tts_engine=None):
         """
         Listen for a configured hotword, record the subsequent speech until silence, and return its transcription.
-        
+
         Parameters:
             tts_engine: Optional TTS engine whose playback state is respected to avoid recording while speech is playing.
-        
+
         Returns:
             transcription (str): Transcribed text of the recorded speech, or an empty string if no audio was detected or listening was paused.
         """
@@ -539,9 +539,9 @@ class SpeechToTextEngine:
     async def hotword_listener(self, queue: asyncio.Queue, tts_engine=None):
         """
         Continuously listens for hotword-triggered speech, transcribes captured audio, and enqueues transcription results.
-        
+
         While running, the task defers recording when listening is paused or when the provided TTS engine is playing. For each non-empty transcription it places a dictionary of the form {"text": <transcribed text>, "source": "stt"} onto the supplied asyncio.Queue. The task runs until cancelled; cancellation causes it to exit cleanly.
-        
+
         Parameters:
             queue (asyncio.Queue): Queue to receive transcription dictionaries {"text": str, "source": "stt"}.
             tts_engine (optional): TTS engine used to determine whether playback is active; when playing, recording is postponed.
@@ -570,7 +570,7 @@ class SpeechToTextEngine:
     def __enter__(self):
         """
         Enter the runtime context and make the engine instance available for use within a with-statement.
-        
+
         Returns:
             self (SpeechToTextEngine): The current SpeechToTextEngine instance.
         """
@@ -579,7 +579,7 @@ class SpeechToTextEngine:
     def __exit__(self, exc_type, exc_value, traceback):
         """
         Call cleanup when exiting the context manager.
-        
+
         Invokes self.cleanup() to release resources and stop background activity. Does not suppress exceptions raised inside the with-block.
         """
         self.cleanup()
@@ -587,7 +587,7 @@ class SpeechToTextEngine:
     def cleanup(self):
         """
         Signal the engine to stop and release any audio resources.
-        
+
         This sets the internal stop event, stops and closes the active audio stream if present, and terminates the PyAudio instance. Any errors raised during cleanup are intentionally suppressed.
         """
         self._stop_event.set()
