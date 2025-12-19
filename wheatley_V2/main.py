@@ -16,6 +16,7 @@ from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: igno
 
 from helper.config import load_config  # type: ignore[import-not-found]
 from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
+from helper.stt_helper import SpeechToTextEngine  # type: ignore[import-not-found]
 from helper.mcp_bootstrapper import start_mcp_server  # type: ignore[import-not-found]
 
 APP_NAME = "Wheatley"
@@ -25,6 +26,22 @@ AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
 def log(msg: str) -> None:
     """Log a message with agent name prefix."""
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
+
+
+async def console_input_loop(queue: asyncio.Queue) -> None:
+    """Read input from console and put into queue."""
+    print(f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ", end="", flush=True)
+    while True:
+        try:
+            user_input = await asyncio.to_thread(input)
+            user_input = (user_input or "").strip()
+            if user_input:
+                await queue.put(user_input)
+            # Print prompt again after input
+            # Note: This might conflict with STT output, but it's a simple solution
+            # print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} ", end="", flush=True)
+        except EOFError:
+            break
 
 
 def build_instructions() -> str:
@@ -56,14 +73,25 @@ async def main() -> None:
 
     # Print Banner
     print(f"{Fore.CYAN}{Style.BRIGHT}")
-    print(r"""
- __      __  __                    __   __
-/  \    /  \|  |__    ____ _____ _/  |_|  |   ____ ___.__.
-\   \/\/   /|  |  \ _/ __ \\__  \\   __\  | _/ __ <   |  |
- \        / |   Y  \\  ___/ / __ \|  | |  |_\  ___/\___  |
-  \__/\  /  |___|  / \___  >____  /__| |____/\___  > ____|
-       \/        \/      \/     \/               \/\/
-    """)
+    print(
+        r"""
+⠀⠀⡀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠘⢿⣝⠛⠋⠉⠉⠉⣉⠩⠍⠉⣿⠿⡭⠉⠛⠃⠲⣞⣉⡙⠿⣇⠀⠀⠀
+⠀⠀⠈⠻⣷⣄⡠⢶⡟⢀⣀⢠⣴⡏⣀⡀⠀⠀⣠⡾⠋⢉⣈⣸⣿⡀⠀⠀
+⠀⠀⠀⠀⠙⠋⣼⣿⡜⠃⠉⠀⡎⠉⠉⢺⢱⢢⣿⠃⠘⠈⠛⢹⣿⡇⠀⠀
+⠀⠀⠀⢀⡞⣠⡟⠁⠀⠀⣀⡰⣀⠀⠀⡸⠀⠑⢵⡄⠀⠀⠀⠀⠉⠀⣧⡀
+⠀⠀⠀⠌⣰⠃⠁⣠⣖⣡⣄⣀⣀⣈⣑⣔⠂⠀⠠⣿⡄⠀⠀⠀⠀⠠⣾⣷
+⠀⠀⢸⢠⡇⠀⣰⣿⣿⡿⣡⡾⠿⣿⣿⣜⣇⠀⠀⠘⣿⠀⠀⠀⠀⢸⡀⢸
+⠀⠀⡆⢸⡀⠀⣿⣿⡇⣾⡿⠁⠀⠀⣹⣿⢸⠀⠀⠀⣿⡆⠀⠀⠀⣸⣤⣼
+⠀⠀⢳⢸⡧⢦⢿⣿⡏⣿⣿⣦⣀⣴⣻⡿⣱⠀⠀⠀⣻⠁⠀⠀⠀⢹⠛⢻
+⠀⠀⠈⡄⢷⠘⠞⢿⠻⠶⠾⠿⣿⣿⣭⡾⠃⠀⠀⢀⡟⠀⠀⠀⠀⣹⠀⡆
+⠀⠀⠀⠰⣘⢧⣀⠀⠙⠢⢤⠠⠤⠄⠊⠀⠀⠀⣠⠟⠀⠀⠀⠀⠀⢧⣿⠃
+⠀⣀⣤⣿⣇⠻⣟⣄⡀⠀⠘⣤⣣⠀⠀⠀⣀⢼⠟⠀⠀⠀⠀⠀⠄⣿⠟⠀
+⠿⠏⠭⠟⣤⣴⣬⣨⠙⠲⢦⣧⡤⣔⠲⠝⠚⣷⠀⠀⠀⢀⣴⣷⡠⠃⠀⠀
+⠀⠀⠀⠀⠀⠉⠉⠉⠛⠻⢛⣿⣶⣶⡽⢤⡄⢛⢃⣒⢠⣿⣿⠟⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠁⠀⠁⠀⠀⠀⠀⠀
+        """
+    )
     print(f"{Style.RESET_ALL}")
     print(f"{Fore.GREEN}Initializing Wheatley V2...{Style.RESET_ALL}")
 
@@ -95,6 +123,14 @@ async def main() -> None:
     model_id = tts_cfg["model_id"]
     tts_enabled = tts_cfg["enabled"]
 
+    # Initialize STT
+    stt = None
+    try:
+        stt = SpeechToTextEngine()
+        log(f"{Fore.GREEN}STT Initialized.{Style.RESET_ALL}")
+    except Exception as e:
+        log(f"{Fore.RED}STT Initialization failed: {e}{Style.RESET_ALL}")
+
     # Build tool & agent contexts
     async with (
         Tool(
@@ -121,17 +157,25 @@ async def main() -> None:
         if tts:
             tts.start()
 
+        input_queue: asyncio.Queue[str] = asyncio.Queue()
+        
+        # Start console input task
+        asyncio.create_task(console_input_loop(input_queue))
+        
+        # Start hotword listener if STT is available
+        if stt:
+            asyncio.create_task(stt.hotword_listener(input_queue, tts_engine=tts))
+
         # Main interaction loop
         while True:
-            print(
-                f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} ",
-                end="",
-                flush=True,
-            )
-            user = await asyncio.to_thread(input)
-            user = (user or "").strip()
-            if not user:
-                continue
+            user = await input_queue.get()
+            
+            # If input came from STT, we might want to print it to look like user input
+            # But console input already echoes. 
+            # We can just print what we received if it's not from console? 
+            # Hard to distinguish here without wrapping.
+            # But let's just print it. If it's duplicate, so be it.
+            print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user}")
 
             reply = agent.run_stream(
                 user, tools=tools, thread=thread, max_tokens=max_tokens
@@ -153,6 +197,13 @@ async def main() -> None:
             if tts:
                 await tts.flush_pending()
                 await tts.wait_idle()
+            
+            # Re-print prompt
+            print(
+                f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+                end="",
+                flush=True,
+            )
 
 
 if __name__ == "__main__":

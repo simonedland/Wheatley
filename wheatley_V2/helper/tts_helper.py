@@ -51,6 +51,11 @@ class TTSHandler:
         self.pending_sent = 0
         self.pending_audio = 0
 
+    @property
+    def is_playing(self) -> bool:
+        """Return True if TTS is currently processing or playing audio."""
+        return not self.idle_event.is_set()
+
     def _check_idle(self):
         """Check queues and counters then set the idle event when clear."""
         if (
