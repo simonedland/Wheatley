@@ -28,6 +28,16 @@ def log(msg: str) -> None:
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
 
 
+def handle_task_exception(task: asyncio.Task) -> None:
+    """Log exceptions from background tasks."""
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        log(f"{Fore.RED}Background task failed: {e}{Style.RESET_ALL}")
+
+
 async def console_input_loop(queue: asyncio.Queue) -> None:
     """Read input from console and put into queue."""
     print(f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ", end="", flush=True)
@@ -36,10 +46,9 @@ async def console_input_loop(queue: asyncio.Queue) -> None:
             user_input = await asyncio.to_thread(input)
             user_input = (user_input or "").strip()
             if user_input:
-                await queue.put(user_input)
+                await queue.put({"text": user_input, "source": "console"})
             # Print prompt again after input
             # Note: This might conflict with STT output, but it's a simple solution
-            # print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} ", end="", flush=True)
         except EOFError:
             break
 
@@ -131,79 +140,95 @@ async def main() -> None:
     except Exception as e:
         log(f"{Fore.RED}STT Initialization failed: {e}{Style.RESET_ALL}")
 
-    # Build tool & agent contexts
-    async with (
-        Tool(
-            name="agent_tools",
-            description="Access to Spotify and Calendar agents.",
-            url=AGENT_MCP_URL,
-            request_timeout=60,
-        ) as tools,
-        ChatAgent(
-            name=APP_NAME,
-            description="A helpful assistant with access to Spotify and Calendar.",
-            instructions=build_instructions(),
-            chat_message_store_factory=Store,
-            chat_client=OpenAI(),
-        ) as agent,
-    ):
-        thread = agent.get_new_thread()
+    background_tasks = []
 
-        tts = (
-            TTSHandler(xi_key, voice_id=voice_id, model_id=model_id)
-            if xi_key and tts_enabled
-            else None
-        )
-        if tts:
-            tts.start()
+    try:
+        # Build tool & agent contexts
+        async with (
+            Tool(
+                name="agent_tools",
+                description="Access to Spotify and Calendar agents.",
+                url=AGENT_MCP_URL,
+                request_timeout=60,
+            ) as tools,
+            ChatAgent(
+                name=APP_NAME,
+                description="A helpful assistant with access to Spotify and Calendar.",
+                instructions=build_instructions(),
+                chat_message_store_factory=Store,
+                chat_client=OpenAI(),
+            ) as agent,
+        ):
+            thread = agent.get_new_thread()
 
-        input_queue: asyncio.Queue[str] = asyncio.Queue()
-        
-        # Start console input task
-        asyncio.create_task(console_input_loop(input_queue))
-        
-        # Start hotword listener if STT is available
-        if stt:
-            asyncio.create_task(stt.hotword_listener(input_queue, tts_engine=tts))
-
-        # Main interaction loop
-        while True:
-            user = await input_queue.get()
-            
-            # If input came from STT, we might want to print it to look like user input
-            # But console input already echoes. 
-            # We can just print what we received if it's not from console? 
-            # Hard to distinguish here without wrapping.
-            # But let's just print it. If it's duplicate, so be it.
-            print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user}")
-
-            reply = agent.run_stream(
-                user, tools=tools, thread=thread, max_tokens=max_tokens
+            tts = (
+                TTSHandler(xi_key, voice_id=voice_id, model_id=model_id)
+                if xi_key and tts_enabled
+                else None
             )
-            print(
-                f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
-                end="",
-                flush=True,
-            )
-            async for chunk in reply:
-                if chunk.text:
-                    print(
-                        f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}", end="", flush=True
-                    )
-                    if tts:
-                        tts.process_text(chunk.text)
-            print()
-
             if tts:
-                await tts.flush_pending()
-                await tts.wait_idle()
+                tts.start()
+
+            input_queue: asyncio.Queue[dict] = asyncio.Queue()
             
-            # Re-print prompt
-            print(
-                f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
-                end="",
-                flush=True,
-            )
+            # Start console input task
+            console_task = asyncio.create_task(console_input_loop(input_queue))
+            console_task.add_done_callback(handle_task_exception)
+            background_tasks.append(console_task)
+            
+            # Start hotword listener if STT is available
+            if stt:
+                hotword_task = asyncio.create_task(stt.hotword_listener(input_queue, tts_engine=tts))
+                hotword_task.add_done_callback(handle_task_exception)
+                background_tasks.append(hotword_task)
+
+            # Main interaction loop
+            while True:
+                user_data = await input_queue.get()
+                user = user_data["text"]
+                source = user_data["source"]
+                
+                if source == "stt":
+                    print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user}")
+
+                reply = agent.run_stream(
+                    user, tools=tools, thread=thread, max_tokens=max_tokens
+                )
+                print(
+                    f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
+                    end="",
+                    flush=True,
+                )
+                async for chunk in reply:
+                    if chunk.text:
+                        print(
+                            f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}", end="", flush=True
+                        )
+                        if tts:
+                            tts.process_text(chunk.text)
+                print()
+
+                if tts:
+                    await tts.flush_pending()
+                    await tts.wait_idle()
+                
+                # Re-print prompt
+                print(
+                    f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+                    end="",
+                    flush=True,
+                )
+    finally:
+        # Cancel background tasks
+        for task in background_tasks:
+            task.cancel()
+        
+        if background_tasks:
+            await asyncio.gather(*background_tasks, return_exceptions=True)
+
+        if stt:
+            stt.cleanup()
+            log(f"{Fore.GREEN}STT Cleaned up.{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":

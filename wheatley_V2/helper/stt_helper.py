@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import random
 import struct
 import sys
 import time
@@ -20,8 +21,6 @@ import yaml
 # Pointing to the V1 directory for now
 HOTWORD_GREETINGS_DIR = Path(__file__).parents[2] / "wheatley" / "stt" / "hotword_greetings"
 KEYWORD_FILE_PATH = Path(__file__).parents[2] / "wheatley" / "stt" / "wheatley.ppn"
-
-
 class SpeechToTextEngine:
     """High-level speech-to-text engine."""
 
@@ -78,7 +77,7 @@ class SpeechToTextEngine:
             print("[STT] Warning: Porcupine API key not found in config. Hotword detection will be disabled.")
 
     def calibrate_threshold(
-        self, ambient_time: float = 2.0, speech_time: float = 0.0
+        self, ambient_time: float = 2.0
     ) -> None:
         """Calibrate ``THRESHOLD`` using ambient audio samples.
         
@@ -86,34 +85,42 @@ class SpeechToTextEngine:
         """
         print("[STT] Calibrating microphone threshold...")
         self._audio = pyaudio.PyAudio()
-        stream = self._audio.open(
-            format=self.FORMAT,
-            channels=self.CHANNELS,
-            rate=self.RATE,
-            input=True,
-            frames_per_buffer=self.CHUNK,
-        )
-        self._stream = stream
+        try:
+            self._stream = self._audio.open(
+                format=self.FORMAT,
+                channels=self.CHANNELS,
+                rate=self.RATE,
+                input=True,
+                frames_per_buffer=self.CHUNK,
+            )
 
-        ambient_max = 0
-        start = time.time()
-        
-        while time.time() - start < ambient_time:
-            data = stream.read(self.CHUNK, exception_on_overflow=False)
-            amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
-            ambient_max = max(ambient_max, amplitude)
+            ambient_max = 0
+            start = time.time()
+            
+            while time.time() - start < ambient_time:
+                data = self._stream.read(self.CHUNK, exception_on_overflow=False)
+                amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
+                ambient_max = max(ambient_max, amplitude)
 
-        stream.stop_stream()
-        stream.close()
-        self._stream = None
-        self._audio.terminate()
-        self._audio = None
-
-        # Set threshold to ambient max + margin (e.g. 500 or 50% more)
-        self.THRESHOLD = max(int(ambient_max * 1.5), 500)
-        print(
-            f"[STT] Calibration ambient_max={ambient_max} threshold={self.THRESHOLD}"
-        )
+            # Set threshold to ambient max + margin (e.g. 500 or 50% more)
+            self.THRESHOLD = max(int(ambient_max * 1.5), 500)
+            print(
+                f"[STT] Calibration ambient_max={ambient_max} threshold={self.THRESHOLD}"
+            )
+        finally:
+            if self._stream:
+                try:
+                    self._stream.stop_stream()
+                    self._stream.close()
+                except Exception:
+                    pass
+                self._stream = None
+            if self._audio:
+                try:
+                    self._audio.terminate()
+                except Exception:
+                    pass
+                self._audio = None
 
     # ------------------------------------------------------------------
     # Listening control helpers
@@ -130,6 +137,7 @@ class SpeechToTextEngine:
     def resume_listening(self):
         """Resume listening after being paused."""
         if self._pause_event.is_set():
+            self._stop_event.clear()
             self._pause_event.clear()
             print("[STT] Listening resumed.")
 
@@ -275,14 +283,15 @@ class SpeechToTextEngine:
             if not frames:
                 return None
 
-            wav_filename = "temp_recording.wav"
-            wf = wave.open(wav_filename, "wb")
-            wf.setnchannels(self.CHANNELS)
-            wf.setsampwidth(audio.get_sample_size(self.FORMAT))
-            wf.setframerate(self.RATE)
-            wf.writeframes(b"".join(frames))
-            wf.close()
-            return wav_filename
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                wav_filename = tmp.name
+            with wave.open(wav_filename, "wb") as wf:
+                wf.setnchannels(self.CHANNELS)
+                wf.setsampwidth(audio.get_sample_size(self.FORMAT))
+                wf.setframerate(self.RATE)
+                wf.writeframes(b"".join(frames))
+            return wav_filename        
         finally:
             audio.terminate()
 
@@ -412,11 +421,17 @@ class SpeechToTextEngine:
                 
                 if text and text.strip():
                     print(f"[STT] Transcribed: {text}")
-                    await queue.put(text.strip())
+                    await queue.put({"text": text.strip(), "source": "stt"})
         except asyncio.CancelledError:
             print("[Hotword] Listener cancelled.")
         except Exception as e:
             print(f"[Hotword] Listener error: {e}")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.cleanup()
 
     def cleanup(self):
         """Clean up any open audio streams."""
