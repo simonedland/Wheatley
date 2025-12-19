@@ -173,6 +173,7 @@ async def main() -> None:
         log(f"{Fore.RED}STT Initialization failed: {e}{Style.RESET_ALL}")
 
     background_tasks = []
+    tts = None
 
     try:
         # Build tool & agent contexts
@@ -264,6 +265,14 @@ async def main() -> None:
 
         if background_tasks:
             await asyncio.gather(*background_tasks, return_exceptions=True)
+
+        if tts:
+            for task in tts.tasks:
+                task.cancel()
+            if tts.tasks:
+                await asyncio.gather(*tts.tasks, return_exceptions=True)
+            tts.cleanup()
+            log(f"{Fore.GREEN}TTS Cleaned up.{Style.RESET_ALL}")
 
         if stt:
             stt.cleanup()

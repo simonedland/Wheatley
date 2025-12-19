@@ -221,3 +221,7 @@ class TTSHandler:
     async def wait_idle(self):
         """Wait until all text is processed and audio playback finishes."""
         await self.idle_event.wait()
+
+    def cleanup(self):
+        """Clean up TTS resources."""
+        pass
