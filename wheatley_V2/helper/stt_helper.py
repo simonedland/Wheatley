@@ -11,10 +11,10 @@ from pathlib import Path
 from threading import Event
 from typing import Optional
 
-import numpy as np
-import openai
-import pyaudio
-import pvporcupine
+import numpy as np  # type: ignore[import-not-found]
+import openai  # type: ignore[import-not-found]
+import pyaudio  # type: ignore[import-untyped]
+import pvporcupine  # type: ignore[import-not-found]
 import yaml
 
 # Directory containing pre-recorded greetings played after hotword detection
@@ -85,6 +85,10 @@ class SpeechToTextEngine:
         """
         print("[STT] Calibrating microphone threshold...")
         self._audio = pyaudio.PyAudio()
+        if self._audio is None:
+            print("[STT] Failed to initialize PyAudio")
+            return
+
         try:
             self._stream = self._audio.open(
                 format=self.FORMAT,
@@ -98,6 +102,8 @@ class SpeechToTextEngine:
             start = time.time()
             
             while time.time() - start < ambient_time:
+                if self._stream is None:
+                    break
                 data = self._stream.read(self.CHUNK, exception_on_overflow=False)
                 amplitude = np.max(np.abs(np.frombuffer(data, dtype=np.int16)))
                 ambient_max = max(ambient_max, amplitude)
