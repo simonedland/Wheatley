@@ -40,7 +40,11 @@ def handle_task_exception(task: asyncio.Task) -> None:
 
 async def console_input_loop(queue: asyncio.Queue) -> None:
     """Read input from console and put into queue."""
-    print(f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ", end="", flush=True)
+    print(
+        f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+        end="",
+        flush=True,
+    )
     while True:
         try:
             user_input = await asyncio.to_thread(input)
@@ -170,15 +174,17 @@ async def main() -> None:
                 tts.start()
 
             input_queue: asyncio.Queue[dict] = asyncio.Queue()
-            
+
             # Start console input task
             console_task = asyncio.create_task(console_input_loop(input_queue))
             console_task.add_done_callback(handle_task_exception)
             background_tasks.append(console_task)
-            
+
             # Start hotword listener if STT is available
             if stt:
-                hotword_task = asyncio.create_task(stt.hotword_listener(input_queue, tts_engine=tts))
+                hotword_task = asyncio.create_task(
+                    stt.hotword_listener(input_queue, tts_engine=tts)
+                )
                 hotword_task.add_done_callback(handle_task_exception)
                 background_tasks.append(hotword_task)
 
@@ -187,7 +193,7 @@ async def main() -> None:
                 user_data = await input_queue.get()
                 user = user_data["text"]
                 source = user_data["source"]
-                
+
                 if source == "stt":
                     print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user}")
 
@@ -202,7 +208,9 @@ async def main() -> None:
                 async for chunk in reply:
                     if chunk.text:
                         print(
-                            f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}", end="", flush=True
+                            f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}",
+                            end="",
+                            flush=True,
                         )
                         if tts:
                             tts.process_text(chunk.text)
@@ -211,7 +219,7 @@ async def main() -> None:
                 if tts:
                     await tts.flush_pending()
                     await tts.wait_idle()
-                
+
                 # Re-print prompt
                 print(
                     f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
@@ -222,7 +230,7 @@ async def main() -> None:
         # Cancel background tasks
         for task in background_tasks:
             task.cancel()
-        
+
         if background_tasks:
             await asyncio.gather(*background_tasks, return_exceptions=True)
 

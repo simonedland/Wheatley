@@ -19,8 +19,12 @@ import yaml
 
 # Directory containing pre-recorded greetings played after hotword detection
 # Pointing to the V1 directory for now
-HOTWORD_GREETINGS_DIR = Path(__file__).parents[2] / "wheatley" / "stt" / "hotword_greetings"
+HOTWORD_GREETINGS_DIR = (
+    Path(__file__).parents[2] / "wheatley" / "stt" / "hotword_greetings"
+)
 KEYWORD_FILE_PATH = Path(__file__).parents[2] / "wheatley" / "stt" / "wheatley.ppn"
+
+
 class SpeechToTextEngine:
     """High-level speech-to-text engine."""
 
@@ -28,7 +32,7 @@ class SpeechToTextEngine:
         """Initialize the engine and calibrate microphone thresholds."""
         if config_path is None:
             config_path = Path(__file__).parents[1] / "config" / "config.yaml"
-        
+
         self.config_path = config_path
         self._load_config()
 
@@ -38,7 +42,7 @@ class SpeechToTextEngine:
         self._stop_event = Event()
         self._pause_event = Event()
         self._listening = False
-        
+
         # Ensure the microphone status is paused initially
         self._pause_event.set()
 
@@ -51,7 +55,7 @@ class SpeechToTextEngine:
     def _load_config(self):
         with open(self.config_path, "r") as f:
             config = yaml.safe_load(f)
-        
+
         stt_config = config.get("stt", {})
         self.CHUNK = stt_config.get("chunk", 1024)
         self.FORMAT = pyaudio.paInt16
@@ -63,24 +67,24 @@ class SpeechToTextEngine:
         # Set OpenAI API key from config
         self.porcupine_api_key = config.get("secrets", {}).get("porcupine_api_key")
         if not self.porcupine_api_key:
-             # Fallback to stt section if present (legacy)
+            # Fallback to stt section if present (legacy)
             self.porcupine_api_key = stt_config.get("porcupine_api_key")
 
         self.openai_api_key = config.get("secrets", {}).get("openai_api_key")
-        
+
         if self.openai_api_key:
             openai.api_key = self.openai_api_key
         else:
             raise ValueError("OpenAI API key not found in config")
-            
-        if not self.porcupine_api_key:
-            print("[STT] Warning: Porcupine API key not found in config. Hotword detection will be disabled.")
 
-    def calibrate_threshold(
-        self, ambient_time: float = 2.0
-    ) -> None:
+        if not self.porcupine_api_key:
+            print(
+                "[STT] Warning: Porcupine API key not found in config. Hotword detection will be disabled."
+            )
+
+    def calibrate_threshold(self, ambient_time: float = 2.0) -> None:
         """Calibrate ``THRESHOLD`` using ambient audio samples.
-        
+
         Simplified calibration: just measure ambient noise and set threshold above it.
         """
         print("[STT] Calibrating microphone threshold...")
@@ -100,7 +104,7 @@ class SpeechToTextEngine:
 
             ambient_max = 0
             start = time.time()
-            
+
             while time.time() - start < ambient_time:
                 if self._stream is None:
                     break
@@ -191,7 +195,7 @@ class SpeechToTextEngine:
         choice = random.choice(files)
         path = HOTWORD_GREETINGS_DIR / choice
         try:
-            # V2 TTSHandler might not have play_mp3_bytes. 
+            # V2 TTSHandler might not have play_mp3_bytes.
             # It uses pydub.playback.play.
             # I should probably use pydub directly here or add a method to TTSHandler.
             # For simplicity, I'll skip this for now or implement a simple player.
@@ -290,6 +294,7 @@ class SpeechToTextEngine:
                 return None
 
             import tempfile
+
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
                 wav_filename = tmp.name
             with wave.open(wav_filename, "wb") as wf:
@@ -297,7 +302,7 @@ class SpeechToTextEngine:
                 wf.setsampwidth(audio.get_sample_size(self.FORMAT))
                 wf.setframerate(self.RATE)
                 wf.writeframes(b"".join(frames))
-            return wav_filename        
+            return wav_filename
         finally:
             audio.terminate()
 
@@ -315,15 +320,15 @@ class SpeechToTextEngine:
             keywords = ["computer", "jarvis"]
         if sensitivities is None:
             sensitivities = [0.5] * len(keywords)
-        
+
         try:
             if KEYWORD_FILE_PATH.exists():
-                 self._porcupine = pvporcupine.create(
+                self._porcupine = pvporcupine.create(
                     access_key=self.porcupine_api_key,
                     keyword_paths=[str(KEYWORD_FILE_PATH)],
                     sensitivities=sensitivities,
                 )
-                 print(f"[Hotword] Using custom keyword file '{KEYWORD_FILE_PATH}'")
+                print(f"[Hotword] Using custom keyword file '{KEYWORD_FILE_PATH}'")
             else:
                 raise FileNotFoundError("Custom keyword file not found")
         except Exception:
@@ -341,7 +346,7 @@ class SpeechToTextEngine:
 
         if keywords is None:
             keywords = ["computer", "jarvis"]
-            
+
         self.hotword_config(keywords, sensitivities)
         pa = pyaudio.PyAudio()
         self._audio = pa
@@ -361,7 +366,7 @@ class SpeechToTextEngine:
                 if self._pause_event.is_set():
                     time.sleep(0.1)
                     continue
-                    
+
                 pcm = stream.read(
                     self._porcupine.frame_length, exception_on_overflow=False
                 )
@@ -390,22 +395,22 @@ class SpeechToTextEngine:
         """Wait for hotword, then record and transcribe speech."""
         # Block if TTS is playing
         self._wait_for_tts(tts_engine)
-        
+
         idx = self.listen_for_hotword(keywords=["Wheatley"])
         if idx is None:
             return ""
-            
+
         # self._play_hotword_greeting(tts_engine)
-        
+
         wav_file = self.record_until_silent(tts_engine=tts_engine)
         if not wav_file or self.is_paused():
             print("No audio detected or paused.")
             return ""
-            
+
         if self.is_paused():
             print("[STT] Paused before transcription.")
             return ""
-            
+
         text = self.transcribe(wav_file)
         os.remove(wav_file)
         return text
@@ -419,12 +424,12 @@ class SpeechToTextEngine:
                 if self.is_paused() or self._tts_playing(tts_engine):
                     await asyncio.sleep(0.1)
                     continue
-                
+
                 # Run blocking get_voice_input in executor
                 text = await loop.run_in_executor(
                     None, self.get_voice_input, tts_engine
                 )
-                
+
                 if text and text.strip():
                     print(f"[STT] Transcribed: {text}")
                     await queue.put({"text": text.strip(), "source": "stt"})
