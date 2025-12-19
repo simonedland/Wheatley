@@ -16,6 +16,7 @@ from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: igno
 
 from helper.config import load_config  # type: ignore[import-not-found]
 from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
+from helper.stt_helper import SpeechToTextEngine  # type: ignore[import-not-found]
 from helper.mcp_bootstrapper import start_mcp_server  # type: ignore[import-not-found]
 
 APP_NAME = "Wheatley"
@@ -25,6 +26,35 @@ AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
 def log(msg: str) -> None:
     """Log a message with agent name prefix."""
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
+
+
+def handle_task_exception(task: asyncio.Task) -> None:
+    """Log exceptions from background tasks."""
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        log(f"{Fore.RED}Background task failed: {e}{Style.RESET_ALL}")
+
+
+async def console_input_loop(queue: asyncio.Queue) -> None:
+    """Read input from console and put into queue."""
+    print(
+        f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+        end="",
+        flush=True,
+    )
+    while True:
+        try:
+            user_input = await asyncio.to_thread(input)
+            user_input = (user_input or "").strip()
+            if user_input:
+                await queue.put({"text": user_input, "source": "console"})
+            # Print prompt again after input
+            # Note: This might conflict with STT output, but it's a simple solution
+        except EOFError:
+            break
 
 
 def build_instructions() -> str:
@@ -56,14 +86,25 @@ async def main() -> None:
 
     # Print Banner
     print(f"{Fore.CYAN}{Style.BRIGHT}")
-    print(r"""
- __      __  __                    __   __
-/  \    /  \|  |__    ____ _____ _/  |_|  |   ____ ___.__.
-\   \/\/   /|  |  \ _/ __ \\__  \\   __\  | _/ __ <   |  |
- \        / |   Y  \\  ___/ / __ \|  | |  |_\  ___/\___  |
-  \__/\  /  |___|  / \___  >____  /__| |____/\___  > ____|
-       \/        \/      \/     \/               \/\/
-    """)
+    print(
+        r"""
+⠀⠀⡀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠘⢿⣝⠛⠋⠉⠉⠉⣉⠩⠍⠉⣿⠿⡭⠉⠛⠃⠲⣞⣉⡙⠿⣇⠀⠀⠀
+⠀⠀⠈⠻⣷⣄⡠⢶⡟⢀⣀⢠⣴⡏⣀⡀⠀⠀⣠⡾⠋⢉⣈⣸⣿⡀⠀⠀
+⠀⠀⠀⠀⠙⠋⣼⣿⡜⠃⠉⠀⡎⠉⠉⢺⢱⢢⣿⠃⠘⠈⠛⢹⣿⡇⠀⠀
+⠀⠀⠀⢀⡞⣠⡟⠁⠀⠀⣀⡰⣀⠀⠀⡸⠀⠑⢵⡄⠀⠀⠀⠀⠉⠀⣧⡀
+⠀⠀⠀⠌⣰⠃⠁⣠⣖⣡⣄⣀⣀⣈⣑⣔⠂⠀⠠⣿⡄⠀⠀⠀⠀⠠⣾⣷
+⠀⠀⢸⢠⡇⠀⣰⣿⣿⡿⣡⡾⠿⣿⣿⣜⣇⠀⠀⠘⣿⠀⠀⠀⠀⢸⡀⢸
+⠀⠀⡆⢸⡀⠀⣿⣿⡇⣾⡿⠁⠀⠀⣹⣿⢸⠀⠀⠀⣿⡆⠀⠀⠀⣸⣤⣼
+⠀⠀⢳⢸⡧⢦⢿⣿⡏⣿⣿⣦⣀⣴⣻⡿⣱⠀⠀⠀⣻⠁⠀⠀⠀⢹⠛⢻
+⠀⠀⠈⡄⢷⠘⠞⢿⠻⠶⠾⠿⣿⣿⣭⡾⠃⠀⠀⢀⡟⠀⠀⠀⠀⣹⠀⡆
+⠀⠀⠀⠰⣘⢧⣀⠀⠙⠢⢤⠠⠤⠄⠊⠀⠀⠀⣠⠟⠀⠀⠀⠀⠀⢧⣿⠃
+⠀⣀⣤⣿⣇⠻⣟⣄⡀⠀⠘⣤⣣⠀⠀⠀⣀⢼⠟⠀⠀⠀⠀⠀⠄⣿⠟⠀
+⠿⠏⠭⠟⣤⣴⣬⣨⠙⠲⢦⣧⡤⣔⠲⠝⠚⣷⠀⠀⠀⢀⣴⣷⡠⠃⠀⠀
+⠀⠀⠀⠀⠀⠉⠉⠉⠛⠻⢛⣿⣶⣶⡽⢤⡄⢛⢃⣒⢠⣿⣿⠟⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠁⠀⠁⠀⠀⠀⠀⠀
+        """
+    )
     print(f"{Style.RESET_ALL}")
     print(f"{Fore.GREEN}Initializing Wheatley V2...{Style.RESET_ALL}")
 
@@ -95,64 +136,107 @@ async def main() -> None:
     model_id = tts_cfg["model_id"]
     tts_enabled = tts_cfg["enabled"]
 
-    # Build tool & agent contexts
-    async with (
-        Tool(
-            name="agent_tools",
-            description="Access to Spotify and Calendar agents.",
-            url=AGENT_MCP_URL,
-            request_timeout=60,
-        ) as tools,
-        ChatAgent(
-            name=APP_NAME,
-            description="A helpful assistant with access to Spotify and Calendar.",
-            instructions=build_instructions(),
-            chat_message_store_factory=Store,
-            chat_client=OpenAI(),
-        ) as agent,
-    ):
-        thread = agent.get_new_thread()
+    # Initialize STT
+    stt = None
+    try:
+        stt = SpeechToTextEngine()
+        log(f"{Fore.GREEN}STT Initialized.{Style.RESET_ALL}")
+    except Exception as e:
+        log(f"{Fore.RED}STT Initialization failed: {e}{Style.RESET_ALL}")
 
-        tts = (
-            TTSHandler(xi_key, voice_id=voice_id, model_id=model_id)
-            if xi_key and tts_enabled
-            else None
-        )
-        if tts:
-            tts.start()
+    background_tasks = []
 
-        # Main interaction loop
-        while True:
-            print(
-                f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} ",
-                end="",
-                flush=True,
+    try:
+        # Build tool & agent contexts
+        async with (
+            Tool(
+                name="agent_tools",
+                description="Access to Spotify and Calendar agents.",
+                url=AGENT_MCP_URL,
+                request_timeout=60,
+            ) as tools,
+            ChatAgent(
+                name=APP_NAME,
+                description="A helpful assistant with access to Spotify and Calendar.",
+                instructions=build_instructions(),
+                chat_message_store_factory=Store,
+                chat_client=OpenAI(),
+            ) as agent,
+        ):
+            thread = agent.get_new_thread()
+
+            tts = (
+                TTSHandler(xi_key, voice_id=voice_id, model_id=model_id)
+                if xi_key and tts_enabled
+                else None
             )
-            user = await asyncio.to_thread(input)
-            user = (user or "").strip()
-            if not user:
-                continue
-
-            reply = agent.run_stream(
-                user, tools=tools, thread=thread, max_tokens=max_tokens
-            )
-            print(
-                f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
-                end="",
-                flush=True,
-            )
-            async for chunk in reply:
-                if chunk.text:
-                    print(
-                        f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}", end="", flush=True
-                    )
-                    if tts:
-                        tts.process_text(chunk.text)
-            print()
-
             if tts:
-                await tts.flush_pending()
-                await tts.wait_idle()
+                tts.start()
+
+            input_queue: asyncio.Queue[dict] = asyncio.Queue()
+
+            # Start console input task
+            console_task = asyncio.create_task(console_input_loop(input_queue))
+            console_task.add_done_callback(handle_task_exception)
+            background_tasks.append(console_task)
+
+            # Start hotword listener if STT is available
+            if stt:
+                hotword_task = asyncio.create_task(
+                    stt.hotword_listener(input_queue, tts_engine=tts)
+                )
+                hotword_task.add_done_callback(handle_task_exception)
+                background_tasks.append(hotword_task)
+
+            # Main interaction loop
+            while True:
+                user_data = await input_queue.get()
+                user = user_data["text"]
+                source = user_data["source"]
+
+                if source == "stt":
+                    print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user}")
+
+                reply = agent.run_stream(
+                    user, tools=tools, thread=thread, max_tokens=max_tokens
+                )
+                print(
+                    f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
+                    end="",
+                    flush=True,
+                )
+                async for chunk in reply:
+                    if chunk.text:
+                        print(
+                            f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}",
+                            end="",
+                            flush=True,
+                        )
+                        if tts:
+                            tts.process_text(chunk.text)
+                print()
+
+                if tts:
+                    await tts.flush_pending()
+                    await tts.wait_idle()
+
+                # Re-print prompt
+                print(
+                    f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+                    end="",
+                    flush=True,
+                )
+    finally:
+        # Cancel background tasks
+        for task in background_tasks:
+            task.cancel()
+
+        if background_tasks:
+            await asyncio.gather(*background_tasks, return_exceptions=True)
+
+        if stt:
+            stt.cleanup()
+            log(f"{Fore.GREEN}STT Cleaned up.{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
