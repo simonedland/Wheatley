@@ -193,18 +193,7 @@ class SpeechToTextEngine:
         if not files:
             return
         choice = random.choice(files)
-        path = HOTWORD_GREETINGS_DIR / choice
-        try:
-            # V2 TTSHandler might not have play_mp3_bytes.
-            # It uses pydub.playback.play.
-            # I should probably use pydub directly here or add a method to TTSHandler.
-            # For simplicity, I'll skip this for now or implement a simple player.
-            # Or better, use the TTSHandler to play it if it supports it.
-            # The V2 TTSHandler takes text.
-            # I'll skip playing greeting for now to avoid complexity, or just print it.
-            print(f"[STT] (Greeting would play: {choice})")
-        except Exception as exc:
-            print(f"[STT] Failed to play greeting '{choice}': {exc}")
+        print(f"[STT] (Greeting would play: {choice})")
 
     def _should_abort(self, tts_engine) -> bool:
         if self.is_paused() or self._tts_playing(tts_engine):
