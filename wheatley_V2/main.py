@@ -47,7 +47,11 @@ def build_instructions() -> str:
 
 
 async def main() -> None:
-    """Run the Wheatley agent."""
+    """
+    Initialize and run the Wheatley agent, entering an interactive loop to accept user input and stream agent responses.
+
+    Sets up color output, bootstraps required MCP servers, loads configuration and LLM/TTS settings, creates the agent and tool contexts, and optionally starts text-to-speech. Then repeatedly reads user input, sends it to the agent, streams and prints response chunks, and forwards text to TTS when enabled. The function runs until the process is interrupted.
+    """
     color(autoreset=True)
 
     # Print Banner
@@ -78,7 +82,7 @@ async def main() -> None:
     config = load_config()
     openai_key = config["secrets"]["openai_api_key"]
     llm_model = config["llm"]["model"]
-    max_tokens = config["llm"].get("max_tokens", 1000)
+    max_tokens = config["llm"].get("max_tokens", 2000)
     os.environ["OPENAI_API_KEY"] = openai_key
     os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
 
