@@ -26,7 +26,24 @@ class TTSHandler:
         voice_id: str = "4Jtuv4wBvd95o1hzNloV",
         model_id: str = "eleven_flash_v2_5",
     ):
-        """Initialize handler with API credentials and defaults."""
+        """
+        Create a TTSHandler configured to use the ElevenLabs API and initialize internal queues, buffers, and synchronization primitives.
+        
+        Parameters:
+            xi_api_key (str): ElevenLabs API key used to create the client.
+            voice_id (str): Identifier of the voice to use for synthesis (default provided).
+            model_id (str): Identifier of the ElevenLabs model to use for synthesis (default provided).
+        
+        Attributes initialized:
+            client: ElevenLabs client instance authenticated with xi_api_key.
+            voice_id, model_id: Stored identifiers for voice and model selection.
+            text_queue (asyncio.Queue[tuple[int, str]]): Queue of (sentence_index, sentence_text) for TTS generation.
+            audio_queue (asyncio.Queue[tuple[int, Optional[bytes]]]): Queue of (sentence_index, audio_bytes) for ordered playback.
+            text_buffer (str), scan_index (int), sent_count (int): Buffers and counters for sentence accumulation and indexing.
+            tasks (list[asyncio.Task]): Background worker tasks tracking.
+            idle_event (asyncio.Event): Event set when handler is idle; cleared when work is pending.
+            pending_sent (int), pending_audio (int): Counters used to determine idle state.
+        """
         self.client = ElevenLabs(api_key=xi_api_key)
         self.voice_id = voice_id
         self.model_id = model_id
@@ -53,11 +70,20 @@ class TTSHandler:
 
     @property
     def is_playing(self) -> bool:
-        """Return True if TTS is currently processing or playing audio."""
+        """
+        Indicates whether TTS processing or audio playback is active.
+        
+        Returns:
+            `true` if TTS processing or playback is active, `false` otherwise.
+        """
         return not self.idle_event.is_set()
 
     def _check_idle(self):
-        """Check queues and counters then set the idle event when clear."""
+        """
+        Set the idle event when there are no pending sentences, no pending audio, and both queues are empty.
+        
+        Checks self.pending_sent, self.pending_audio, self.text_queue, and self.audio_queue; if all indicate no outstanding work, signals idle by calling self.idle_event.set().
+        """
         if (
             self.pending_sent == 0
             and self.pending_audio == 0

@@ -24,12 +24,23 @@ AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
 
 
 def log(msg: str) -> None:
-    """Log a message with agent name prefix."""
+    """
+    Prints a message to stdout prefixed with the agent name in color.
+    
+    Prints the provided message with a colorized "[Wheatley]" prefix and immediately flushes stdout.
+    """
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
 
 
 def handle_task_exception(task: asyncio.Task) -> None:
-    """Log exceptions from background tasks."""
+    """
+    Handle and log exceptions raised by an asyncio Task.
+    
+    Calls task.result() to propagate any exception raised in the task, suppresses asyncio.CancelledError, and logs other exceptions to the console.
+    
+    Parameters:
+        task (asyncio.Task): The background task to inspect for exceptions.
+    """
     try:
         task.result()
     except asyncio.CancelledError:
@@ -39,7 +50,16 @@ def handle_task_exception(task: asyncio.Task) -> None:
 
 
 async def console_input_loop(queue: asyncio.Queue) -> None:
-    """Read input from console and put into queue."""
+    """
+    Run a blocking console input reader that enqueues user messages.
+    
+    Continuously reads lines from standard input and, for each non-empty line, puts a dict {"text": <input>, "source": "console"} onto the provided asyncio.Queue. Prints an initial prompt before reading and exits the loop on EOF.
+    
+    Parameters:
+        queue (asyncio.Queue): Queue that will receive user message dictionaries with keys:
+            - "text" (str): the entered text
+            - "source" (str): the string "console"
+    """
     print(
         f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
         end="",
@@ -58,7 +78,14 @@ async def console_input_loop(queue: asyncio.Queue) -> None:
 
 
 def build_instructions() -> str:
-    """Build agent instructions for Wheatley."""
+    """
+    Builds the instruction text used to configure the Wheatley agent.
+    
+    The returned text includes the current date and time, a brief identity for Wheatley, the list of available MCP tools (SpotifyAgent, GoogleCalendarAgent, ResearcherAgent), and explicit guidelines for TTS usage and embedded vocal sound/effect notation (e.g., placement and allowed forms like `[laughs]`, `[whispers]`).
+    
+    Returns:
+        instructions (str): Complete instruction text to present to the agent.
+    """
     now = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
     return (
         f"Current Date and Time: {now}\n"
@@ -78,9 +105,9 @@ def build_instructions() -> str:
 
 async def main() -> None:
     """
-    Initialize and run the Wheatley agent, entering an interactive loop to accept user input and stream agent responses.
-
-    Sets up color output, bootstraps required MCP servers, loads configuration and LLM/TTS settings, creates the agent and tool contexts, and optionally starts text-to-speech. Then repeatedly reads user input, sends it to the agent, streams and prints response chunks, and forwards text to TTS when enabled. The function runs until the process is interrupted.
+    Run the Wheatley agent: initialize required services, load configuration and models, create tool and agent contexts, and enter a queue-driven interactive loop that sends user input to the agent and streams responses to the console and optional TTS/STT.
+    
+    Initializes color output, bootstraps MCP servers, sets environment variables for the LLM, attempts to initialize speech-to-text, and (when configured) starts text-to-speech. Starts background tasks for console input and optional hotword-based STT, then continuously reads user messages from an asyncio queue, forwards them to the agent for streamed responses, prints response chunks as they arrive, and forwards text to the TTS engine when enabled. Ensures background tasks are cancelled and STT/TTS resources are cleaned up on shutdown.
     """
     color(autoreset=True)
 
