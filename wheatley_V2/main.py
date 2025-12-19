@@ -78,7 +78,7 @@ async def main() -> None:
     config = load_config()
     openai_key = config["secrets"]["openai_api_key"]
     llm_model = config["llm"]["model"]
-    max_tokens = config["llm"].get("max_tokens", 1000)
+    max_tokens = config["llm"].get("max_tokens", 2000)
     os.environ["OPENAI_API_KEY"] = openai_key
     os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
 
