@@ -4,7 +4,6 @@ import asyncio
 import os
 import random
 import struct
-import sys
 import time
 import wave
 from pathlib import Path
@@ -472,7 +471,7 @@ class SpeechToTextEngine:
             frames_per_buffer=self._porcupine.frame_length,
         )
         self._stream = stream
-        print(f"[Hotword] Listening for hotword(s)...")
+        print("[Hotword] Listening for hotword(s)...")
         self._listening = True
         detected_index = None
         try:
@@ -489,7 +488,7 @@ class SpeechToTextEngine:
                 )
                 keyword_index = self._porcupine.process(pcm_unpacked)
                 if keyword_index >= 0:
-                    print(f"[Hotword] Detected!")
+                    print("[Hotword] Detected!")
                     detected_index = keyword_index
                     break
         except KeyboardInterrupt:

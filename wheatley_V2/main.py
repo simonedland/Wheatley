@@ -74,6 +74,7 @@ async def console_input_loop(queue: asyncio.Queue) -> None:
             # Print prompt again after input
             # Note: This might conflict with STT output, but it's a simple solution
         except EOFError:
+            await queue.put({"text": None, "source": "console"})
             break
 
 
@@ -220,6 +221,9 @@ async def main() -> None:
                 user_data = await input_queue.get()
                 user = user_data["text"]
                 source = user_data["source"]
+
+                if user is None:
+                    break
 
                 if source == "stt":
                     print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user}")
