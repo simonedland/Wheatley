@@ -17,10 +17,17 @@ pyyaml>=6.0,<7
 elevenlabs>=1.0
 pydub>=0.25
 
-# --- Audio I/O + wake word ---
+# --- Audio I/O ---
 pyaudio>=0.2.13
 numpy>=1.24
-openwakeword>=0.6
+
+# --- Wake word (OPTIONAL) ---
+# openWakeWord enables hands-free "Wheatley" detection, but it pulls in
+# tflite-runtime, which has no wheel for some platforms/Python versions
+# (e.g. Python 3.12 on Linux CI). It is imported lazily and the assistant
+# falls back to push-to-talk when it is absent, so it is intentionally NOT a
+# hard dependency. Install it yourself when you want the wake word:
+#     pip install openwakeword
 
 # --- HTTP + console ---
 requests>=2.31
