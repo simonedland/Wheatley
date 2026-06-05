@@ -269,6 +269,14 @@ def _install_fake_siblings() -> dict[str, Any]:
 
     hardware_mod.dispatch = _hardware_dispatch  # type: ignore[attr-defined]
 
+    import importlib
+
+    pkg_obj = importlib.import_module(pkg)
+
+    fakes: dict[str, Any] = {}
+    saved: dict[str, Any] = {}
+    saved_attrs: dict[str, Any] = {}
+    _MISSING = object()
     for mod in (
         config_mod,
         openrouter_mod,
@@ -281,17 +289,51 @@ def _install_fake_siblings() -> dict[str, Any]:
         integrations_mod,
         hardware_mod,
     ):
+        short = mod.__name__.split(".", 1)[1]
+        fakes[short] = mod
+        if mod.__name__ in sys.modules:
+            saved[mod.__name__] = sys.modules[mod.__name__]
         sys.modules[mod.__name__] = mod
+        # ``from wheatley_V2 import <short>`` resolves via ``getattr`` on the
+        # package object first, so if a sibling test already imported the real
+        # submodule (setting the attribute), our fake in sys.modules would be
+        # bypassed. Set the attribute too, and remember the original.
+        saved_attrs[short] = getattr(pkg_obj, short, _MISSING)
+        setattr(pkg_obj, short, mod)
 
     records["Chunk"] = _Chunk
     records["OpenRouterClient"] = _OpenRouterClient
+    records["_fakes"] = fakes
+    records["_saved"] = saved
+    records["_saved_attrs"] = saved_attrs
+    records["_pkg"] = pkg_obj
+    records["_missing"] = _MISSING
     return records
 
 
 RECORDS = _install_fake_siblings()
 
-# Import AFTER the fakes are installed.
+# Import AFTER the fakes are installed. ``main`` binds its references to the
+# fakes at import time, so we can immediately restore ``sys.modules`` (and the
+# package attributes) to avoid leaking these fakes into the rest of the test
+# suite's collection (sibling test modules import the *real* wheatley_V2.*).
 from wheatley_V2 import main  # noqa: E402
+
+for _name, _mod in list(RECORDS["_fakes"].items()):
+    _full = f"wheatley_V2.{_name}"
+    if _full in RECORDS["_saved"]:
+        sys.modules[_full] = RECORDS["_saved"][_full]
+    else:
+        sys.modules.pop(_full, None)
+    _orig = RECORDS["_saved_attrs"][_name]
+    if _orig is RECORDS["_missing"]:
+        if hasattr(RECORDS["_pkg"], _name):
+            delattr(RECORDS["_pkg"], _name)
+    else:
+        setattr(RECORDS["_pkg"], _name, _orig)
+
+# Convenience handle for tests that need the fake sibling modules directly.
+FAKES = RECORDS["_fakes"]
 
 
 # ---------------------------------------------------------------------------
@@ -301,10 +343,10 @@ from wheatley_V2 import main  # noqa: E402
 
 def _make_dispatcher():
     """Build a ``dispatch_tool`` wired to the fake personality + hardware."""
-    personality = sys.modules["wheatley_V2.personality"].PersonalityManager(
+    personality = FAKES["personality"].PersonalityManager(
         {"default": {"voice_id": "voice-a"}}, "default"
     )
-    hardware = sys.modules["wheatley_V2.hardware"].HardwareInterface()
+    hardware = FAKES["hardware"].HardwareInterface()
     return (
         main.build_dispatcher(
             personality=personality,
@@ -379,8 +421,8 @@ async def test_handle_turn_streams_text_to_tts_and_dispatches_tool(capsys):
     OpenRouterClient.chat_stream = scripted_stream  # type: ignore[assignment]
 
     client = OpenRouterClient("k")
-    conversation = sys.modules["wheatley_V2.conversation"].ConversationManager("sys")
-    tts = sys.modules["wheatley_V2.tts"].TTSHandler("k", "voice-a")
+    conversation = FAKES["conversation"].ConversationManager("sys")
+    tts = FAKES["tts"].TTSHandler("k", "voice-a")
 
     dispatched: list = []
 
@@ -429,7 +471,7 @@ async def test_handle_turn_without_tts_still_completes(capsys):
     OpenRouterClient.chat_stream = scripted_stream  # type: ignore[assignment]
 
     client = OpenRouterClient("k")
-    conversation = sys.modules["wheatley_V2.conversation"].ConversationManager("sys")
+    conversation = FAKES["conversation"].ConversationManager("sys")
 
     await main.handle_turn(
         "hi",
