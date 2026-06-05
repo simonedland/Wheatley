@@ -128,8 +128,7 @@ class PersonalityManager:
         """
         if name not in self._personalities:
             raise ValueError(
-                f"Unknown personality {name!r}; "
-                f"available: {self.list_personalities()}"
+                f"Unknown personality {name!r}; available: {self.list_personalities()}"
             )
         self._current = name
         return self._personalities[name]
@@ -199,7 +198,7 @@ def dispatch(
     mode = args.get("mode")
     if mode not in PERSONALITY_MODES:
         raise ValueError(
-            f"Invalid personality mode {mode!r}; " f"valid modes: {PERSONALITY_MODES}"
+            f"Invalid personality mode {mode!r}; valid modes: {PERSONALITY_MODES}"
         )
 
     on_switch(mode, args)

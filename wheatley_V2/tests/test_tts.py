@@ -39,12 +39,12 @@ def _stub_pydub() -> None:
             def from_file(*args, **kwargs):
                 return MagicMock()
 
-        pydub_module.AudioSegment = _DummyAudioSegment
+        pydub_module.AudioSegment = _DummyAudioSegment  # type: ignore[attr-defined]
         sys.modules["pydub"] = pydub_module
 
     if "pydub.playback" not in sys.modules:
         playback_module = types.ModuleType("pydub.playback")
-        playback_module.play = MagicMock()
+        playback_module.play = MagicMock()  # type: ignore[attr-defined]
         sys.modules["pydub.playback"] = playback_module
 
 
@@ -70,7 +70,7 @@ def _stub_elevenlabs() -> None:
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
-    elevenlabs_module.VoiceSettings = _VoiceSettings
+    elevenlabs_module.VoiceSettings = _VoiceSettings  # type: ignore[attr-defined]
 
     client_module = types.ModuleType("elevenlabs.client")
 
@@ -78,8 +78,8 @@ def _stub_elevenlabs() -> None:
         def __init__(self, *args, **kwargs):
             self.text_to_speech = MagicMock()
 
-    client_module.ElevenLabs = _ElevenLabs
-    elevenlabs_module.client = client_module
+    client_module.ElevenLabs = _ElevenLabs  # type: ignore[attr-defined]
+    elevenlabs_module.client = client_module  # type: ignore[attr-defined]
 
     sys.modules["elevenlabs"] = elevenlabs_module
     sys.modules["elevenlabs.client"] = client_module
@@ -285,9 +285,10 @@ def test_default_model_is_flash():
 @pytest.mark.asyncio
 async def test_full_pipeline_generates_and_plays_each_sentence():
     handler = _make_handler()
-    with patch.object(
-        handler, "_api_call", return_value=b"audio"
-    ) as mock_api, patch.object(handler, "_play") as mock_play:
+    with (
+        patch.object(handler, "_api_call", return_value=b"audio") as mock_api,
+        patch.object(handler, "_play") as mock_play,
+    ):
         handler.start()
         handler.process_text("Hello world. This is a test. ")
         await handler.flush_pending()

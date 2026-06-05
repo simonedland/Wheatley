@@ -79,7 +79,7 @@ def _install_fake_siblings() -> dict[str, Any]:
             }
             self.current_personality = "default"
             self.hardware = {"port": "dryrun", "baud_rate": 115200, "dry_run": True}
-            self.integrations = {}
+            self.integrations: dict[str, Any] = {}
 
     config_mod.load_settings = lambda: _Settings()  # type: ignore[attr-defined]
 
