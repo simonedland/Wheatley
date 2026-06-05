@@ -22,8 +22,16 @@ from wheatley_V2.openrouter import OpenRouterClient  # noqa: E402
 
 #: Candidate models to benchmark. ``provider`` is optional OpenRouter routing.
 BENCHMARK_MODELS: list[dict] = [
-    {"label": "deepseek-chat-v3-0324", "model": "deepseek/deepseek-chat-v3-0324", "provider": None},
-    {"label": "gemini-2.0-flash-001", "model": "google/gemini-2.0-flash-001", "provider": None},
+    {
+        "label": "deepseek-chat-v3-0324",
+        "model": "deepseek/deepseek-chat-v3-0324",
+        "provider": None,
+    },
+    {
+        "label": "gemini-2.0-flash-001",
+        "model": "google/gemini-2.0-flash-001",
+        "provider": None,
+    },
     {
         "label": "llama-3.3-70b @ Groq",
         "model": "meta-llama/llama-3.3-70b-instruct",
@@ -84,9 +92,7 @@ def print_table(results: list[dict]) -> None:
         if "error" in r:
             print(f"{r['label']:<26}  ERROR: {r['error']}")
             continue
-        print(
-            f"{r['label']:<26}{r['ttft']:>10.3f}{r['total']:>11.3f}{r['chars']:>8}"
-        )
+        print(f"{r['label']:<26}{r['ttft']:>10.3f}{r['total']:>11.3f}{r['chars']:>8}")
 
 
 def main() -> None:

@@ -199,8 +199,7 @@ def dispatch(
     mode = args.get("mode")
     if mode not in PERSONALITY_MODES:
         raise ValueError(
-            f"Invalid personality mode {mode!r}; "
-            f"valid modes: {PERSONALITY_MODES}"
+            f"Invalid personality mode {mode!r}; " f"valid modes: {PERSONALITY_MODES}"
         )
 
     on_switch(mode, args)

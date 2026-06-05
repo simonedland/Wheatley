@@ -268,9 +268,7 @@ def test_api_call_includes_voice_settings_when_set():
 
 def test_api_call_returns_none_on_error():
     handler = _make_handler()
-    handler.client.text_to_speech.convert = MagicMock(
-        side_effect=Exception("API down")
-    )
+    handler.client.text_to_speech.convert = MagicMock(side_effect=Exception("API down"))
     assert handler._api_call("Hi.") is None
 
 
@@ -287,9 +285,9 @@ def test_default_model_is_flash():
 @pytest.mark.asyncio
 async def test_full_pipeline_generates_and_plays_each_sentence():
     handler = _make_handler()
-    with patch.object(handler, "_api_call", return_value=b"audio") as mock_api, patch.object(
-        handler, "_play"
-    ) as mock_play:
+    with patch.object(
+        handler, "_api_call", return_value=b"audio"
+    ) as mock_api, patch.object(handler, "_play") as mock_play:
         handler.start()
         handler.process_text("Hello world. This is a test. ")
         await handler.flush_pending()

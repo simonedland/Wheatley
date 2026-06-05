@@ -28,7 +28,11 @@ from wheatley_V2.tts import TTSHandler
 from wheatley_V2.stt import VoiceListener
 from wheatley_V2.conversation import ConversationManager
 from wheatley_V2 import memory
-from wheatley_V2.personality import PersonalityManager, PERSONALITY_TOOLS
+from wheatley_V2.personality import (
+    PersonalityManager,
+    PERSONALITY_TOOLS,
+    dispatch as personality_dispatch,
+)
 from wheatley_V2 import tools as simple_tools
 from wheatley_V2 import integrations
 from wheatley_V2.hardware import (
@@ -59,8 +63,7 @@ def log(msg: str) -> None:
 def print_banner() -> None:
     """Print the Wheatley ASCII-art startup banner."""
     print(f"{Fore.CYAN}{Style.BRIGHT}")
-    print(
-        r"""
+    print(r"""
 ⠀⠀⡀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠘⢿⣝⠛⠋⠉⠉⠉⣉⠩⠍⠉⣿⠿⡭⠉⠛⠃⠲⣞⣉⡙⠿⣇⠀⠀⠀
 ⠀⠀⠈⠻⣷⣄⡠⢶⡟⢀⣀⢠⣴⡏⣀⡀⠀⠀⣠⡾⠋⢉⣈⣸⣿⡀⠀⠀
@@ -76,8 +79,7 @@ def print_banner() -> None:
 ⠿⠏⠭⠟⣤⣴⣬⣨⠙⠲⢦⣧⡤⣔⠲⠝⠚⣷⠀⠀⠀⢀⣴⣷⡠⠃⠀⠀
 ⠀⠀⠀⠀⠀⠉⠉⠉⠛⠻⢛⣿⣶⣶⡽⢤⡄⢛⢃⣒⢠⣿⣿⠟⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠁⠀⠁⠀⠀⠀⠀⠀
-        """
-    )
+        """)
     print(f"{Style.RESET_ALL}")
 
 
@@ -123,12 +125,11 @@ async def console_input_loop(queue: asyncio.Queue) -> None:
 
 def build_dispatcher(
     *,
-    personality: PersonalityManager,
     creds: dict[str, Any],
     spotify: Any,
     google: Any,
     hardware: HardwareInterface,
-    on_switch: Callable[[str], None],
+    on_switch: Callable[[str, dict[str, Any]], None],
 ) -> Callable[[str, dict[str, Any]], str]:
     """Build the unified tool dispatcher.
 
@@ -137,13 +138,12 @@ def build_dispatcher(
     expected to return ``None`` so routing falls through to the next one.
 
     Args:
-        personality: Personality manager used for personality tool calls.
         creds: Credential mapping (for integration dispatch context).
         spotify: Optional Spotify client passed to integration dispatch.
         google: Optional Google client passed to integration dispatch.
         hardware: Hardware interface passed to animation dispatch.
         on_switch: Callback invoked by personality tools when the active
-            personality changes; receives the new personality name.
+            personality changes; receives ``(mode, args)``.
 
     Returns:
         A ``dispatch_tool(name, args) -> str`` callable.
@@ -172,7 +172,7 @@ def build_dispatcher(
             if result is not None:
                 return result
 
-            result = personality.dispatch(name, args, on_switch=on_switch)
+            result = personality_dispatch(name, args, on_switch=on_switch)
             if result is not None:
                 return result
 
@@ -365,7 +365,9 @@ async def main() -> None:
     personality = PersonalityManager(
         settings.personalities, settings.current_personality
     )
-    system_message = personality.get_system_message()
+    system_message = personality.get_personality(personality.current).get(
+        "system_message", ""
+    )
     max_memory = int(settings.llm.get("max_memory", 10))
     conversation = ConversationManager(system_message, max_memory=max_memory)
     conversation.update_memory(memory.as_context())
@@ -395,7 +397,7 @@ async def main() -> None:
             ),
             wake_cfg=settings.wake_word,
             audio_cfg=settings.stt,
-            greeting_dir=str(GREETING_DIR),
+            greeting_dir=GREETING_DIR,
         )
         log(f"{Fore.GREEN}Voice listener ready.{Style.RESET_ALL}")
 
@@ -405,17 +407,21 @@ async def main() -> None:
     # --- Tool aggregation + dispatcher -------------------------------------
     creds: dict[str, Any] = dict(getattr(settings, "integrations", {}) or {})
 
-    def on_switch(name: str) -> None:
-        """Apply a personality switch to the conversation system prompt and voice."""
-        new_system = personality.get_system_message()
-        conversation.set_system(new_system)
-        profile = settings.personalities.get(name, {}) or {}
-        voice_id = profile.get("voice_id")
+    def on_switch(mode: str, args: dict[str, Any]) -> None:
+        """Apply a personality switch to the conversation system prompt and voice.
+
+        Args:
+            mode: The personality mode to switch to.
+            args: The raw tool arguments (unused; present for the dispatch contract).
+        """
+        profile = personality.switch(mode)
+        conversation.set_system(profile.get("system_message", ""))
+        tts_cfg = profile.get("tts", {}) or {}
+        voice_id = tts_cfg.get("voice_id")
         if tts is not None and voice_id:
-            tts.set_voice(voice_id, profile.get("voice_settings"))
+            tts.set_voice(voice_id, tts_cfg)
 
     dispatch_tool = build_dispatcher(
-        personality=personality,
         creds=creds,
         spotify=creds.get("spotify"),
         google=creds.get("google"),
@@ -466,9 +472,7 @@ async def main() -> None:
                 break
 
             if source != "console":
-                print(
-                    f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user_text}"
-                )
+                print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user_text}")
 
             await handle_turn(
                 user_text,

@@ -68,8 +68,14 @@ def _install_fake_siblings() -> dict[str, Any]:
             }
             self.wake_word = {"enabled": False}
             self.personalities = {
-                "default": {"voice_id": "voice-a"},
-                "spooky": {"voice_id": "voice-b", "voice_settings": {"stability": 0.3}},
+                "default": {
+                    "system_message": "You are Wheatley (default).",
+                    "tts": {"voice_id": "voice-a"},
+                },
+                "spooky": {
+                    "system_message": "You are Wheatley (spooky).",
+                    "tts": {"voice_id": "voice-b", "stability": 0.3},
+                },
             }
             self.current_personality = "default"
             self.hardware = {"port": "dryrun", "baud_rate": 115200, "dry_run": True}
@@ -92,13 +98,21 @@ def _install_fake_siblings() -> dict[str, Any]:
         def __init__(self, api_key: str, *, referer: str = "", title: str = "Wheatley"):
             self.api_key = api_key
 
-        def chat_stream(self, messages, *, model, tools=None, max_tokens=2000,
-                        provider=None):
+        def chat_stream(
+            self, messages, *, model, tools=None, max_tokens=2000, provider=None
+        ):
             for item in _OpenRouterClient.stream_script:
                 yield item
 
-        def transcribe(self, audio: bytes, *, fmt="wav", model="whisper-1",
-                        language="en", provider=None) -> str:
+        def transcribe(
+            self,
+            audio: bytes,
+            *,
+            fmt="wav",
+            model="whisper-1",
+            language="en",
+            provider=None,
+        ) -> str:
             return "transcribed"
 
     openrouter_mod.OpenRouterClient = _OpenRouterClient  # type: ignore[attr-defined]
@@ -201,22 +215,31 @@ def _install_fake_siblings() -> dict[str, Any]:
     class _PersonalityManager:
         def __init__(self, personalities, current):
             self.personalities = personalities
-            self.current = current
+            self._current = current
 
-        def get_system_message(self) -> str:
-            return f"You are Wheatley ({self.current})."
+        @property
+        def current(self) -> str:
+            return self._current
 
-        def dispatch(self, name, args, *, on_switch):
-            records["personality_calls"].append((name, args))
-            if name == "switch_personality":
-                self.current = args.get("name", self.current)
-                on_switch(self.current)
-                return f"switched to {self.current}"
-            return None
+        def get_personality(self, name) -> dict:
+            return self.personalities.get(name, {})
+
+        def switch(self, name) -> dict:
+            self._current = name
+            return self.personalities.get(name, {})
+
+    def _personality_dispatch(name, args, *, on_switch):
+        records["personality_calls"].append((name, args))
+        if name == "set_personality":
+            mode = args.get("mode")
+            on_switch(mode, args)
+            return f"switched to {mode}"
+        return None
 
     personality_mod.PersonalityManager = _PersonalityManager  # type: ignore[attr-defined]
+    personality_mod.dispatch = _personality_dispatch  # type: ignore[attr-defined]
     personality_mod.PERSONALITY_TOOLS = [  # type: ignore[attr-defined]
-        {"function": {"name": "switch_personality"}}
+        {"function": {"name": "set_personality"}}
     ]
 
     # --- tools --------------------------------------------------------------
@@ -344,17 +367,25 @@ FAKES = RECORDS["_fakes"]
 def _make_dispatcher():
     """Build a ``dispatch_tool`` wired to the fake personality + hardware."""
     personality = FAKES["personality"].PersonalityManager(
-        {"default": {"voice_id": "voice-a"}}, "default"
+        {
+            "default": {"system_message": "d", "tts": {"voice_id": "voice-a"}},
+            "spooky": {"system_message": "s", "tts": {"voice_id": "voice-b"}},
+        },
+        "default",
     )
+
+    def _on_switch(mode, args):
+        personality.switch(mode)
+        RECORDS["switched"].append(mode)
+
     hardware = FAKES["hardware"].HardwareInterface()
     return (
         main.build_dispatcher(
-            personality=personality,
             creds={"api_ninjas_key": "nk"},
             spotify=None,
             google=None,
             hardware=hardware,
-            on_switch=lambda name: RECORDS["switched"].append(name),
+            on_switch=_on_switch,
         ),
         personality,
     )
@@ -383,7 +414,7 @@ def test_dispatch_routes_to_hardware_module():
 
 def test_dispatch_returns_first_non_none_and_personality_on_switch():
     dispatch_tool, personality = _make_dispatcher()
-    result = dispatch_tool("switch_personality", {"name": "spooky"})
+    result = dispatch_tool("set_personality", {"mode": "spooky"})
     assert result == "switched to spooky"
     assert personality.current == "spooky"
     assert RECORDS["switched"][-1] == "spooky"
@@ -406,8 +437,9 @@ async def test_handle_turn_streams_text_to_tts_and_dispatches_tool(capsys):
     calls = {"n": 0}
     tool_call = {"function": {"name": "get_time", "arguments": "{}"}}
 
-    def scripted_stream(self, messages, *, model, tools=None, max_tokens=2000,
-                        provider=None):
+    def scripted_stream(
+        self, messages, *, model, tools=None, max_tokens=2000, provider=None
+    ):
         calls["n"] += 1
         if calls["n"] == 1:
             # First pass: emit text deltas then request a tool.
@@ -464,8 +496,9 @@ async def test_handle_turn_without_tts_still_completes(capsys):
     Chunk = RECORDS["Chunk"]
     OpenRouterClient = RECORDS["OpenRouterClient"]
 
-    def scripted_stream(self, messages, *, model, tools=None, max_tokens=2000,
-                        provider=None):
+    def scripted_stream(
+        self, messages, *, model, tools=None, max_tokens=2000, provider=None
+    ):
         yield Chunk(text="Hi there")
 
     OpenRouterClient.chat_stream = scripted_stream  # type: ignore[assignment]

@@ -123,9 +123,7 @@ def get_weather(
         description = WEATHER_CODE_DESCRIPTIONS.get(
             weather_code_int, "Unknown weather condition"
         )
-        summary += (
-            f"\nWeather Condition: {description} (Code: {weather_code_int})"
-        )
+        summary += f"\nWeather Condition: {description} (Code: {weather_code_int})"
 
     if include_forecast:
         hours_data = data.get("hourly", {})
@@ -244,9 +242,7 @@ def _seconds_until(target_hour: int, target_min: int) -> float:
         The number of seconds from now until the next occurrence.
     """
     now = datetime.now()
-    target = now.replace(
-        hour=target_hour, minute=target_min, second=0, microsecond=0
-    )
+    target = now.replace(hour=target_hour, minute=target_min, second=0, microsecond=0)
     if target <= now:
         target += timedelta(days=1)
     return (target - now).total_seconds()

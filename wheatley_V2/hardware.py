@@ -89,9 +89,7 @@ class HardwareInterface:
         try:
             import serial  # type: ignore[import-untyped]
         except ImportError:
-            logger.warning(
-                "pyserial is not installed; falling back to dry-run mode."
-            )
+            logger.warning("pyserial is not installed; falling back to dry-run mode.")
             self.dry_run = True
             return
 
@@ -121,9 +119,7 @@ class HardwareInterface:
             emotion: One of the keys in :data:`ANIMATIONS`.
         """
         if emotion not in ANIMATIONS:
-            logger.warning(
-                "Emotion '%s' is not supported; using 'neutral'.", emotion
-            )
+            logger.warning("Emotion '%s' is not supported; using 'neutral'.", emotion)
             emotion = "neutral"
 
         params = ANIMATIONS[emotion]
@@ -320,7 +316,18 @@ ANIMATIONS: dict[str, dict[str, Any]] = {
     },
     "relieved": {
         "velocities": [10, 1, 1, 10, 1, 5, 5, 3, 1, 1],
-        "target_factors": [0.865, 0.15, 0.0, 0.489, 0.043, 0.0, 0.0, 0.733, 0.857, 0.487],
+        "target_factors": [
+            0.865,
+            0.15,
+            0.0,
+            0.489,
+            0.043,
+            0.0,
+            0.0,
+            0.733,
+            0.857,
+            0.487,
+        ],
         "idle_ranges": [100, 5, 1, 40, 3, 10, 10, 7, 3, 20],
         "intervals": [2000, 1000, 5000, 3000, 5000, 2000, 2000, 1000, 3000, 5000],
         "color": [0, 0, 160],

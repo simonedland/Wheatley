@@ -29,7 +29,6 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Spotify
 # ─────────────────────────────────────────────────────────────────────────────
@@ -77,16 +76,14 @@ class SpotifyClient:
             return
 
         try:
-            import spotipy  # type: ignore[import-not-found]
-            from spotipy.oauth2 import SpotifyOAuth  # type: ignore[import-not-found]
+            import spotipy  # type: ignore[import-not-found, import-untyped]
+            from spotipy.oauth2 import SpotifyOAuth  # type: ignore[import-not-found, import-untyped]
 
             self._sp = spotipy.Spotify(
                 auth_manager=SpotifyOAuth(
                     client_id=client_id,
                     client_secret=client_secret,
-                    redirect_uri=creds.get(
-                        "spotify_redirect_uri", "https://127.0.0.1"
-                    ),
+                    redirect_uri=creds.get("spotify_redirect_uri", "https://127.0.0.1"),
                     scope=_SPOTIFY_SCOPE,
                     open_browser=False,
                 )
@@ -147,7 +144,9 @@ class SpotifyClient:
         return [self._flat(t) for t in q]
 
     # ── search ────────────────────────────────────────────────────────
-    def search_tracks(self, query: str, *, limit: int = 5) -> list[dict[str, Any] | None]:
+    def search_tracks(
+        self, query: str, *, limit: int = 5
+    ) -> list[dict[str, Any] | None]:
         """Search Spotify for tracks matching ``query``."""
         items = (
             self._sp.search(q=query, type="track", limit=limit)
@@ -248,10 +247,10 @@ class GoogleCalendarClient:
             return
 
         try:
-            from google.oauth2.credentials import (  # type: ignore[import-not-found]
+            from google.oauth2.credentials import (  # type: ignore[import-not-found, import-untyped]
                 Credentials,
             )
-            from googleapiclient.discovery import build  # type: ignore[import-not-found]
+            from googleapiclient.discovery import build  # type: ignore[import-not-found, import-untyped]
 
             if token_info:
                 google_creds = Credentials.from_authorized_user_info(
@@ -275,7 +274,9 @@ class GoogleCalendarClient:
         """Return the current UTC time as an RFC3339 string."""
         return datetime.now(timezone.utc).isoformat()
 
-    def list_events(self, days: int = 7, *, max_results: int = 25) -> list[dict[str, Any]]:
+    def list_events(
+        self, days: int = 7, *, max_results: int = 25
+    ) -> list[dict[str, Any]]:
         """List upcoming events in the next ``days`` days.
 
         Returns:
@@ -467,8 +468,11 @@ def _match_google_intent(request: str) -> tuple[str, dict[str, Any]]:
         for tok in re.findall(r"\b([A-Za-z0-9_-]{6,})\b", request):
             if tok.lower() in stop:
                 continue
-            if re.search(r"\d", tok) or "_" in tok or "-" in tok or (
-                tok != tok.lower() and tok != tok.upper()
+            if (
+                re.search(r"\d", tok)
+                or "_" in tok
+                or "-" in tok
+                or (tok != tok.lower() and tok != tok.upper())
             ):
                 return "delete", {"event_id": tok}
         return "need_args", {"action": "delete"}
@@ -591,7 +595,9 @@ def _spotify_creds_present(creds: dict[str, Any]) -> bool:
 
 def _google_creds_present(creds: dict[str, Any]) -> bool:
     """Return ``True`` when minimally sufficient Google creds are present."""
-    return bool(creds.get("token") or creds.get("token_info") or creds.get("token_file"))
+    return bool(
+        creds.get("token") or creds.get("token_info") or creds.get("token_file")
+    )
 
 
 def available_tools(creds: dict[str, Any] | None) -> list[dict[str, Any]]:

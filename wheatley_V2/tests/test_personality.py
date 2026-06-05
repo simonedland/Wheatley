@@ -143,9 +143,7 @@ def test_dispatch_set_personality_calls_spy_and_returns_string() -> None:
     def spy(mode: str, args: dict) -> None:
         calls.append((mode, args))
 
-    result = dispatch(
-        "set_personality", {"mode": "western"}, on_switch=spy
-    )
+    result = dispatch("set_personality", {"mode": "western"}, on_switch=spy)
     assert calls == [("western", {"mode": "western"})]
     assert isinstance(result, str)
     assert "western" in result
@@ -165,6 +163,7 @@ def test_dispatch_invalid_mode_raises() -> None:
 
 def test_dispatch_missing_mode_raises() -> None:
     """A missing mode raises ``ValueError``."""
+
     def spy(mode: str, args: dict) -> None:  # pragma: no cover - never called
         raise AssertionError("spy should not be called")
 
@@ -174,6 +173,7 @@ def test_dispatch_missing_mode_raises() -> None:
 
 def test_dispatch_unrelated_tool_returns_none() -> None:
     """Non-personality tool names return ``None`` and skip the spy."""
+
     def spy(mode: str, args: dict) -> None:  # pragma: no cover - never called
         raise AssertionError("spy should not be called")
 

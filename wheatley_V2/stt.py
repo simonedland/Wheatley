@@ -226,7 +226,9 @@ class VoiceListener:
                 logger.debug("Sound detected, recording...")
                 return [data]
 
-    def _continue_until_silence(self, stream, frames: list[bytes], tts_engine) -> list[bytes]:
+    def _continue_until_silence(
+        self, stream, frames: list[bytes], tts_engine
+    ) -> list[bytes]:
         """Keep recording until a sustained silence window is observed.
 
         Args:
@@ -511,9 +513,7 @@ class VoiceListener:
                 if not wav_bytes or self.is_paused():
                     continue
 
-                text = await loop.run_in_executor(
-                    None, self.transcribe_fn, wav_bytes
-                )
+                text = await loop.run_in_executor(None, self.transcribe_fn, wav_bytes)
                 if text and text.strip():
                     logger.info("Transcribed: %s", text.strip())
                     await queue.put({"text": text.strip(), "source": "stt"})

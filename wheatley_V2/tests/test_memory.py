@@ -95,10 +95,7 @@ def test_as_context_formats_correctly(tmp_path):
     memory.edit_memory(1, {"b": 2}, path)
     ctx = memory.as_context(path)
     expected = (
-        "LONG TERM MEMORY:\n"
-        + json.dumps({"a": 1})
-        + "\n"
-        + json.dumps({"b": 2})
+        "LONG TERM MEMORY:\n" + json.dumps({"a": 1}) + "\n" + json.dumps({"b": 2})
     )
     assert ctx == expected
 
@@ -120,9 +117,7 @@ def test_dispatch_edit(tmp_path, monkeypatch):
     path = str(tmp_path / "mem.json")
     monkeypatch.setattr(memory, "MEMORY_FILE", path)
     memory.dispatch("write_long_term_memory", {"data": {"a": 1}})
-    result = memory.dispatch(
-        "edit_long_term_memory", {"index": 0, "data": {"a": 2}}
-    )
+    result = memory.dispatch("edit_long_term_memory", {"index": 0, "data": {"a": 2}})
     assert isinstance(result, str)
     assert "0" in result
     assert memory.read_memory(path) == [{"a": 2}]

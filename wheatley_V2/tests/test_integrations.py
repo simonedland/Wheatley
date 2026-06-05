@@ -270,7 +270,10 @@ def test_available_tools_both():
 # dispatch
 # ─────────────────────────────────────────────────────────────────────────────
 def test_dispatch_unknown_returns_none(spotify_client, google_client):
-    assert dispatch("not_my_tool", {}, spotify=spotify_client, google=google_client) is None
+    assert (
+        dispatch("not_my_tool", {}, spotify=spotify_client, google=google_client)
+        is None
+    )
 
 
 def test_dispatch_spotify(spotify_client):
@@ -297,7 +300,5 @@ def test_dispatch_spotify_disabled_message():
 
 def test_dispatch_google_disabled():
     disabled = GoogleCalendarClient({})
-    result = dispatch(
-        "call_google_agent", {"user_request": "events"}, google=disabled
-    )
+    result = dispatch("call_google_agent", {"user_request": "events"}, google=disabled)
     assert "not configured" in result.lower()

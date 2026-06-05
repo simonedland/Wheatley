@@ -78,9 +78,7 @@ def test_get_returns_full_list():
 def test_render_substitutes_placeholders():
     from datetime import datetime
 
-    rendered = ConversationManager.render(
-        "It is <current_time> on <current_day>."
-    )
+    rendered = ConversationManager.render("It is <current_time> on <current_day>.")
     assert "<current_time>" not in rendered
     assert "<current_day>" not in rendered
     # The current weekday name should appear.

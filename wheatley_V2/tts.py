@@ -20,8 +20,8 @@ from typing import Any, Optional
 
 from elevenlabs import VoiceSettings
 from elevenlabs.client import ElevenLabs
-from pydub import AudioSegment  # type: ignore[import-not-found]
-from pydub.playback import play  # type: ignore[import-not-found]
+from pydub import AudioSegment  # type: ignore[import-not-found, import-untyped]
+from pydub.playback import play  # type: ignore[import-not-found, import-untyped]
 
 SENTENCE_END_RE = re.compile(r"[.!?]\s+")
 ABBREVIATIONS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st"}

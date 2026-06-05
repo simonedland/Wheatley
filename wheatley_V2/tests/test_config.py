@@ -10,8 +10,7 @@ import pytest
 from wheatley_V2 import config as config_module
 from wheatley_V2.config import Settings, get_secret, load_settings
 
-_EXAMPLE_YAML = textwrap.dedent(
-    """
+_EXAMPLE_YAML = textwrap.dedent("""
     llm:
       default: deepseek/deepseek-chat-v3-0324
       fast: google/gemini-2.0-flash-001
@@ -43,8 +42,7 @@ _EXAMPLE_YAML = textwrap.dedent(
       enabled: false
       port: COM3
       baud_rate: 115200
-    """
-)
+    """)
 
 
 @pytest.fixture()
@@ -122,14 +120,12 @@ def test_load_settings_unknown_personality_raises(tmp_path: Path) -> None:
     """current_personality must exist in personalities."""
     path = tmp_path / "config.yaml"
     path.write_text(
-        textwrap.dedent(
-            """
+        textwrap.dedent("""
             current_personality: ghost
             personalities:
               normal:
                 system_message: "hi"
-            """
-        ),
+            """),
         encoding="utf-8",
     )
 

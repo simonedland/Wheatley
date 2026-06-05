@@ -165,7 +165,9 @@ class OpenRouterClient:
             for idx in sorted(accumulators):
                 acc = accumulators[idx]
                 try:
-                    parsed_args: Any = json.loads(acc.arguments) if acc.arguments else {}
+                    parsed_args: Any = (
+                        json.loads(acc.arguments) if acc.arguments else {}
+                    )
                 except json.JSONDecodeError:
                     # Preserve the raw fragment if it is not valid JSON.
                     parsed_args = acc.arguments

@@ -215,9 +215,7 @@ def test_get_city_coordinates_mock_with_key(monkeypatch):
 
 
 def test_get_city_coordinates_empty_data(monkeypatch):
-    monkeypatch.setattr(
-        tools.requests, "get", lambda *a, **k: FakeResponse([])
-    )
+    monkeypatch.setattr(tools.requests, "get", lambda *a, **k: FakeResponse([]))
 
     result = tools.get_city_coordinates("Nowhere", "KEY123")
 
@@ -325,9 +323,7 @@ def test_dispatch_unknown_returns_none():
 
 
 def test_dispatch_routes_get_joke(monkeypatch):
-    monkeypatch.setattr(
-        tools, "get_joke", lambda: "JOKE"
-    )
+    monkeypatch.setattr(tools, "get_joke", lambda: "JOKE")
     assert tools.dispatch("get_joke", {}) == "JOKE"
 
 
@@ -379,9 +375,7 @@ def test_dispatch_injects_event_queue(monkeypatch):
 
 
 def test_dispatch_routes_get_weather(monkeypatch):
-    monkeypatch.setattr(
-        tools, "get_weather", lambda **kwargs: f"W:{kwargs}"
-    )
+    monkeypatch.setattr(tools, "get_weather", lambda **kwargs: f"W:{kwargs}")
     result = tools.dispatch("get_weather", {"latitude": 1.0, "longitude": 2.0})
     assert result.startswith("W:")
 
