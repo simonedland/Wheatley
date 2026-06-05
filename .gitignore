@@ -70,6 +70,11 @@ wheatley/config/config.yaml
 wheatley/config/token.json
 wheatley/stt/wheatley.ppn
 
+# Wheatley V2 secrets & local config
+wheatley_V2/config/config.yaml
+wheatley_V2/config/token.json
+wheatley_V2/config/client_secret.json
+
 # =====================
 # Miscellaneous
 # =====================
