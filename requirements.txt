@@ -18,16 +18,18 @@ elevenlabs>=1.0
 pydub>=0.25
 
 # --- Audio I/O ---
-pyaudio>=0.2.13
 numpy>=1.24
 
-# --- Wake word (OPTIONAL) ---
-# openWakeWord enables hands-free "Wheatley" detection, but it pulls in
-# tflite-runtime, which has no wheel for some platforms/Python versions
-# (e.g. Python 3.12 on Linux CI). It is imported lazily and the assistant
-# falls back to push-to-talk when it is absent, so it is intentionally NOT a
-# hard dependency. Install it yourself when you want the wake word:
-#     pip install openwakeword
+# --- Native audio + wake word (OPTIONAL — needed only for real mic/speaker) ---
+# These require system libraries / platform-specific wheels and are NOT
+# pip-installable in a bare CI container (pyaudio needs portaudio headers;
+# openwakeword pulls tflite-runtime, which has no Python 3.12 / Linux wheel).
+# Both are imported lazily and the assistant degrades gracefully without them
+# (push-to-talk instead of wake word), so they are intentionally optional.
+# Install them on your machine to enable voice:
+#     pip install pyaudio openwakeword
+# pyaudio>=0.2.13
+# openwakeword>=0.6
 
 # --- HTTP + console ---
 requests>=2.31
