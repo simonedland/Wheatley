@@ -1,121 +1,69 @@
-"""Main application file for PlayfulHost agent using MCP tools."""
+"""Wheatley V2 orchestrator.
+
+Wires the sibling modules (config, OpenRouter LLM/STT, ElevenLabs TTS, wake-word
+listener, conversation memory, personalities, tools, integrations and hardware
+animations) into one readable, latency-optimised async loop.
+
+The single most important metric is latency from the user speaking/typing until a
+reply starts. To that end the loop overlaps LLM token streaming with TTS
+generation and playback: every text delta is forwarded to the TTS engine the
+instant it arrives, so Wheatley begins speaking sentence one while the LLM is
+still producing the rest of the response. No artificial buffering, no silence
+padding.
+"""
 
 from __future__ import annotations
 
 import asyncio
-import os
+import json
 import sys
-import time
-from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable
 
 from colorama import Fore, Style, init as color  # type: ignore[import-untyped]
-from agent_framework import ChatAgent  # type: ignore[import-not-found]
-from agent_framework import ChatMessageStore as Store  # type: ignore[import-not-found]
-from agent_framework import MCPStreamableHTTPTool as Tool  # type: ignore[import-not-found]
-from agent_framework.openai import OpenAIResponsesClient as OpenAI  # type: ignore[import-not-found]
 
-from helper.config import load_config  # type: ignore[import-not-found]
-from helper.tts_helper import TTSHandler  # type: ignore[import-not-found]
-from helper.stt_helper import SpeechToTextEngine  # type: ignore[import-not-found]
-from helper.mcp_bootstrapper import start_mcp_server  # type: ignore[import-not-found]
+from wheatley_V2.config import load_settings
+from wheatley_V2.openrouter import OpenRouterClient
+from wheatley_V2.tts import TTSHandler
+from wheatley_V2.stt import VoiceListener
+from wheatley_V2.conversation import ConversationManager
+from wheatley_V2 import memory
+from wheatley_V2.personality import (
+    PersonalityManager,
+    PERSONALITY_TOOLS,
+    dispatch as personality_dispatch,
+)
+from wheatley_V2 import tools as simple_tools
+from wheatley_V2 import integrations
+from wheatley_V2.hardware import (
+    HardwareInterface,
+    ANIMATION_TOOLS,
+    dispatch as hw_dispatch,
+)
 
 APP_NAME = "Wheatley"
-AGENT_MCP_URL = "http://127.0.0.1:8765/mcp"
+
+#: Cap on consecutive LLM<->tool round trips for a single user turn. Prevents an
+#: infinite tool-calling loop while still allowing multi-step workflows.
+MAX_TOOL_ROUNDS = 8
+
+#: Directory holding optional hot-word greeting clips played by the listener.
+GREETING_DIR = Path(__file__).resolve().parent / "stt" / "hotword_greetings"
 
 
 def log(msg: str) -> None:
-    """
-    Prints a message to stdout prefixed with the agent name in color.
+    """Print a message prefixed with a colourised agent banner.
 
-    Prints the provided message with a colorized "[Wheatley]" prefix and immediately flushes stdout.
+    Args:
+        msg: Text to print after the ``[Wheatley]`` prefix.
     """
     print(f"{Style.BRIGHT}{Fore.YELLOW}[{APP_NAME}]{Style.RESET_ALL} {msg}", flush=True)
 
 
-def handle_task_exception(task: asyncio.Task) -> None:
-    """
-    Handle and log exceptions raised by an asyncio Task.
-
-    Calls task.result() to propagate any exception raised in the task, suppresses asyncio.CancelledError, and logs other exceptions to the console.
-
-    Parameters:
-        task (asyncio.Task): The background task to inspect for exceptions.
-    """
-    try:
-        task.result()
-    except asyncio.CancelledError:
-        pass
-    except Exception as e:
-        log(f"{Fore.RED}Background task failed: {e}{Style.RESET_ALL}")
-
-
-async def console_input_loop(queue: asyncio.Queue) -> None:
-    """
-    Run a blocking console input reader that enqueues user messages.
-
-    Continuously reads lines from standard input and, for each non-empty line, puts a dict {"text": <input>, "source": "console"} onto the provided asyncio.Queue. Prints an initial prompt before reading and exits the loop on EOF.
-
-    Parameters:
-        queue (asyncio.Queue): Queue that will receive user message dictionaries with keys:
-            - "text" (str): the entered text
-            - "source" (str): the string "console"
-    """
-    print(
-        f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
-        end="",
-        flush=True,
-    )
-    while True:
-        try:
-            user_input = await asyncio.to_thread(input)
-            user_input = (user_input or "").strip()
-            if user_input:
-                await queue.put({"text": user_input, "source": "console"})
-            # Print prompt again after input
-            # Note: This might conflict with STT output, but it's a simple solution
-        except EOFError:
-            await queue.put({"text": None, "source": "console"})
-            break
-
-
-def build_instructions() -> str:
-    """
-    Builds the instruction text used to configure the Wheatley agent.
-
-    The returned text includes the current date and time, a brief identity for Wheatley, the list of available MCP tools (SpotifyAgent, GoogleCalendarAgent, ResearcherAgent), and explicit guidelines for TTS usage and embedded vocal sound/effect notation (e.g., placement and allowed forms like `[laughs]`, `[whispers]`).
-
-    Returns:
-        instructions (str): Complete instruction text to present to the agent.
-    """
-    now = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
-    return (
-        f"Current Date and Time: {now}\n"
-        "You are Wheatley — a helpful AI assistant.\n"
-        "You have access to 'SpotifyAgent', 'GoogleCalendarAgent', and 'ResearcherAgent' via the 'agent_tools' MCP tool.\n"
-        "Use them to help the user with music, scheduling, and web research.\n"
-        "you have TTS capabilities to speak your responses aloud. this happens automatically.\n"
-        "To implement vocal sounds or sound effects, use square brackets, e.g., [sarcastically], [giggles], [whispers]. Only use sound effects that would come from a mouth like [laughs], [sighs], [whispers] and so on.\n"
-        "try to implement vocal sounds and sound effects naturally in your responses. Only make vocal sounds for things that actually makes sound. Examples of vocal sounds that does not make sound is [nods] [softly] and [thinks].\n"
-        "Never add a vocal sounds by itself after '.' place it within the sentence you want it to affect. Add it to ALL the sentences you want to affect like: [whispers] Quiet now... [whispers] so quiet... [whispers] so lonely...\n"
-        "Do not use vocal sounds for actions that do not produce sound, such as [looks around] or [thinks] [smiles].\n"
-        "Place the vocal sounds within the sentences they are meant to affect, rather than at the end of sentences.\n"
-        "NEVER place vocal sounds at the end of your response after punctuation. for example 'Hello there! [cheerfully] How can I assist you today? [cheerfully]' is incorrect.\n"
-        "a example of correct usage is: '[cheerfully] Hello there! How can I assist you today?'\n"
-    )
-
-
-async def main() -> None:
-    """
-    Run the Wheatley agent: initialize required services, load configuration and models, create tool and agent contexts, and enter a queue-driven interactive loop that sends user input to the agent and streams responses to the console and optional TTS/STT.
-
-    Initializes color output, bootstraps MCP servers, sets environment variables for the LLM, attempts to initialize speech-to-text, and (when configured) starts text-to-speech. Starts background tasks for console input and optional hotword-based STT, then continuously reads user messages from an asyncio queue, forwards them to the agent for streamed responses, prints response chunks as they arrive, and forwards text to the TTS engine when enabled. Ensures background tasks are cancelled and STT/TTS resources are cleaned up on shutdown.
-    """
-    color(autoreset=True)
-
-    # Print Banner
+def print_banner() -> None:
+    """Print the Wheatley ASCII-art startup banner."""
     print(f"{Fore.CYAN}{Style.BRIGHT}")
-    print(
-        r"""
+    print(r"""
 ⠀⠀⡀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠘⢿⣝⠛⠋⠉⠉⠉⣉⠩⠍⠉⣿⠿⡭⠉⠛⠃⠲⣞⣉⡙⠿⣇⠀⠀⠀
 ⠀⠀⠈⠻⣷⣄⡠⢶⡟⢀⣀⢠⣴⡏⣀⡀⠀⠀⣠⡾⠋⢉⣈⣸⣿⡀⠀⠀
@@ -131,152 +79,440 @@ async def main() -> None:
 ⠿⠏⠭⠟⣤⣴⣬⣨⠙⠲⢦⣧⡤⣔⠲⠝⠚⣷⠀⠀⠀⢀⣴⣷⡠⠃⠀⠀
 ⠀⠀⠀⠀⠀⠉⠉⠉⠛⠻⢛⣿⣶⣶⡽⢤⡄⢛⢃⣒⢠⣿⣿⠟⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠁⠀⠁⠀⠀⠀⠀⠀
-        """
-    )
+        """)
     print(f"{Style.RESET_ALL}")
+
+
+def handle_task_exception(task: asyncio.Task) -> None:
+    """Log (but never raise) an exception from a finished background task.
+
+    Args:
+        task: The completed task to inspect.
+    """
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as exc:  # noqa: BLE001 - background tasks must not crash the loop
+        log(f"{Fore.RED}Background task failed: {exc}{Style.RESET_ALL}")
+
+
+async def console_input_loop(queue: asyncio.Queue) -> None:
+    """Read stdin lines and enqueue them as console user messages.
+
+    Reads in a worker thread so the event loop stays free. Each non-empty line is
+    enqueued as ``{"text": <line>, "source": "console"}``. On EOF a sentinel
+    ``{"text": None, "source": "console"}`` is enqueued to stop the main loop.
+
+    Args:
+        queue: Queue receiving the user message dictionaries.
+    """
+    print(
+        f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+        end="",
+        flush=True,
+    )
+    while True:
+        try:
+            user_input = await asyncio.to_thread(input)
+        except EOFError:
+            await queue.put({"text": None, "source": "console"})
+            break
+        user_input = (user_input or "").strip()
+        if user_input:
+            await queue.put({"text": user_input, "source": "console"})
+
+
+def build_dispatcher(
+    *,
+    creds: dict[str, Any],
+    spotify: Any,
+    google: Any,
+    hardware: HardwareInterface,
+    on_switch: Callable[[str, dict[str, Any]], None],
+) -> Callable[[str, dict[str, Any]], str]:
+    """Build the unified tool dispatcher.
+
+    The returned callable tries each sibling module's ``dispatch`` in turn and
+    returns the first non-``None`` result. Modules that do not own the tool are
+    expected to return ``None`` so routing falls through to the next one.
+
+    Args:
+        creds: Credential mapping (for integration dispatch context).
+        spotify: Optional Spotify client passed to integration dispatch.
+        google: Optional Google client passed to integration dispatch.
+        hardware: Hardware interface passed to animation dispatch.
+        on_switch: Callback invoked by personality tools when the active
+            personality changes; receives ``(mode, args)``.
+
+    Returns:
+        A ``dispatch_tool(name, args) -> str`` callable.
+    """
+    api_ninjas_key = str(creds.get("api_ninjas_key", "")) if creds else ""
+
+    def dispatch_tool(name: str, args: dict[str, Any]) -> str:
+        """Route a single tool call to whichever module owns it.
+
+        Args:
+            name: Tool name requested by the LLM.
+            args: Parsed tool arguments.
+
+        Returns:
+            The first non-``None`` result string, or an error notice if no
+            module handled the tool.
+        """
+        try:
+            result = simple_tools.dispatch(
+                name, args, api_ninjas_key=api_ninjas_key, event_queue=None
+            )
+            if result is not None:
+                return result
+
+            result = memory.dispatch(name, args)
+            if result is not None:
+                return result
+
+            result = personality_dispatch(name, args, on_switch=on_switch)
+            if result is not None:
+                return result
+
+            result = integrations.dispatch(name, args, spotify=spotify, google=google)
+            if result is not None:
+                return result
+
+            result = hw_dispatch(name, args, hw=hardware)
+            if result is not None:
+                return result
+        except Exception as exc:  # noqa: BLE001 - tool errors are fed back to the LLM
+            return f"Tool '{name}' failed: {exc}"
+
+        return f"Tool '{name}' is not available."
+
+    return dispatch_tool
+
+
+def _parse_tool_call(call: Any) -> tuple[str, dict[str, Any]]:
+    """Normalise a tool call from a chunk into ``(name, args)``.
+
+    Supports both dict-shaped calls (OpenAI/OpenRouter ``{"function": {...}}``)
+    and simple objects exposing ``.name``/``.arguments`` (optionally nested
+    behind a ``.function`` attribute).
+
+    Args:
+        call: A single tool-call entry from a stream chunk.
+
+    Returns:
+        Tuple of the tool name and a parsed argument dict.
+    """
+    name: str = ""
+    raw_args: Any = {}
+
+    if isinstance(call, dict):
+        fn = call.get("function", call)
+        name = fn.get("name", "") or call.get("name", "")
+        raw_args = fn.get("arguments", call.get("arguments", {}))
+    else:
+        fn = getattr(call, "function", None)
+        if fn is not None:
+            name = getattr(fn, "name", "") or ""
+            raw_args = getattr(fn, "arguments", {})
+        else:
+            name = getattr(call, "name", "") or ""
+            raw_args = getattr(call, "arguments", {})
+
+    if isinstance(raw_args, str):
+        try:
+            raw_args = json.loads(raw_args) if raw_args.strip() else {}
+        except (ValueError, TypeError):
+            raw_args = {"_raw": raw_args}
+    if not isinstance(raw_args, dict):
+        raw_args = {"_value": raw_args}
+
+    return name, raw_args
+
+
+def _drain_stream(
+    client: OpenRouterClient,
+    conversation: ConversationManager,
+    *,
+    model: str,
+    tools: list[dict[str, Any]],
+    max_tokens: int,
+    provider: Any,
+    tts: TTSHandler | None,
+) -> tuple[str, list]:
+    """Consume one LLM stream, printing and speaking text deltas as they arrive.
+
+    Runs synchronously (the OpenRouter client is a blocking iterator); call it via
+    a worker thread so the event loop keeps servicing TTS and input tasks.
+
+    Args:
+        client: OpenRouter client.
+        conversation: Active conversation (read for the request messages).
+        model: Model id to request.
+        tools: Tool schema list offered to the model.
+        max_tokens: Generation cap.
+        provider: Provider routing value for this model (may be ``None``).
+        tts: Optional TTS engine fed each text delta immediately.
+
+    Returns:
+        Tuple of ``(full_text, tool_calls)`` where ``tool_calls`` is the list of
+        tool calls collected across the stream (possibly empty).
+    """
+    full_text_parts: list[str] = []
+    tool_calls: list = []
+
+    for chunk in client.chat_stream(
+        conversation.get(),
+        model=model,
+        tools=tools,
+        max_tokens=max_tokens,
+        provider=provider,
+    ):
+        text = getattr(chunk, "text", "") or ""
+        if text:
+            print(f"{Fore.CYAN}{text}{Style.RESET_ALL}", end="", flush=True)
+            full_text_parts.append(text)
+            if tts is not None:
+                tts.process_text(text)
+        chunk_tools = getattr(chunk, "tool_calls", None)
+        if chunk_tools:
+            tool_calls.extend(chunk_tools)
+
+    return "".join(full_text_parts), tool_calls
+
+
+async def handle_turn(
+    user_text: str,
+    *,
+    client: OpenRouterClient,
+    conversation: ConversationManager,
+    dispatch_tool: Callable[[str, dict[str, Any]], str],
+    tts: TTSHandler | None,
+    model: str,
+    provider: Any,
+    tools: list[dict[str, Any]],
+    max_tokens: int,
+) -> None:
+    """Run one full user turn: stream the reply, run any tools, speak the result.
+
+    Streams the LLM response while forwarding text deltas to TTS for minimal
+    latency. If the model requests tools, they are dispatched, their results are
+    appended to the conversation, and the LLM turn continues (bounded by
+    :data:`MAX_TOOL_ROUNDS`).
+
+    Args:
+        user_text: The user's message for this turn.
+        client: OpenRouter client.
+        conversation: Conversation manager (mutated with user/assistant/tool turns).
+        dispatch_tool: Unified tool dispatcher.
+        tts: Optional TTS engine.
+        model: Default model id.
+        provider: Provider routing value for ``model``.
+        tools: Aggregated tool schemas.
+        max_tokens: Generation cap.
+    """
+    conversation.add("user", user_text)
+
+    print(f"{Fore.CYAN}{Style.BRIGHT}{APP_NAME}:{Style.RESET_ALL} ", end="", flush=True)
+
+    spoke = False
+    for _ in range(MAX_TOOL_ROUNDS):
+        full_text, tool_calls = await asyncio.to_thread(
+            _drain_stream,
+            client,
+            conversation,
+            model=model,
+            tools=tools,
+            max_tokens=max_tokens,
+            provider=provider,
+            tts=tts,
+        )
+
+        if full_text:
+            conversation.add("assistant", full_text)
+            if tts is not None:
+                spoke = True
+
+        if not tool_calls:
+            break
+
+        for call in tool_calls:
+            name, args = _parse_tool_call(call)
+            log(f"{Fore.MAGENTA}tool ▶ {name} {args}{Style.RESET_ALL}")
+            result = dispatch_tool(name, args)
+            conversation.add("tool", f"{name}: {result}")
+    else:
+        log(f"{Fore.YELLOW}Tool round limit reached; ending turn.{Style.RESET_ALL}")
+
+    print()
+
+    if tts is not None and spoke:
+        await tts.flush_pending()
+        await tts.wait_idle()
+
+
+async def main() -> None:
+    """Initialise every subsystem and run the latency-optimised interaction loop."""
+    color(autoreset=True)
+    print_banner()
     print(f"{Fore.GREEN}Initializing Wheatley V2...{Style.RESET_ALL}")
 
-    # Bootstrap MCP Servers
-    print(f"{Fore.YELLOW}Bootstrapping MCP Servers...{Style.RESET_ALL}")
-    start_mcp_server("SpotifyAgent_tools.py")
-    start_mcp_server("GoogleCalendarAgent_tools.py")
+    settings = load_settings()
+    client = OpenRouterClient(settings.openrouter_api_key)
 
-    print(f"{Fore.YELLOW}Waiting for sub-agents to initialize...{Style.RESET_ALL}")
-    time.sleep(2)
+    # --- Personality + conversation memory ---------------------------------
+    personality = PersonalityManager(
+        settings.personalities, settings.current_personality
+    )
+    system_message = personality.get_personality(personality.current).get(
+        "system_message", ""
+    )
+    max_memory = int(settings.llm.get("max_memory", 10))
+    conversation = ConversationManager(system_message, max_memory=max_memory)
+    conversation.update_memory(memory.as_context())
 
-    start_mcp_server("agent_MCP.py")
-    print(f"{Fore.YELLOW}Waiting for main agent to initialize...{Style.RESET_ALL}")
-    time.sleep(3)
+    log(f"Model: {Fore.CYAN}{settings.llm.get('default')}{Style.RESET_ALL}")
 
-    config = load_config()
-    openai_key = config["secrets"]["openai_api_key"]
-    llm_model = config["llm"]["model"]
-    max_tokens = config["llm"].get("max_tokens", 2000)
-    os.environ["OPENAI_API_KEY"] = openai_key
-    os.environ["OPENAI_RESPONSES_MODEL_ID"] = llm_model
+    # --- TTS ----------------------------------------------------------------
+    tts: TTSHandler | None = None
+    if settings.tts.get("enabled"):
+        tts = TTSHandler(
+            settings.elevenlabs_api_key,
+            settings.tts["voice_id"],
+            settings.tts.get("model_id", "eleven_flash_v2_5"),
+        )
+        tts.start()
+        log(f"{Fore.GREEN}TTS ready.{Style.RESET_ALL}")
 
-    log(f"Model: {Fore.CYAN}{llm_model}{Style.RESET_ALL}")
-    log(f"MCP endpoint: {Fore.CYAN}{AGENT_MCP_URL}{Style.RESET_ALL}")
+    # --- Voice / wake-word listener ----------------------------------------
+    voice: VoiceListener | None = None
+    if settings.wake_word.get("enabled") or settings.stt.get("enabled"):
+        voice = VoiceListener(
+            transcribe_fn=lambda wav: client.transcribe(
+                wav,
+                model=settings.stt["model"],
+                language=settings.stt.get("language", "en"),
+                provider=settings.stt.get("provider"),
+            ),
+            wake_cfg=settings.wake_word,
+            audio_cfg=settings.stt,
+            greeting_dir=GREETING_DIR,
+        )
+        log(f"{Fore.GREEN}Voice listener ready.{Style.RESET_ALL}")
 
-    xi_key = config["secrets"]["elevenlabs_api_key"]
-    tts_cfg = config["tts"]
-    voice_id = tts_cfg["voice_id"]
-    model_id = tts_cfg["model_id"]
-    tts_enabled = tts_cfg["enabled"]
+    # --- Hardware ----------------------------------------------------------
+    hardware = HardwareInterface(**settings.hardware)
 
-    # Initialize STT
-    stt = None
+    # --- Tool aggregation + dispatcher -------------------------------------
+    creds: dict[str, Any] = dict(getattr(settings, "integrations", {}) or {})
+
+    def on_switch(mode: str, args: dict[str, Any]) -> None:
+        """Apply a personality switch to the conversation system prompt and voice.
+
+        Args:
+            mode: The personality mode to switch to.
+            args: The raw tool arguments (unused; present for the dispatch contract).
+        """
+        profile = personality.switch(mode)
+        conversation.set_system(profile.get("system_message", ""))
+        tts_cfg = profile.get("tts", {}) or {}
+        voice_id = tts_cfg.get("voice_id")
+        if tts is not None and voice_id:
+            tts.set_voice(voice_id, tts_cfg)
+
+    dispatch_tool = build_dispatcher(
+        creds=creds,
+        spotify=creds.get("spotify"),
+        google=creds.get("google"),
+        hardware=hardware,
+        on_switch=on_switch,
+    )
+
+    all_tools: list[dict[str, Any]] = [
+        *simple_tools.SIMPLE_TOOLS,
+        *memory.MEMORY_TOOLS,
+        *PERSONALITY_TOOLS,
+        *integrations.available_tools(creds),
+        *ANIMATION_TOOLS,
+    ]
+
+    model = settings.llm["default"]
+    provider = settings.llm.get("providers", {}).get(model)
+    max_tokens = int(settings.llm.get("max_tokens", 2000))
+
+    # --- Input plumbing ----------------------------------------------------
+    queue: asyncio.Queue[dict] = asyncio.Queue()
+    background_tasks: list[asyncio.Task] = []
+
+    console_task = asyncio.create_task(console_input_loop(queue))
+    console_task.add_done_callback(handle_task_exception)
+    background_tasks.append(console_task)
+
+    if voice is not None:
+        hotword_task = asyncio.create_task(
+            voice.hotword_listener(queue, tts_engine=tts)
+        )
+        hotword_task.add_done_callback(handle_task_exception)
+        background_tasks.append(hotword_task)
+
+    print(
+        f"{Fore.LIGHTBLACK_EX}Ready. Type a message, or say the wake word."
+        f"{Style.RESET_ALL}"
+    )
+
+    # --- Main loop ---------------------------------------------------------
     try:
-        stt = SpeechToTextEngine()
-        log(f"{Fore.GREEN}STT Initialized.{Style.RESET_ALL}")
-    except Exception as e:
-        log(f"{Fore.RED}STT Initialization failed: {e}{Style.RESET_ALL}")
+        while True:
+            user_data = await queue.get()
+            user_text = user_data.get("text")
+            source = user_data.get("source", "console")
 
-    background_tasks = []
-    tts = None
+            if user_text is None:
+                break
 
-    try:
-        # Build tool & agent contexts
-        async with (
-            Tool(
-                name="agent_tools",
-                description="Access to Spotify and Calendar agents.",
-                url=AGENT_MCP_URL,
-                request_timeout=60,
-            ) as tools,
-            ChatAgent(
-                name=APP_NAME,
-                description="A helpful assistant with access to Spotify and Calendar.",
-                instructions=build_instructions(),
-                chat_message_store_factory=Store,
-                chat_client=OpenAI(),
-            ) as agent,
-        ):
-            thread = agent.get_new_thread()
+            if source != "console":
+                print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user_text}")
 
-            tts = (
-                TTSHandler(xi_key, voice_id=voice_id, model_id=model_id)
-                if xi_key and tts_enabled
-                else None
+            await handle_turn(
+                user_text,
+                client=client,
+                conversation=conversation,
+                dispatch_tool=dispatch_tool,
+                tts=tts,
+                model=model,
+                provider=provider,
+                tools=all_tools,
+                max_tokens=max_tokens,
             )
-            if tts:
-                tts.start()
 
-            input_queue: asyncio.Queue[dict] = asyncio.Queue()
-
-            # Start console input task
-            console_task = asyncio.create_task(console_input_loop(input_queue))
-            console_task.add_done_callback(handle_task_exception)
-            background_tasks.append(console_task)
-
-            # Start hotword listener if STT is available
-            if stt:
-                hotword_task = asyncio.create_task(
-                    stt.hotword_listener(input_queue, tts_engine=tts)
-                )
-                hotword_task.add_done_callback(handle_task_exception)
-                background_tasks.append(hotword_task)
-
-            # Main interaction loop
-            while True:
-                user_data = await input_queue.get()
-                user = user_data["text"]
-                source = user_data["source"]
-
-                if user is None:
-                    break
-
-                if source == "stt":
-                    print(f"\n{Fore.GREEN}{Style.BRIGHT}User:{Style.RESET_ALL} {user}")
-
-                reply = agent.run_stream(
-                    user, tools=tools, thread=thread, max_tokens=max_tokens
-                )
-                print(
-                    f"{Fore.CYAN}{Style.BRIGHT}Wheatley:{Style.RESET_ALL} ",
-                    end="",
-                    flush=True,
-                )
-                async for chunk in reply:
-                    if chunk.text:
-                        print(
-                            f"{Fore.CYAN}{chunk.text}{Style.RESET_ALL}",
-                            end="",
-                            flush=True,
-                        )
-                        if tts:
-                            tts.process_text(chunk.text)
-                print()
-
-                if tts:
-                    await tts.flush_pending()
-                    await tts.wait_idle()
-
-                # Re-print prompt
-                print(
-                    f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
-                    end="",
-                    flush=True,
-                )
+            print(
+                f"\n{Fore.GREEN}{Style.BRIGHT}User (type or speak):{Style.RESET_ALL} ",
+                end="",
+                flush=True,
+            )
     finally:
-        # Cancel background tasks
         for task in background_tasks:
             task.cancel()
-
         if background_tasks:
             await asyncio.gather(*background_tasks, return_exceptions=True)
 
-        if tts:
-            for task in tts.tasks:
+        if tts is not None:
+            for task in getattr(tts, "tasks", []):
                 task.cancel()
-            if tts.tasks:
+            if getattr(tts, "tasks", None):
                 await asyncio.gather(*tts.tasks, return_exceptions=True)
             tts.cleanup()
-            log(f"{Fore.GREEN}TTS Cleaned up.{Style.RESET_ALL}")
+            log(f"{Fore.GREEN}TTS cleaned up.{Style.RESET_ALL}")
 
-        if stt:
-            stt.cleanup()
-            log(f"{Fore.GREEN}STT Cleaned up.{Style.RESET_ALL}")
+        if voice is not None:
+            voice.cleanup()
+            log(f"{Fore.GREEN}Voice listener cleaned up.{Style.RESET_ALL}")
+
+        close = getattr(hardware, "close", None)
+        if callable(close):
+            close()
+        log(f"{Fore.GREEN}Hardware closed.{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
